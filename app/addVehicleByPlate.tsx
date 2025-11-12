@@ -1,5 +1,6 @@
 // app/AddVehicleByPlate.tsx
 import React, { useState } from "react";
+import 'expo-router/entry';
 import {
   View,
   Text,
@@ -132,50 +133,22 @@ export default function AddVehicleByPlate() {
               
 
 
-      let avgKmPerL: number | undefined;
+       let avgKmPerL: number | undefined;
 
-// Step 1: Try to get from Israeli government API fields
-      const apiFields = [
-        foundRecord.avg_km_per_liter,
-        foundRecord.avg_km_per_l,
-        foundRecord.avg_kmpl,
-        foundRecord.km_per_liter,
-        foundRecord.km_per_l,
-        foundRecord.l_per_100km,
-        foundRecord.model_lkm_city,
-      ];
-
-      for (const f of apiFields) {
-        const val = safeParseFloat(f);
-        if (!val) continue;
-  
-  // Convert L/100km to km/L if needed
-  const converted = val > 0 && val <= 100 && String(f).toLowerCase().includes("l") 
-    ? 100 / val 
-    : val;
-  
-        const validated = validateKmPerL(converted, foundType);
-  if (validated) {
-    avgKmPerL = validated;
-    console.log(`✅ Got km/L from gov API: ${avgKmPerL}`);
-    break;
-  }
-}
-
-// Step 2: Try CarQuery API if government API didn't have the data
-      if (!avgKmPerL && brandRaw && modelRaw) {
+// Step 1: Try CarQuery API if government API didn't have the data
+if (!avgKmPerL && brandRaw && modelRaw) {
   try {
     console.log(`🔍 Fetching from CarQuery: ${brandEn} ${modelRaw} ${yearRaw || ''}`);
-
+    
     const localKm = await fetchCarQueryKmPerL(
       brandEn,
       modelRaw,
       yearRaw ? Math.round(yearRaw) : undefined,
-      
+      foundType
     );
 
     if (localKm) {
-    const validated = validateKmPerL(localKm, foundType);
+      const validated = validateKmPerL(localKm, foundType);
       if (validated) {
         avgKmPerL = validated;
         console.log(`✅ Got km/L from CarQuery: ${avgKmPerL}`);
@@ -187,7 +160,7 @@ export default function AddVehicleByPlate() {
 }
 
 // Step 3: Manual estimation as last resort
-      if (!avgKmPerL) {
+if (!avgKmPerL) {
   console.log('⚠️ Using manual estimation for km/L');
   const manual = manualEstimateKmPerL({
     cc: ccRaw,
@@ -195,15 +168,15 @@ export default function AddVehicleByPlate() {
     year: yearRaw ? Math.round(yearRaw) : undefined,
     vehicleType: foundType,
   });
-        avgKmPerL = validateKmPerL(manual, foundType) ?? manual;
+  avgKmPerL = validateKmPerL(manual, foundType) ?? manual;
   console.log(`📊 Manual estimate: ${avgKmPerL} km/L`);
-      }
+}
 
 // REMOVED: avgKmPerL = 4; // ❌ This was overriding everything!
 
 // Step 4: Store the consumption value
-      let storedAvgConsumption: number | undefined;
-      if (fueltype === "Electric") {
+let storedAvgConsumption: number | undefined;
+if (fueltype === "Electric") {
   if (rangeKm && rangeKm > 0) {
     storedAvgConsumption = Number((rangeKm / 100).toFixed(2));
   } else {
@@ -212,24 +185,23 @@ export default function AddVehicleByPlate() {
 } else {
   storedAvgConsumption = avgKmPerL ? Number(avgKmPerL.toFixed(2)) : undefined;
 }
+storedAvgConsumption = 0; // TEMP OVERRIDE FOR TESTING
 
-console.log(`🎯 Final avgConsumption: ${storedAvgConsumption} (fuel: ${fueltype})`);
+        const carName = translateBrandToEnglish(foundRecord.tozeret_nm || "לא ידוע");
 
-      const carName = translateBrandToEnglish(foundRecord.tozeret_nm || "לא ידוע");
+        const newVehicle: Vehicle = {
+          id: String(foundRecord._id ?? Date.now()),
+          plate: String(foundRecord.mispar_rechev ?? plateTrimmed).toUpperCase(),
+          name: carName,
+          model: String(foundRecord.kinuy_mishari ?? foundRecord.degem_nm ?? "לא ידוע"),
+          engine: String(foundRecord.degem_manoa ?? foundRecord.engine_type ?? "לא ידוע"),
+          type: foundType,
+          avgConsumption: storedAvgConsumption,
+          fueltype,
+          year: Number(foundRecord.shnat_yitzur ?? new Date().getFullYear()),
+        };
 
-      const newVehicle: Vehicle = {
-        id: String(foundRecord._id ?? Date.now()),
-        plate: String(foundRecord.mispar_rechev ?? plateTrimmed).toUpperCase(),
-        name: carName,
-        model: String(foundRecord.kinuy_mishari ?? foundRecord.degem_nm ?? "לא ידוע"),
-        engine: String(foundRecord.degem_manoa ?? foundRecord.engine_type ?? "לא ידוע"),
-        type: foundType,
-        avgConsumption: storedAvgConsumption,
-        fueltype,
-        year: Number(foundRecord.shnat_yitzur ?? new Date().getFullYear()),
-      };
-
-      const existing = await AsyncStorage.getItem("vehicles");
+        const existing = await AsyncStorage.getItem("vehicles");
       const list: Vehicle[] = existing ? JSON.parse(existing) : [];
       list.push(newVehicle);
       await AsyncStorage.setItem("vehicles", JSON.stringify(list));

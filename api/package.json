@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
-  },
+  "start": "vercel dev"
+},
+  
   "dependencies": {
     "@types/node-fetch": "^2.6.13",
     "cors": "^2.8.5",
@@ -14,15 +15,15 @@
   "main": "server.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR_USERNAME/checkfuel-server.git"
+    "url": "git+https://github.com/yosefsam2008/CheckFuelApp.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/checkfuel-server/issues"
+    "url": "https://github.com/yosefsam2008/CheckFuelApp/issues"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/checkfuel-server#readme",
+  "homepage": "https://github.com/yosefsam2008/CheckFuelApp#readme",
   "description": "",
   "devDependencies": {
     "@types/cors": "^2.8.19",

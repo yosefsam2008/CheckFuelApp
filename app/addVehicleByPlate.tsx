@@ -12,8 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import Toast from "./Toast";
 import { Vehicle } from "./vehiclesData";
-import {fetchCarQueryKmPerL } from "./fetchCarQueryKmPerL";
-import { translateBrandToEnglish } from "./fuelData";
+import { translateBrandToEnglish,fetchCarQueryKmPerL } from "./fuelData";
 
 const VEHICLE_APIS = [
   { type: "car", id: "053cea08-09bc-40ec-8f7a-156f0677aff3" },
@@ -133,10 +132,9 @@ export default function AddVehicleByPlate() {
               
 
 
-      // --- km/L computation
       let avgKmPerL: number | undefined;
 
-      // ניסיון מ־API
+// Step 1: Try to get from Israeli government API fields
       const apiFields = [
         foundRecord.avg_km_per_liter,
         foundRecord.avg_km_per_l,
@@ -150,45 +148,72 @@ export default function AddVehicleByPlate() {
       for (const f of apiFields) {
         const val = safeParseFloat(f);
         if (!val) continue;
-        const converted = val > 0 && val <= 100 && String(f).toLowerCase().includes("l") ? 100/val : val;
+  
+  // Convert L/100km to km/L if needed
+  const converted = val > 0 && val <= 100 && String(f).toLowerCase().includes("l") 
+    ? 100 / val 
+    : val;
+  
         const validated = validateKmPerL(converted, foundType);
-        if (validated) { avgKmPerL = validated; break; }
-      }
+  if (validated) {
+    avgKmPerL = validated;
+    console.log(`✅ Got km/L from gov API: ${avgKmPerL}`);
+    break;
+  }
+}
 
-      // --- local fuelData
-      console.log("--------------------------------Fetching kmPerL from CarQuery API for", brandEn, modelRaw, yearRaw);
+// Step 2: Try CarQuery API if government API didn't have the data
       if (!avgKmPerL && brandRaw && modelRaw) {
   try {
+    console.log(`🔍 Fetching from CarQuery: ${brandEn} ${modelRaw} ${yearRaw || ''}`);
 
-    // קריאה לשרת שלך שמדבר עם CarQuery
     const localKm = await fetchCarQueryKmPerL(
       brandEn,
       modelRaw,
       yearRaw ? Math.round(yearRaw) : undefined,
-      foundType // אפשר להעביר סוג דלק אם יש
+      
     );
 
-    // בדיקה אם הנתון תקין
+    if (localKm) {
     const validated = validateKmPerL(localKm, foundType);
-    if (validated) avgKmPerL = validated;
+      if (validated) {
+        avgKmPerL = validated;
+        console.log(`✅ Got km/L from CarQuery: ${avgKmPerL}`);
+      }
+    }
   } catch (err) {
-    console.error("Error fetching kmPerL from CarQuery API:", err);
+    console.error("❌ CarQuery API error:", err);
   }
 }
 
-
-      // --- fallback manual estimate
+// Step 3: Manual estimation as last resort
       if (!avgKmPerL) {
-        const manual = manualEstimateKmPerL({ cc: ccRaw, weightKg: weightRaw, year: yearRaw ? Math.round(yearRaw) : undefined, vehicleType: foundType });
+  console.log('⚠️ Using manual estimation for km/L');
+  const manual = manualEstimateKmPerL({
+    cc: ccRaw,
+    weightKg: weightRaw,
+    year: yearRaw ? Math.round(yearRaw) : undefined,
+    vehicleType: foundType,
+  });
         avgKmPerL = validateKmPerL(manual, foundType) ?? manual;
-        avgKmPerL =4;
+  console.log(`📊 Manual estimate: ${avgKmPerL} km/L`);
       }
 
+// REMOVED: avgKmPerL = 4; // ❌ This was overriding everything!
+
+// Step 4: Store the consumption value
       let storedAvgConsumption: number | undefined;
       if (fueltype === "Electric") {
-        if (rangeKm && rangeKm > 0) storedAvgConsumption = Number((rangeKm/100).toFixed(2));
-        else storedAvgConsumption = 3; // conservative fallback
-      } else storedAvgConsumption = avgKmPerL ? Number(avgKmPerL.toFixed(2)) : undefined;
+  if (rangeKm && rangeKm > 0) {
+    storedAvgConsumption = Number((rangeKm / 100).toFixed(2));
+  } else {
+    storedAvgConsumption = 3; // conservative fallback for EVs
+  }
+} else {
+  storedAvgConsumption = avgKmPerL ? Number(avgKmPerL.toFixed(2)) : undefined;
+}
+
+console.log(`🎯 Final avgConsumption: ${storedAvgConsumption} (fuel: ${fueltype})`);
 
       const carName = translateBrandToEnglish(foundRecord.tozeret_nm || "לא ידוע");
 

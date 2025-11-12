@@ -1,16 +1,15 @@
-// api/carquery.ts
+// api/carquery.js
 // Vercel Serverless Function לחיבור עם CarQuery API
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 /**
  * המרה מ-MPG (miles per gallon) ל-km/L (קילומטר לליטר)
  * 1 MPG = 0.425144 km/L
  */
-function mpgToKmPerL(mpg: number): number {
+function mpgToKmPerL(mpg) {
   return mpg * 0.425144;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   // רק GET requests
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -19,25 +18,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { brand, model, year } = req.query;
 
+    // המרה לסטרינג בודד (req.query יכול להחזיר string[])
+    const brandStr = Array.isArray(brand) ? brand[0] : brand;
+    const modelStr = Array.isArray(model) ? model[0] : model;
+    const yearStr = Array.isArray(year) ? year[0] : year;
+
     // ולידציה בסיסית
-    if (!brand || !model) {
+    if (!brandStr || !modelStr) {
       return res.status(400).json({ 
         error: 'Missing required parameters: brand and model' 
       });
     }
 
-    console.log(`🔍 Searching for: ${brand} ${model} ${year || 'any year'}`);
+    console.log(`🔍 Searching for: ${brandStr} ${modelStr} ${yearStr || 'any year'}`);
 
     // בניית URL ל-CarQuery API
     const params = new URLSearchParams({
       cmd: 'getTrims',
-      make: brand,
-      model: model,
+      make: brandStr,
+      model: modelStr,
       full_results: '1'
     });
 
-    if (year) {
-      params.append('year', year);
+    if (yearStr) {
+      params.append('year', yearStr);
     }
 
     const carQueryUrl = `https://www.carqueryapi.com/api/0.3/?${params.toString()}`;
@@ -96,25 +100,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // חישוב ממוצע והמרה מ-MPG ל-km/L
     const avgMpg = totalMpg / count;
-    const kmPerL = avgMpg * 0.425144; // המרה מ-MPG (US) ל-km/L
+    const kmPerL = mpgToKmPerL(avgMpg);
 
     console.log(`✅ Computed: ${kmPerL.toFixed(2)} km/L from ${count} trims`);
 
     return res.status(200).json({
       trimsFound: data.Trims.length,
       trimsWithData: count,
-      computedKmPerL: Math.round(kmPerL * 100) / 100, // עיגול ל-2 ספרות
+      computedKmPerL: Math.round(kmPerL * 100) / 100,
       avgMpg: Math.round(avgMpg * 100) / 100,
-      brand,
-      model,
-      year: year || 'all years'
+      brand: brandStr,
+      model: modelStr,
+      year: yearStr || 'all years'
     });
 
   } catch (error) {
     console.error('❌ Error:', error);
     return res.status(500).json({ 
       error: 'Failed to fetch vehicle data',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 }

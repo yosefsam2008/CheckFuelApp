@@ -1,138 +1,139 @@
 // app/fuelData.ts
 
-export type FuelType = "Electric" | "Gasoline" | "Diesel";
+/**
+ * תרגום שמות מותגים מעברית לאנגלית
+ */
+export function translateBrandToEnglish(hebrewBrand: string): string {
+  const brandMap: Record<string, string> = {
+    'טויוטה': 'Toyota',
+    'הונדה': 'Honda',
+    'מאזדה': 'Mazda',
+    'ניסאן': 'Nissan',
+    'סובארו': 'Subaru',
+    'מיצובישי': 'Mitsubishi',
+    'קיא': 'Kia',
+    'יונדאי': 'Hyundai',
+    'פולקסווגן': 'Volkswagen',
+    'סקודה': 'Skoda',
+    'סיאט': 'Seat',
+    'אאודי': 'Audi',
+    'מרצדס': 'Mercedes-Benz',
+    'ב.מ.וו': 'BMW',
+    'פורשה': 'Porsche',
+    'רנו': 'Renault',
+    'פיג\'ו': 'Peugeot',
+    'סיטרואן': 'Citroen',
+    'פיאט': 'Fiat',
+    'אלפא רומיאו': 'Alfa Romeo',
+    'פורד': 'Ford',
+    'פורד גרמניה': 'Ford',
+    'שברולט': 'Chevrolet',
+    'דודג\'': 'Dodge',
+    'ג\'יפ': 'Jeep',
+    'טסלה': 'Tesla',
+    'לקסוס': 'Lexus',
+    'אינפיניטי': 'Infiniti',
+    'אקורה': 'Acura',
+    'לנד רובר': 'Land Rover',
+    'ג\'גואר': 'Jaguar',
+    'וולוו': 'Volvo',
+    'מיני': 'Mini',
+    'מזראטי': 'Maserati',
+    'קדילק': 'Cadillac',
+    'לינקולן': 'Lincoln',
+    'ביואיק': 'Buick',
+    'ג\'י.אמ.סי': 'GMC',
+    'ראם': 'Ram',
+    'קרייזלר': 'Chrysler',
+  };
 
-export interface FuelRecord {
-  brand: string;
-  model: string;
-  year: number;
-  fuelType: FuelType;
-  kmPerL?: number;
-  batteryCapacityKWh?: number;
-  rangeKm?: number;
+  const normalized = hebrewBrand.trim();
+  return brandMap[normalized] || hebrewBrand;
 }
 
-/** מילון תרגום מותגים מעברית לאנגלית */
-export const brandTranslations: Record<string, string> = {
-  "טויוטה": "Toyota",
-  "הונדה": "Honda",
-  "פורד גרמניה": "Ford",
-  "פורד": "Ford",
-  "שברולט ישראל": "Chevrolet",
-  "ג'נרל מוטורס": "General Motors",
-  "שברולט": "Chevrolet",
-  "יונדאי": "Hyundai",
-  "קיא": "Kia",
-  "קיה": "Kia",
-  "מאזדה": "Mazda",
-  "מיצובישי": "Mitsubishi",
-  "ניסאן": "Nissan",
-  "פולקסווגן": "Volkswagen",
-  "סקודה": "Skoda",
-  "פיג'ו": "Peugeot",
-  "סיטרואן": "Citroen",
-  "ב.מ.וו": "BMW",
-  "מרצדס": "Mercedes-Benz",
-  "אאודי": "Audi",
-  "סובארו": "Subaru",
-  "סוזוקי": "Suzuki",
-  "לנד רובר": "Land Rover",
-  "ג'יפ": "Jeep",
-  "שיאן": "Chery",
-  "דאצ'יה": "Dacia",
-  "פיאט": "Fiat",
-  "מיני": "Mini",
-  "וולוו": "Volvo",
-  "אינפיניטי": "Infiniti",
-  "לקסוס": "Lexus",
-  "טסלה": "Tesla",
-  "רנו": "Renault",
-  "מזראטי": "Maserati",
-  "אלפא רומיאו": "Alfa Romeo",
-  "סאנגיונג": "SsangYong",
-  "מרצדס בנץ": "Mercedes-Benz",
-  "סיאט": "Seat",
-  "דייהו": "Daewoo",
-  "אופל": "Opel",
-  "טאטה": "Tata",
-};
-
-/** תרגום מותג מעברית לאנגלית */
-export function translateBrandToEnglish(brandHe: string): string {
-  const trimmed = brandHe.trim();
-  return brandTranslations[trimmed] || trimmed;
-}
+// 🔧 הגדר את ה-URL של ה-Vercel proxy שלך כאן
+const VERCEL_PROXY_URL = 'https://carquery-proxy.vercel.app/api/fuel-economy';
 
 /**
- * Fetch fuel consumption from CarQuery API via your Vercel serverless function
- * Returns km/L or undefined if not found
+ * שליפת נתוני צריכת דלק מ-FuelEconomy.gov API
+ * @returns km/L או undefined
  */
-export async function fetchCarQueryKmPerL(
-  brand: string,
+export async function fetchFuelEconomyKmPerL(
+  make: string,
   model: string,
-  year?: string | number,
-  vehicleType?: 'car' | 'motorcycle' | 'truck'
+  year?: number
 ): Promise<number | undefined> {
   try {
-    const cleanBrand = brand.trim();
-    const cleanModel = model.trim();
-    
-    if (!cleanBrand || !cleanModel) {
-      console.log('❌ CarQuery: חסר מותג או דגם');
+    if (!make || !model) {
+      console.log('❌ Missing make or model');
       return undefined;
     }
 
-    const params = new URLSearchParams({ 
-      brand: cleanBrand, 
-      model: cleanModel 
-    });
-    
-    if (year) {
-      params.append("year", String(year));
-    }
+    const y = year ?? new Date().getFullYear();
 
-    // ⭐ תקן את ה-URL הזה לפי ה-deployment האמיתי שלך ב-Vercel!
-    // לדוגמה: https://check-fuel-app.vercel.app
-    // או: https://check-fuel-app-git-main-yosefs-projects.vercel.app
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://check-fuel-app.vercel.app";
-    const url = `${baseUrl}/api/carquery?${params.toString()}`;
-    
-    console.log(`🔍 CarQuery: מחפש ${cleanBrand} ${cleanModel} ${year || ''}`);
-    console.log(`📡 URL: ${url}`);
-    
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // STEP 1: חיפוש אפשרויות רכב דרך Vercel Proxy (עם JSON)
+    const searchUrl = 
+      `${VERCEL_PROXY_URL}?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&year=${y}`;
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`❌ CarQuery API error ${res.status}: ${errorText}`);
+    console.log(`🔍 FuelEconomy (via Vercel) - Searching: ${make} ${model} ${y}`);
+
+    const searchRes = await fetch(searchUrl);
+    if (!searchRes.ok) {
+      console.log(`❌ FuelEconomy - Search failed: ${searchRes.status}`);
       return undefined;
     }
 
-    const data = await res.json();
-    console.log('📦 CarQuery response:', JSON.stringify(data, null, 2));
-    
-    if (data.computedKmPerL && typeof data.computedKmPerL === 'number' && data.computedKmPerL > 0) {
-      console.log(`✅ CarQuery מצא: ${data.computedKmPerL} km/L`);
-      console.log(`   📊 מבוסס על ${data.trimsWithData}/${data.trimsFound} גרסאות`);
-      return data.computedKmPerL;
-    }
-    
-    console.log('❌ CarQuery: לא נמצאו נתוני צריכה');
-    if (data.message) {
-      console.log(`   💬 ${data.message}`);
-    }
-    return undefined;
+    const searchData = await searchRes.json();
 
+    // נתיב אל האופציות ב-JSON
+    const menuItems = searchData?.menuItem;
+    if (!menuItems || !Array.isArray(menuItems) || menuItems.length === 0) {
+      console.log('❌ FuelEconomy - No menu items found');
+      return undefined;
+    }
+
+    // קח את האופציה הראשונה
+    const firstOption = menuItems[0];
+    const vehicleId = firstOption?.value;
+
+    if (!vehicleId) {
+      console.log('❌ FuelEconomy - No vehicle ID found');
+      return undefined;
+    }
+
+    console.log(`✅ FuelEconomy - Found vehicle ID: ${vehicleId}`);
+
+    // STEP 2: שליפת נתוני הרכב המלאים דרך Vercel Proxy
+    const dataUrl = `${VERCEL_PROXY_URL}?vehicleId=${vehicleId}`;
+
+    const dataRes = await fetch(dataUrl);
+    if (!dataRes.ok) {
+      console.log(`❌ FuelEconomy - Data fetch failed: ${dataRes.status}`);
+      return undefined;
+    }
+
+    const vehicleData = await dataRes.json();
+
+    // comb08 = Combined MPG (city + highway average)
+    const mpg = parseFloat(vehicleData?.comb08);
+
+    if (!mpg || mpg <= 0) {
+      console.log('❌ FuelEconomy - Invalid MPG value');
+      return undefined;
+    }
+
+    console.log(`✅ FuelEconomy - MPG from API: ${mpg}`);
+
+    // המרה מ-MPG ל-km/L
+    // 1 MPG (US) = 0.425144 km/L
+    const kmPerL = mpg * 0.425144;
+    const rounded = Number(kmPerL.toFixed(2));
+
+    console.log(`✅ FuelEconomy - Final result: ${rounded} km/L`);
+
+    return rounded;
   } catch (err) {
-    console.error("❌ fetchCarQueryKmPerL failed:", err);
-    if (err instanceof Error) {
-      console.error("   פרטי שגיאה:", err.message);
-    }
+    console.error('❌ FuelEconomy API error:', err);
     return undefined;
   }
 }

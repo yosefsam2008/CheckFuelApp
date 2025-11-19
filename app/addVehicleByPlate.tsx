@@ -13,7 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import Toast from "./Toast";
 import { Vehicle } from "./vehiclesData";
-import { translateBrandToEnglish,fetchCarQueryKmPerL } from "./fuelData";
+import { translateBrandToEnglish, fetchFuelEconomyKmPerL } from "./fuelData";
 
 const VEHICLE_APIS = [
   { type: "car", id: "053cea08-09bc-40ec-8f7a-156f0677aff3" },
@@ -53,7 +53,6 @@ function detectFuelTypeCanonical(record: any): FuelType {
   return "Unknown";
 }
 
-// פונקציה קטנה לוולידציה של km/L
 function validateKmPerL(value?: number, vehicleType?: VehicleType): number | undefined {
   if (!value || value <= 0) return undefined;
   if (vehicleType === "motorcycle" && value > 60) return 60;
@@ -105,6 +104,7 @@ export default function AddVehicleByPlate() {
       let foundRecord: any = null;
       let foundType: VehicleType | null = null;
 
+      // חיפוש ברישומי הרכב הממשלתיים
       for (const api of VEHICLE_APIS) {
         const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${api.id}&filters=${encodeURIComponent(JSON.stringify({ mispar_rechev: plateTrimmed }))}`;
         const res = await fetch(url);
@@ -121,8 +121,9 @@ export default function AddVehicleByPlate() {
         return;
       }
 
+      // שליפת נתונים מהרשומה
       const brandRaw = foundRecord.tozeret_nm || "";
-          const brandEn = translateBrandToEnglish(brandRaw);
+      const brandEn = translateBrandToEnglish(brandRaw);
       const modelRaw = foundRecord.kinuy_mishari || foundRecord.degem_nm || "";
       const yearRaw = safeParseFloat(foundRecord.shnat_yitzur);
       const ccRaw = safeParseFloat(foundRecord.degem_manoa) ?? safeParseFloat(foundRecord.engine_cc);
@@ -130,78 +131,77 @@ export default function AddVehicleByPlate() {
       const batteryCapacity = safeParseFloat(foundRecord.battery_capacity);
       const rangeKm = safeParseFloat(foundRecord.range_km);
       const fueltype = detectFuelTypeCanonical(foundRecord);
-              
+            
+      let avgKmPerL: number | undefined;
 
+      // 🎯 Step 1: ניסיון לשלוף מ- API
+      if (!avgKmPerL && brandRaw && modelRaw && fueltype !== "Electric") {
+        try {
+          console.log(`🔍 מנסה CarQuery: ${brandEn} ${modelRaw} ${yearRaw || ''}`);
+          
+          const localKm = await fetchFuelEconomyKmPerL(
+            brandEn,
+            modelRaw,
+            yearRaw ? Math.round(yearRaw) : undefined,
+            
+          );
 
-       let avgKmPerL: number | undefined;
-
-// Step 1: Try CarQuery API if government API didn't have the data
-if (!avgKmPerL && brandRaw && modelRaw) {
-  try {
-    console.log(`🔍 Fetching from CarQuery: ${brandEn} ${modelRaw} ${yearRaw || ''}`);
-    
-    const localKm = await fetchCarQueryKmPerL(
-      brandEn,
-      modelRaw,
-      yearRaw ? Math.round(yearRaw) : undefined,
-      foundType
-    );
-
-    if (localKm) {
-      const validated = validateKmPerL(localKm, foundType);
-      if (validated) {
-        avgKmPerL = validated;
-        console.log(`✅ Got km/L from CarQuery: ${avgKmPerL}`);
+          if (localKm) {
+            const validated = validateKmPerL(localKm, foundType);
+            if (validated) {
+              avgKmPerL = validated;
+              console.log(`✅ התקבל מ-: ${avgKmPerL} km/L`);
+            }
+          }
+        } catch (err) {
+          console.error("❌  API error:", err);
+        }
       }
-    }
-  } catch (err) {
-    console.error("❌ CarQuery API error:", err);
-  }
-}
 
-// Step 3: Manual estimation as last resort
-if (!avgKmPerL) {
-  console.log('⚠️ Using manual estimation for km/L');
-  const manual = manualEstimateKmPerL({
-    cc: ccRaw,
-    weightKg: weightRaw,
-    year: yearRaw ? Math.round(yearRaw) : undefined,
-    vehicleType: foundType,
-  });
-  avgKmPerL = validateKmPerL(manual, foundType) ?? manual;
-  console.log(`📊 Manual estimate: ${avgKmPerL} km/L`);
-}
+      // 🎯 Step 2: Fallback למשוערך ידני
+      if (!avgKmPerL && fueltype !== "Electric") {
+        console.log('⚠️ משתמש במשוערך ידני');
+        const manual = manualEstimateKmPerL({
+          cc: ccRaw,
+          weightKg: weightRaw,
+          year: yearRaw ? Math.round(yearRaw) : undefined,
+          vehicleType: foundType,
+        });
+        avgKmPerL = validateKmPerL(manual, foundType) ?? manual;
+        console.log(`📊 משוערך ידני: ${avgKmPerL} km/L`);
+      }
 
-// REMOVED: avgKmPerL = 4; // ❌ This was overriding everything!
+      // 🎯 Step 3: שמירת הערך הסופי
+      let storedAvgConsumption: number | undefined;
+      if (fueltype === "Electric") {
+        // רכבים חשמליים - km/100km
+        if (rangeKm && rangeKm > 0) {
+          storedAvgConsumption = Number((rangeKm / 100).toFixed(2));
+        } else {
+          storedAvgConsumption = 3; // ערך ברירת מחדל שמרני
+        }
+      } else {
+        // רכבים רגילים - km/L
+        storedAvgConsumption = avgKmPerL ? Number(avgKmPerL.toFixed(2)) : undefined;
+      }
 
-// Step 4: Store the consumption value
-let storedAvgConsumption: number | undefined;
-if (fueltype === "Electric") {
-  if (rangeKm && rangeKm > 0) {
-    storedAvgConsumption = Number((rangeKm / 100).toFixed(2));
-  } else {
-    storedAvgConsumption = 3; // conservative fallback for EVs
-  }
-} else {
-  storedAvgConsumption = avgKmPerL ? Number(avgKmPerL.toFixed(2)) : undefined;
-}
-storedAvgConsumption = 0; // TEMP OVERRIDE FOR TESTING
+      const carName = translateBrandToEnglish(foundRecord.tozeret_nm || "לא ידוע");
 
-        const carName = translateBrandToEnglish(foundRecord.tozeret_nm || "לא ידוע");
+      // יצירת אובייקט הרכב
+      const newVehicle: Vehicle = {
+        id: String(foundRecord._id ?? Date.now()),
+        plate: String(foundRecord.mispar_rechev ?? plateTrimmed).toUpperCase(),
+        name: carName,
+        model: String(foundRecord.kinuy_mishari ?? foundRecord.degem_nm ?? "לא ידוע"),
+        engine: String(foundRecord.degem_manoa ?? foundRecord.engine_type ?? "לא ידוע"),
+        type: foundType,
+        avgConsumption: storedAvgConsumption,
+        fueltype,
+        year: Number(foundRecord.shnat_yitzur ?? new Date().getFullYear()),
+      };
 
-        const newVehicle: Vehicle = {
-          id: String(foundRecord._id ?? Date.now()),
-          plate: String(foundRecord.mispar_rechev ?? plateTrimmed).toUpperCase(),
-          name: carName,
-          model: String(foundRecord.kinuy_mishari ?? foundRecord.degem_nm ?? "לא ידוע"),
-          engine: String(foundRecord.degem_manoa ?? foundRecord.engine_type ?? "לא ידוע"),
-          type: foundType,
-          avgConsumption: storedAvgConsumption,
-          fueltype,
-          year: Number(foundRecord.shnat_yitzur ?? new Date().getFullYear()),
-        };
-
-        const existing = await AsyncStorage.getItem("vehicles");
+      // שמירה ב-AsyncStorage
+      const existing = await AsyncStorage.getItem("vehicles");
       const list: Vehicle[] = existing ? JSON.parse(existing) : [];
       list.push(newVehicle);
       await AsyncStorage.setItem("vehicles", JSON.stringify(list));

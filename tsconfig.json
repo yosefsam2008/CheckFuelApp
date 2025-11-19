@@ -16,8 +16,8 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "api/**/*.ts"
-, "api/carquery.js"  ],
+    "carquery-proxy/api/**/*.ts"
+, "carquery-proxy/api/carquery.js"  ],
   "exclude": [
     "node_modules"
   ]

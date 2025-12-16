@@ -60,25 +60,7 @@
           "iosAppId": "ca-app-pub-6395480022343350~7292610150"
         }
       ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "manifest": {
-              "xmlns:tools": "http://schemas.android.com/tools",
-              "application": {
-                "meta-data": [
-                  {
-                    "android:name": "com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT",
-                    "android:value": "false",
-                    "tools:replace": "android:value"
-                  }
-                ]
-              }
-            }
-          }
-        }
-      ],
+      "./plugins/withAdMobManifest.js",
       "expo-font"
     ],
     "experiments": {

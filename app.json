@@ -1,29 +1,42 @@
 {
   "expo": {
-    "name": "checkfuel",
+    "name": "CheckFuel - מחשבון דלק",
     "slug": "checkfuel",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "checkfuel",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "description": "מחשבון עלות נסיעה וניהול רכבים - חשב עלות דלק, צריכת דלק, והשווה למוניות ואוטובוסים",
+    "primaryColor": "#34C759",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.checkfuel.app",
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#E6F4FE"
       },
+      "package": "com.checkfuel.app",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ],
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
+      }
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
@@ -39,11 +52,43 @@
         }
       ],
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-6395480022343350~7292610150",
+          "iosAppId": "ca-app-pub-6395480022343350~7292610150"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "manifest": {
+              "application": {
+                "meta-data": [
+                  {
+                    "android:name": "com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT",
+                    "android:value": "false",
+                    "tools:replace": "android:value"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8a6e291b-1c4a-4993-a5eb-556b3f09ab0a"
+      }
     }
   }
 }

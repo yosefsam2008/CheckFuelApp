@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npx expo-doctor)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git add:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node test-consumption.js:*)",
+      "Bash(node fetch-picanto-data.js:*)",
+      "Bash(ls:*)",
+      "Bash(npm run android:*)",
+      "Bash(timeout 15 npx expo start:*)",
+      "Bash(tail:*)",
+      "Bash(node test-cc-extraction.js:*)",
+      "Bash(node test-real-vehicle.js:*)",
+      "Bash(node test-api-fields.js:*)",
+      "Bash(node test-engine-search.js:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(npx tsx:*)",
+      "Bash(grep:*)",
+      "Bash(git restore:*)",
+      "Bash(npx depcheck:*)",
+      "Bash(cp:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

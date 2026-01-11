@@ -17,5 +17,20 @@ module.exports = async function (env, argv) {
     })
   );
 
+  // Dev server proxy: forward /api requests to the Vercel API to avoid CORS in development
+  if (config.devServer) {
+    config.devServer.proxy = config.devServer.proxy || {};
+    config.devServer.proxy['/api'] = {
+      target: 'https://checkfuel.vercel.app',
+      changeOrigin: true,
+      secure: true,
+      // keep path as /api/...
+      pathRewrite: { '^/api': '/api' },
+      onProxyReq: (proxyReq, req, res) => {
+        // optional: you can modify headers here if needed
+      },
+    };
+  }
+
   return config;
 };

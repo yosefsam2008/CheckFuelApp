@@ -1,8 +1,6 @@
 // Toast.tsx
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, Dimensions } from "react-native";
-
-const { height } = Dimensions.get("window");
+import React, { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text } from "react-native";
 
 interface ToastProps {
   message: string;
@@ -32,6 +30,7 @@ export default function Toast({ message, duration = 2000, onHide }: ToastProps) 
     }, duration);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

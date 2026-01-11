@@ -42,4 +42,13 @@ app-example
 /ios
 /android
 
-.vercel
+.vercel/
+
+# Test and debug files
+*test*.js
+*debug*.js
+fetch-*.js
+
+# Backup files
+*.backup
+package.json.backup

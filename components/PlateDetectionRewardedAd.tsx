@@ -8,6 +8,16 @@ interface PlateDetectionRewardedAdProps {
   onAdError?: (error: any) => void;
 }
 
+// Don't import AdMob on web - causes build errors
+let RewardedAd: any = null;
+let AdEventType: any = null;
+
+if (Platform.OS !== 'web') {
+  const admob = require('react-native-google-mobile-ads');
+  RewardedAd = admob.RewardedAd;
+  AdEventType = admob.AdEventType;
+}
+
 const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
   onAdComplete,
   onAdError
@@ -24,7 +34,13 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
 
   const loadAndShowAd = async () => {
     try {
-      const { RewardedAd, AdEventType } = require('react-native-google-mobile-ads');
+      if (!RewardedAd || !AdEventType) {
+        if (__DEV__) {
+          console.log('PlateDetectionRewardedAd: AdMob not available');
+        }
+        onAdComplete?.();
+        return;
+      }
 
       const AD_UNIT_ID = __DEV__
         ? 'ca-app-pub-3940256099942544/5224354917' // Test ad unit

@@ -25,7 +25,9 @@ import { lookupEngineCC } from "../lib/data/engineCCLookup";
 import { estimateVehicleWeight } from "../lib/data/vehicleWeightLookup";
 import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
-import AdBanner from "../components/BannerAd";
+
+// Conditional import for ads - only load on native platforms
+const AdBanner = Platform.OS === 'web' ? () => null : require("../components/BannerAd").default;
 
 const VEHICLE_APIS = [
   { type: "car", id: "053cea08-09bc-40ec-8f7a-156f0677aff3" },

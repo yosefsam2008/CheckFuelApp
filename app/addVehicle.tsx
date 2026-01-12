@@ -13,7 +13,9 @@ import {
 } from "react-native";
 import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
-import VehicleRewardedAd from "../components/VehicleRewardedAd";
+
+// Conditional import for ads - only load on native platforms
+const VehicleRewardedAd = Platform.OS === 'web' ? () => null : require("../components/VehicleRewardedAd").default;
 
 const manufacturers = [
   "Toyota",

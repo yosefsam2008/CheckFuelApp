@@ -15,8 +15,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AdBanner from '../../components/BannerAd';
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
+
+// Conditional import for ads - only load on native platforms
+const AdBanner = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 
 interface TripRecord {
   id: string;

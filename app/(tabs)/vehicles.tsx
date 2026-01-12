@@ -18,7 +18,9 @@
   import { SafeAreaView } from "react-native-safe-area-context";
   import { Vehicle } from "../../lib/data/vehiclesData";
   import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
-  import PlateDetectionRewardedAd from "../../components/PlateDetectionRewardedAd";
+
+  // Conditional import for ads - only load on native platforms
+  const PlateDetectionRewardedAd = Platform.OS === 'web' ? () => null : require("../../components/PlateDetectionRewardedAd").default;
 
   const IS_WEB = Platform.OS === "web";
   const MAX_WIDTH = 600;

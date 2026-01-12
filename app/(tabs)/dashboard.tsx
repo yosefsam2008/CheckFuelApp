@@ -15,9 +15,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import BannerAdComponent from '../../components/BannerAd';
 import LegalScreen from '../LegalScreen';
 import UserGuideScreen from '../UserGuideScreen';
+
+// Conditional import for BannerAd - only load on native platforms
+const BannerAdComponent = Platform.OS === 'web'
+  ? () => null
+  : require('../../components/BannerAd').default;
 
 interface TripRecord {
   id: string;

@@ -112,15 +112,21 @@
 
     // --- Load vehicles ---
     const loadVehicles = useCallback(async () => {
-      console.log("🔄 Loading vehicles...");
+      if (__DEV__) {
+        console.log("🔄 Loading vehicles...");
+      }
       try {
         const saved = await AsyncStorage.getItem("vehicles");
         if (saved) {
           const parsedVehicles = JSON.parse(saved);
-          console.log("✅ Loaded vehicles from storage:", parsedVehicles.length);
+          if (__DEV__) {
+            console.log("✅ Loaded vehicles from storage:", parsedVehicles.length);
+          }
           setVehicles(parsedVehicles);
         } else {
-          console.log("ℹ️ No vehicles in storage");
+          if (__DEV__) {
+            console.log("ℹ️ No vehicles in storage");
+          }
           setVehicles([]);
         }
       } catch (error) {
@@ -216,15 +222,23 @@ Animated.parallel([
     // --- Delete vehicle ---
   const deleteVehicleById = async (id: string) => {
     try {
-      console.log("🗑️ Starting deletion for vehicle ID:", id);
-      console.log("📋 Current vehicles count:", vehicles.length);
+      if (__DEV__) {
+        console.log("🗑️ Starting deletion for vehicle ID:", id);
+      }
+      if (__DEV__) {
+        console.log("📋 Current vehicles count:", vehicles.length);
+      }
 
       const updatedList = vehicles.filter((v) => v.id !== id);
-      console.log("📋 After filter, vehicles count:", updatedList.length);
+      if (__DEV__) {
+        console.log("📋 After filter, vehicles count:", updatedList.length);
+      }
 
       // Save to AsyncStorage first
       await AsyncStorage.setItem("vehicles", JSON.stringify(updatedList));
-      console.log("✅ AsyncStorage updated successfully");
+      if (__DEV__) {
+        console.log("✅ AsyncStorage updated successfully");
+      }
 
       // Then update state
       setVehicles(updatedList);
@@ -247,20 +261,26 @@ Animated.parallel([
         return;
       }
 
-      console.log("🔔 Showing delete confirmation for:", selected.name, "ID:", selected.id);
+      if (__DEV__) {
+        console.log("🔔 Showing delete confirmation for:", selected.name, "ID:", selected.id);
+      }
       setShowDeleteConfirm(true);
     };
 
     const handleDeleteConfirmed = async () => {
       if (!selected) return;
 
-      console.log("✅ User confirmed deletion");
+      if (__DEV__) {
+        console.log("✅ User confirmed deletion");
+      }
       setShowDeleteConfirm(false);
       await deleteVehicleById(selected.id);
     };
 
     const handleDeleteCancelled = () => {
-      console.log("❌ Deletion cancelled");
+      if (__DEV__) {
+        console.log("❌ Deletion cancelled");
+      }
       setShowDeleteConfirm(false);
     };
 

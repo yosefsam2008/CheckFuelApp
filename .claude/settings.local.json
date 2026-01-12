@@ -25,7 +25,12 @@
       "Bash(git restore:*)",
       "Bash(npx depcheck:*)",
       "Bash(cp:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(cat \"C:\\\\Users\\\\samoh\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-samoh-Documents-checkfuel\\\\tasks\\\\b0e1806.output\")",
+      "Bash(cat:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm audit:*)"
     ]
   }
 }

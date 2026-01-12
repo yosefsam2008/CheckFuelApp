@@ -37,7 +37,9 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
       const unsubscribeLoaded = rewardedAd.addAdEventListener(
         AdEventType.LOADED,
         () => {
-          console.log('✅ Plate Detection Ad loaded');
+          if (__DEV__) {
+            console.log('✅ Plate Detection Ad loaded');
+          }
           setIsLoading(false);
           rewardedAd.show();
         }
@@ -46,14 +48,18 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
       const unsubscribeEarned = rewardedAd.addAdEventListener(
         AdEventType.EARNED_REWARD,
         (reward: any) => {
-          console.log('🎁 User earned plate detection reward:', reward);
+          if (__DEV__) {
+            console.log('🎁 User earned plate detection reward:', reward);
+          }
         }
       );
 
       const unsubscribeClosed = rewardedAd.addAdEventListener(
         AdEventType.CLOSED,
         () => {
-          console.log('📴 Plate Detection Ad closed');
+          if (__DEV__) {
+            console.log('📴 Plate Detection Ad closed');
+          }
           onAdComplete?.();
           unsubscribeLoaded();
           unsubscribeEarned();

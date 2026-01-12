@@ -9,7 +9,9 @@ if (Platform.OS !== 'web') {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     mobileAds = require('react-native-google-mobile-ads').default;
   } catch {
-    console.log('AdMob library not available');
+    if (__DEV__) {
+      console.log('AdMob library not available');
+    }
   }
 }
 

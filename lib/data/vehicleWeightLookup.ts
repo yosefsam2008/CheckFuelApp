@@ -1037,7 +1037,9 @@ export function estimateVehicleWeight(
   const brandDatabase = VEHICLE_WEIGHT_DATABASE[normalizedBrand];
   if (!brandDatabase) {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log(`⚠️  No weight database for brand: ${normalizedBrand}`);
+      if (__DEV__) {
+        console.log(`⚠️  No weight database for brand: ${normalizedBrand}`);
+      }
     }
     return null;
   }
@@ -1091,7 +1093,9 @@ export function estimateVehicleWeight(
 
   if (!modelCode) {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log(`⚠️  Could not extract model code from: "${model}" (${normalizedBrand})`);
+      if (__DEV__) {
+        console.log(`⚠️  Could not extract model code from: "${model}" (${normalizedBrand})`);
+      }
     }
     return null;
   }
@@ -1101,13 +1105,17 @@ export function estimateVehicleWeight(
 
   if (!weight) {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log(`⚠️  No weight data for ${normalizedBrand} ${modelCode}`);
+      if (__DEV__) {
+        console.log(`⚠️  No weight data for ${normalizedBrand} ${modelCode}`);
+      }
     }
     return null;
   }
 
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
-    console.log(`📊 ${normalizedBrand} ${modelCode} weight: ${weight.curb}kg (curb), ${weight.gross}kg (gross)`);
+    if (__DEV__) {
+      console.log(`📊 ${normalizedBrand} ${modelCode} weight: ${weight.curb}kg (curb), ${weight.gross}kg (gross)`);
+    }
   }
 
   return weight;

@@ -247,8 +247,12 @@ export function estimateAeroData(params: {
 
   if (__DEV__) {
     console.log(`📐 Aero Estimation: ${brand} ${model} (${year}, ${weight}kg)`);
-    console.log(`   Cd: ${Cd.toFixed(3)}, Area: ${frontalArea.toFixed(2)} m²`);
-    console.log(`   Confidence: ${(confidence * 100).toFixed(0)}%`);
+    if (__DEV__) {
+      console.log(`   Cd: ${Cd.toFixed(3)}, Area: ${frontalArea.toFixed(2)} m²`);
+    }
+    if (__DEV__) {
+      console.log(`   Confidence: ${(confidence * 100).toFixed(0)}%`);
+    }
   }
 
   return {
@@ -360,11 +364,21 @@ export function calculateEVPhysics(params: {
 
   if (__DEV__) {
     console.log(`⚡ Physics Calculation (${weight}kg, Cd=${Cd}, ${avgSpeed}km/h)`);
-    console.log(`   Rolling: ${rollingEnergyPer100Km.toFixed(2)} kWh/100km`);
-    console.log(`   Aero: ${dragEnergyPer100Km.toFixed(2)} kWh/100km`);
-    console.log(`   Auxiliary: ${auxiliaryEnergyPer100Km.toFixed(2)} kWh/100km`);
-    console.log(`   Efficiency: ${(totalEfficiency * 100).toFixed(1)}%`);
-    console.log(`   Total: ${totalEnergy.toFixed(2)} kWh/100km`);
+    if (__DEV__) {
+      console.log(`   Rolling: ${rollingEnergyPer100Km.toFixed(2)} kWh/100km`);
+    }
+    if (__DEV__) {
+      console.log(`   Aero: ${dragEnergyPer100Km.toFixed(2)} kWh/100km`);
+    }
+    if (__DEV__) {
+      console.log(`   Auxiliary: ${auxiliaryEnergyPer100Km.toFixed(2)} kWh/100km`);
+    }
+    if (__DEV__) {
+      console.log(`   Efficiency: ${(totalEfficiency * 100).toFixed(1)}%`);
+    }
+    if (__DEV__) {
+      console.log(`   Total: ${totalEnergy.toFixed(2)} kWh/100km`);
+    }
   }
 
   return {
@@ -429,9 +443,15 @@ export function applyBatteryDegradation(
   const adjustedConsumption = baseConsumption * (1 + totalDegradation);
 
   if (__DEV__ && totalDegradation > 0) {
-    console.log(`🔋 Battery Degradation (${vehicleAge} years old)`);
-    console.log(`   Total degradation: ${(totalDegradation * 100).toFixed(1)}%`);
-    console.log(`   Base: ${baseConsumption.toFixed(2)} → Adjusted: ${adjustedConsumption.toFixed(2)} kWh/100km`);
+    if (__DEV__) {
+      console.log(`🔋 Battery Degradation (${vehicleAge} years old)`);
+    }
+    if (__DEV__) {
+      console.log(`   Total degradation: ${(totalDegradation * 100).toFixed(1)}%`);
+    }
+    if (__DEV__) {
+      console.log(`   Base: ${baseConsumption.toFixed(2)} → Adjusted: ${adjustedConsumption.toFixed(2)} kWh/100km`);
+    }
   }
 
   return +adjustedConsumption.toFixed(2);
@@ -545,8 +565,12 @@ export async function calculateEVConsumptionAdvanced(params: {
 
   if (__DEV__) {
     console.log(`\n✅ FINAL RESULT: ${finalValue.toFixed(2)} kWh/100km`);
-    console.log(`   Confidence: ${(overallConfidence * 100).toFixed(0)}%`);
-    console.log(`   Source: Physics-Based Calculation\n`);
+    if (__DEV__) {
+      console.log(`   Confidence: ${(overallConfidence * 100).toFixed(0)}%`);
+    }
+    if (__DEV__) {
+      console.log(`   Source: Physics-Based Calculation\n`);
+    }
   }
   
   return {

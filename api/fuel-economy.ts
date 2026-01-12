@@ -24,7 +24,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 🔹 שלב 2 - אם יש vehicleId, שליפת נתונים ספציפיים
     if (vehicleId) {
       const apiUrl = `https://www.fueleconomy.gov/ws/rest/vehicle/${vehicleId}`;
-      console.log('📡 Fetching vehicle data:', apiUrl);
+      if (__DEV__) {
+        console.log('📡 Fetching vehicle data:', apiUrl);
+      }
 
       const response = await fetch(apiUrl);
       if (!response.ok) {
@@ -51,7 +53,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const y = year || new Date().getFullYear();
     const searchUrl = `https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=${y}&make=${encodeURIComponent(String(make))}&model=${encodeURIComponent(String(model))}`;
-    console.log('🔍 Searching vehicles:', searchUrl);
+    if (__DEV__) {
+      console.log('🔍 Searching vehicles:', searchUrl);
+    }
 
     const searchResponse = await fetch(searchUrl);
     if (!searchResponse.ok) {

@@ -37,7 +37,9 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
       const unsubscribeLoaded = rewardedInterstitialAd.addAdEventListener(
         AdEventType.LOADED,
         () => {
-          console.log('✅ Vehicle Rewarded Interstitial Ad loaded');
+          if (__DEV__) {
+            console.log('✅ Vehicle Rewarded Interstitial Ad loaded');
+          }
           // Keep loading screen visible while ad is showing
           rewardedInterstitialAd.show();
         }
@@ -46,14 +48,18 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
       const unsubscribeEarned = rewardedInterstitialAd.addAdEventListener(
         AdEventType.EARNED_REWARD,
         (reward: any) => {
-          console.log('🎁 User earned vehicle reward:', reward);
+          if (__DEV__) {
+            console.log('🎁 User earned vehicle reward:', reward);
+          }
         }
       );
 
       const unsubscribeClosed = rewardedInterstitialAd.addAdEventListener(
         AdEventType.CLOSED,
         () => {
-          console.log('📴 Vehicle Rewarded Interstitial Ad closed');
+          if (__DEV__) {
+            console.log('📴 Vehicle Rewarded Interstitial Ad closed');
+          }
           setIsLoading(false);
           onAdComplete?.();
           unsubscribeLoaded();

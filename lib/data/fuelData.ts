@@ -396,7 +396,8 @@ export async function fetchVehicleData(
     const vehicleData = parseVehicleXML(xmlText);
 
     // Log key fields for debugging
-    console.log(`   Raw data fields:`, {
+    if (__DEV__) {
+      console.log(`   Raw data fields:`, {
       id: vehicleData.id,
       make: vehicleData.make,
       model: vehicleData.model,
@@ -409,7 +410,8 @@ export async function fetchVehicleData(
       cityE: vehicleData.cityE,
       highway08: vehicleData.highway08,
       highwayE: vehicleData.highwayE,
-    });
+      });
+    }
 
     return vehicleData;
   } catch (err) {
@@ -461,7 +463,9 @@ export function convertFuelValues(
       return undefined;
     }
 
-    console.log(`   Vehicle Type: ${isEV ? 'Electric' : 'Gas/Hybrid'}`);
+    if (__DEV__) {
+      console.log(`   Vehicle Type: ${isEV ? 'Electric' : 'Gas/Hybrid'}`);
+    }
 
     const result: FuelEconomyResult = {
       vehicleId,
@@ -496,7 +500,9 @@ function convertEVValues(
   vehicleData: Record<string, any>,
   result: FuelEconomyResult
 ): void {
-  console.log(`   Processing EV data...`);
+  if (__DEV__) {
+    console.log(`   Processing EV data...`);
+  }
 
   // Parse MPGe values (Miles Per Gallon equivalent - for comparison)
   const combinedMPGe = parseIntSafe(vehicleData.comb08);
@@ -515,11 +521,13 @@ function convertEVValues(
   const cityKwhPer100Miles = parseFloatSafe(vehicleData.cityE);
   const highwayKwhPer100Miles = parseFloatSafe(vehicleData.highwayE);
 
-  console.log(`   Raw kWh/100mi values:`, {
+  if (__DEV__) {
+    console.log(`   Raw kWh/100mi values:`, {
     combined: combinedKwhPer100Miles,
     city: cityKwhPer100Miles,
     highway: highwayKwhPer100Miles
-  });
+    });
+  }
 
   // Convert kWh/100 miles to kWh/100 km
   if (combinedKwhPer100Miles) {
@@ -529,7 +537,9 @@ function convertEVValues(
     // Set unified energy metric for EVs
     result.combinedEnergyPer100Km = result.combinedKwhPer100Km;
 
-    console.log(`   Combined: ${combinedKwhPer100Miles} kWh/100mi to ${result.combinedKwhPer100Km} kWh/100km`);
+    if (__DEV__) {
+      console.log(`   Combined: ${combinedKwhPer100Miles} kWh/100mi to ${result.combinedKwhPer100Km} kWh/100km`);
+    }
   } else {
     console.warn(`   No combined kWh data available`);
   }
@@ -537,13 +547,17 @@ function convertEVValues(
   if (cityKwhPer100Miles) {
     result.cityKwhPer100Miles = cityKwhPer100Miles;
     result.cityKwhPer100Km = kwh100MilesToKwh100Km(cityKwhPer100Miles);
-    console.log(`   City: ${cityKwhPer100Miles} kWh/100mi to ${result.cityKwhPer100Km} kWh/100km`);
+    if (__DEV__) {
+      console.log(`   City: ${cityKwhPer100Miles} kWh/100mi to ${result.cityKwhPer100Km} kWh/100km`);
+    }
   }
 
   if (highwayKwhPer100Miles) {
     result.highwayKwhPer100Miles = highwayKwhPer100Miles;
     result.highwayKwhPer100Km = kwh100MilesToKwh100Km(highwayKwhPer100Miles);
-    console.log(`   Highway: ${highwayKwhPer100Miles} kWh/100mi to ${result.highwayKwhPer100Km} kWh/100km`);
+    if (__DEV__) {
+      console.log(`   Highway: ${highwayKwhPer100Miles} kWh/100mi to ${result.highwayKwhPer100Km} kWh/100km`);
+    }
   }
 
   // Parse range values (in miles)
@@ -553,7 +567,9 @@ function convertEVValues(
 
   if (range) {
     result.range = range;
-    console.log(`   Range: ${range} miles`);
+    if (__DEV__) {
+      console.log(`   Range: ${range} miles`);
+    }
   }
   if (rangeCity) result.rangeCity = rangeCity;
   if (rangeHighway) result.rangeHighway = rangeHighway;
@@ -563,7 +579,9 @@ function convertEVValues(
     const batteryCapacity = getBatteryCapacityKwh(vehicleData);
     if (batteryCapacity) {
       result.batteryCapacityKwh = batteryCapacity;
-      console.log(`   Battery capacity detected: ${batteryCapacity} kWh`);
+      if (__DEV__) {
+        console.log(`   Battery capacity detected: ${batteryCapacity} kWh`);
+      }
     }
 
     let kwhPerKm: number | undefined;
@@ -571,15 +589,21 @@ function convertEVValues(
     // Method 1: Calculate from kWh/100km (most accurate if available)
     if (result.combinedKwhPer100Km) {
       kwhPerKm = computeKwhPerKmFromKwhPer100Km(result.combinedKwhPer100Km);
-      console.log(`   kwhPerKm (from kWh/100km): ${kwhPerKm} kWh/km`);
+      if (__DEV__) {
+        console.log(`   kwhPerKm (from kWh/100km): ${kwhPerKm} kWh/km`);
+      }
     }
     // Method 2: Calculate from range and battery capacity
     else if (range && batteryCapacity) {
       const rangeKm = milesToKm(range);
       kwhPerKm = computeKwhPerKmFromRange(batteryCapacity, rangeKm);
-      console.log(`   kwhPerKm (from range): ${kwhPerKm} kWh/km`);
+      if (__DEV__) {
+        console.log(`   kwhPerKm (from range): ${kwhPerKm} kWh/km`);
+      }
     } else {
-      console.log('   kwhPerKm: insufficient data (no kWh/100km or range+battery)');
+      if (__DEV__) {
+        console.log('   kwhPerKm: insufficient data (no kWh/100km or range+battery)');
+      }
     }
 
     if (kwhPerKm) result.kwhPerKm = kwhPerKm;
@@ -587,8 +611,12 @@ function convertEVValues(
     console.warn('   Failed to compute kwhPerKm:', err);
   }
 
-  console.log(`   EV Summary: ${result.combinedMPGe} MPGe, ${result.combinedKwhPer100Km} kWh/100km, ${result.kwhPerKm} kWh/km`);
-  console.log(`   Unified Energy Metric: ${result.combinedEnergyPer100Km} kWh/100km`);
+  if (__DEV__) {
+    console.log(`   EV Summary: ${result.combinedMPGe} MPGe, ${result.combinedKwhPer100Km} kWh/100km, ${result.kwhPerKm} kWh/km`);
+  }
+  if (__DEV__) {
+    console.log(`   Unified Energy Metric: ${result.combinedEnergyPer100Km} kWh/100km`);
+  }
 }
 
 /**
@@ -599,18 +627,22 @@ function convertGasValues(
   vehicleData: Record<string, any>,
   result: FuelEconomyResult
 ): void {
-  console.log(`   Processing Gas/Hybrid data...`);
+  if (__DEV__) {
+    console.log(`   Processing Gas/Hybrid data...`);
+  }
 
   // Parse MPG values
   const combinedMPG = parseIntSafe(vehicleData.comb08);
   const cityMPG = parseIntSafe(vehicleData.city08);
   const highwayMPG = parseIntSafe(vehicleData.highway08);
 
-  console.log(`   Raw MPG values:`, {
+  if (__DEV__) {
+    console.log(`   Raw MPG values:`, {
     combined: combinedMPG,
     city: cityMPG,
     highway: highwayMPG
-  });
+    });
+  }
 
   if (combinedMPG) {
     result.combinedMPG = combinedMPG;
@@ -622,7 +654,9 @@ function convertGasValues(
     // Set unified energy metric for gas/hybrid (km/L)
     result.combinedEnergyPer100Km = result.combinedKmPerL;
 
-    console.log(`   Combined: ${combinedMPG} MPG to ${result.combinedKmPerL} km/L`);
+    if (__DEV__) {
+      console.log(`   Combined: ${combinedMPG} MPG to ${result.combinedKmPerL} km/L`);
+    }
   } else {
     console.warn(`   No combined MPG data available`);
   }
@@ -632,7 +666,9 @@ function convertGasValues(
     result.cityKmPerL = parseFloat(
       (cityMPG * MPG_TO_KM_PER_L).toFixed(2)
     );
-    console.log(`   City: ${cityMPG} MPG to ${result.cityKmPerL} km/L`);
+    if (__DEV__) {
+      console.log(`   City: ${cityMPG} MPG to ${result.cityKmPerL} km/L`);
+    }
   }
 
   if (highwayMPG) {
@@ -640,11 +676,17 @@ function convertGasValues(
     result.highwayKmPerL = parseFloat(
       (highwayMPG * MPG_TO_KM_PER_L).toFixed(2)
     );
-    console.log(`   Highway: ${highwayMPG} MPG to ${result.highwayKmPerL} km/L`);
+    if (__DEV__) {
+      console.log(`   Highway: ${highwayMPG} MPG to ${result.highwayKmPerL} km/L`);
+    }
   }
 
-  console.log(`   Gas/Hybrid Summary: ${result.combinedMPG} MPG, ${result.combinedKmPerL} km/L`);
-  console.log(`   Unified Energy Metric: ${result.combinedEnergyPer100Km} km/L`);
+  if (__DEV__) {
+    console.log(`   Gas/Hybrid Summary: ${result.combinedMPG} MPG, ${result.combinedKmPerL} km/L`);
+  }
+  if (__DEV__) {
+    console.log(`   Unified Energy Metric: ${result.combinedEnergyPer100Km} km/L`);
+  }
 }
 
 /**
@@ -717,10 +759,18 @@ export async function fetchFuelEconomyFullData(
     const normalizedModel = model.trim();
     const targetYear = year ?? new Date().getFullYear();
 
-    console.log(`\nSTARTING FUEL ECONOMY DATA RETRIEVAL`);
-    console.log(`Make: ${normalizedMake}`);
-    console.log(`Model: ${normalizedModel}`);
-    console.log(`Year: ${targetYear}\n`);
+    if (__DEV__) {
+      console.log(`\nSTARTING FUEL ECONOMY DATA RETRIEVAL`);
+    }
+    if (__DEV__) {
+      console.log(`Make: ${normalizedMake}`);
+    }
+    if (__DEV__) {
+      console.log(`Model: ${normalizedModel}`);
+    }
+    if (__DEV__) {
+      console.log(`Year: ${targetYear}\n`);
+    }
 
     // STAGE 1: Fetch valid models and find best match
     const validModels = await fetchValidModels(normalizedMake, targetYear);
@@ -738,7 +788,9 @@ export async function fetchFuelEconomyFullData(
       return undefined;
     }
 
-    console.log(`\nModel Match Success: "${normalizedModel}" -> "${matchedModel}"\n`);
+    if (__DEV__) {
+      console.log(`\nModel Match Success: "${normalizedModel}" -> "${matchedModel}"\n`);
+    }
 
     // STAGE 2: Fetch vehicle ID
     const vehicleId = await fetchVehicleMenuOptions(
@@ -768,42 +820,76 @@ export async function fetchFuelEconomyFullData(
     }
 
     // SUCCESS - Enhanced logging for both vehicle types
-    console.log(`\nSUCCESS - FUEL ECONOMY DATA RETRIEVED`);
-    console.log(`Vehicle: ${result.year} ${result.make} ${result.model}`);
-    console.log(`Type: ${result.isEV ? 'Electric' : 'Gas/Hybrid'}`);
-    console.log(`Fuel Type: ${result.fuelType}`);
+    if (__DEV__) {
+      console.log(`\nSUCCESS - FUEL ECONOMY DATA RETRIEVED`);
+    }
+    if (__DEV__) {
+      console.log(`Vehicle: ${result.year} ${result.make} ${result.model}`);
+    }
+    if (__DEV__) {
+      console.log(`Type: ${result.isEV ? 'Electric' : 'Gas/Hybrid'}`);
+    }
+    if (__DEV__) {
+      console.log(`Fuel Type: ${result.fuelType}`);
+    }
 
     if (result.isEV) {
-      console.log(`ELECTRIC VEHICLE METRICS:`);
+      if (__DEV__) {
+        console.log(`ELECTRIC VEHICLE METRICS:`);
+      }
       if (result.combinedMPGe) {
-        console.log(`   Combined Efficiency: ${result.combinedMPGe} MPGe`);
+        if (__DEV__) {
+          console.log(`   Combined Efficiency: ${result.combinedMPGe} MPGe`);
+        }
       }
       if (result.combinedKwhPer100Km) {
-        console.log(`   Energy Consumption: ${result.combinedKwhPer100Km} kWh/100km`);
-        console.log(`   (Original: ${result.combinedKwhPer100Miles} kWh/100mi)`);
+        if (__DEV__) {
+          console.log(`   Energy Consumption: ${result.combinedKwhPer100Km} kWh/100km`);
+        }
+        if (__DEV__) {
+          console.log(`   (Original: ${result.combinedKwhPer100Miles} kWh/100mi)`);
+        }
       }
       if (result.cityKwhPer100Km) {
-        console.log(`   City: ${result.cityKwhPer100Km} kWh/100km (${result.cityMPGe} MPGe)`);
+        if (__DEV__) {
+          console.log(`   City: ${result.cityKwhPer100Km} kWh/100km (${result.cityMPGe} MPGe)`);
+        }
       }
       if (result.highwayKwhPer100Km) {
-        console.log(`   Highway: ${result.highwayKwhPer100Km} kWh/100km (${result.highwayMPGe} MPGe)`);
+        if (__DEV__) {
+          console.log(`   Highway: ${result.highwayKwhPer100Km} kWh/100km (${result.highwayMPGe} MPGe)`);
+        }
       }
       if (result.range) {
-        console.log(`   Range: ${result.range} miles`);
+        if (__DEV__) {
+          console.log(`   Range: ${result.range} miles`);
+        }
       }
-      console.log(`UNIFIED METRIC: ${result.combinedEnergyPer100Km} kWh/100km\n`);
+      if (__DEV__) {
+        console.log(`UNIFIED METRIC: ${result.combinedEnergyPer100Km} kWh/100km\n`);
+      }
     } else {
-      console.log(`GAS/HYBRID METRICS:`);
+      if (__DEV__) {
+        console.log(`GAS/HYBRID METRICS:`);
+      }
       if (result.combinedMPG && result.combinedKmPerL) {
-        console.log(`   Combined: ${result.combinedMPG} MPG / ${result.combinedKmPerL} km/L`);
+        if (__DEV__) {
+          console.log(`   Combined: ${result.combinedMPG} MPG / ${result.combinedKmPerL} km/L`);
+        }
       }
       if (result.cityMPG && result.cityKmPerL) {
-        console.log(`   City: ${result.cityMPG} MPG / ${result.cityKmPerL} km/L`);
+        if (__DEV__) {
+          console.log(`   City: ${result.cityMPG} MPG / ${result.cityKmPerL} km/L`);
+        }
       }
       if (result.highwayMPG && result.highwayKmPerL) {
-        console.log(`   Highway: ${result.highwayMPG} MPG / ${result.highwayKmPerL} km/L`);
+        if (__DEV__) {
+          console.log(`   Highway: ${result.highwayMPG} MPG / ${result.highwayKmPerL} km/L`);
+        }
       }
-      console.log(`UNIFIED METRIC: ${result.combinedEnergyPer100Km} km/L\n`);
+      if (__DEV__) {
+        console.log(`UNIFIED METRIC: ${result.combinedEnergyPer100Km} km/L\n`);
+      }
     }
 
     return result;
@@ -974,8 +1060,12 @@ export function calculateEVConsumptionEnhanced(params: {
 
   if (__DEV__) {
     console.log(`\n⚡ ADVANCED EV CALCULATION`);
-    console.log(`   Weight: ${weight}kg (${effectiveWeight ? 'measured' : 'estimated'})`);
-    console.log(`   Year: ${year}`);
+    if (__DEV__) {
+      console.log(`   Weight: ${weight}kg (${effectiveWeight ? 'measured' : 'estimated'})`);
+    }
+    if (__DEV__) {
+      console.log(`   Year: ${year}`);
+    }
   }
 
   // ============================================================================
@@ -985,9 +1075,15 @@ export function calculateEVConsumptionEnhanced(params: {
 
   if (__DEV__) {
     console.log(`   Body Type: ${estimateBodyType(weight)}`);
-    console.log(`   Drag Coefficient (Cd): ${aero.dragCoefficient.toFixed(3)}`);
-    console.log(`   Frontal Area: ${aero.frontalArea.toFixed(2)} m²`);
-    console.log(`   Rolling Resistance: ${aero.rollingResistance.toFixed(4)}`);
+    if (__DEV__) {
+      console.log(`   Drag Coefficient (Cd): ${aero.dragCoefficient.toFixed(3)}`);
+    }
+    if (__DEV__) {
+      console.log(`   Frontal Area: ${aero.frontalArea.toFixed(2)} m²`);
+    }
+    if (__DEV__) {
+      console.log(`   Rolling Resistance: ${aero.rollingResistance.toFixed(4)}`);
+    }
   }
 
   // ============================================================================
@@ -1027,10 +1123,18 @@ export function calculateEVConsumptionEnhanced(params: {
 
   if (__DEV__) {
     console.log(`\n   Energy Components (at wheels):`);
-    console.log(`   - Rolling Resistance: ${rollingEnergyKwh.toFixed(2)} kWh/100km`);
-    console.log(`   - Aerodynamic Drag: ${dragEnergyKwh.toFixed(2)} kWh/100km`);
-    console.log(`   - Acceleration Cycles: ${accelerationEnergyKwh.toFixed(2)} kWh/100km`);
-    console.log(`   - Auxiliary Systems: ${auxiliaryEnergyKwh.toFixed(2)} kWh/100km`);
+    if (__DEV__) {
+      console.log(`   - Rolling Resistance: ${rollingEnergyKwh.toFixed(2)} kWh/100km`);
+    }
+    if (__DEV__) {
+      console.log(`   - Aerodynamic Drag: ${dragEnergyKwh.toFixed(2)} kWh/100km`);
+    }
+    if (__DEV__) {
+      console.log(`   - Acceleration Cycles: ${accelerationEnergyKwh.toFixed(2)} kWh/100km`);
+    }
+    if (__DEV__) {
+      console.log(`   - Auxiliary Systems: ${auxiliaryEnergyKwh.toFixed(2)} kWh/100km`);
+    }
   }
 
   // Sum all energy components (energy needed at the wheels)
@@ -1056,7 +1160,9 @@ export function calculateEVConsumptionEnhanced(params: {
 
   if (__DEV__) {
     console.log(`   - After System Losses: ${energyFromBattery.toFixed(2)} kWh/100km`);
-    console.log(`   - After Regen Recovery (${(REGEN_RECOVERY * 100).toFixed(0)}%): ${totalEnergyKwh.toFixed(2)} kWh/100km`);
+    if (__DEV__) {
+      console.log(`   - After Regen Recovery (${(REGEN_RECOVERY * 100).toFixed(0)}%): ${totalEnergyKwh.toFixed(2)} kWh/100km`);
+    }
   }
 
   // ============================================================================
@@ -1072,7 +1178,9 @@ export function calculateEVConsumptionEnhanced(params: {
   totalEnergyKwh *= (1 + degradationPercent);
 
   if (__DEV__ && vehicleAge > 0) {
-    console.log(`   - Battery Degradation (${vehicleAge}y): +${(degradationPercent * 100).toFixed(1)}%`);
+    if (__DEV__) {
+      console.log(`   - Battery Degradation (${vehicleAge}y): +${(degradationPercent * 100).toFixed(1)}%`);
+    }
   }
 
   // ============================================================================
@@ -1096,7 +1204,9 @@ export function calculateEVConsumptionEnhanced(params: {
 
   if (__DEV__) {
     console.log(`\n   ✅ FINAL RESULT: ${kwhPer100Km} kWh/100km (${kmPerKwh} km/kWh)`);
-    console.log(`   kWh/km: ${kwhPerKm} (for AddVehicleByPlate compatibility)\n`);
+    if (__DEV__) {
+      console.log(`   kWh/km: ${kwhPerKm} (for AddVehicleByPlate compatibility)\n`);
+    }
   }
 
   return {
@@ -1176,7 +1286,9 @@ export function calculateICEConsumptionEnhanced(params: {
       const estimatedCC = (engineCC && engineCC > 0) ? engineCC : Math.round(weight * 0.9);
 
       if ((!engineCC || engineCC <= 0) && __DEV__) {
-        console.log(`   ℹ️  engineCC not provided or invalid - estimated ${estimatedCC}cc from weight`);
+        if (__DEV__) {
+          console.log(`   ℹ️  engineCC not provided or invalid - estimated ${estimatedCC}cc from weight`);
+        }
       }
   // ✅ HYBRID MODEL: Weight + Engine Size
   // Base consumption from weight (physics)
@@ -1213,11 +1325,15 @@ export function calculateICEConsumptionEnhanced(params: {
   if (ccRatio > 1.3) {
     // Oversized engine (e.g., 3000cc in 1500kg car = sport car)
     kmPerL *= 0.85; // 15% penalty
-    console.log(`   ⚠️  Oversized engine penalty: ${ccRatio.toFixed(2)}x`);
+    if (__DEV__) {
+      console.log(`   ⚠️  Oversized engine penalty: ${ccRatio.toFixed(2)}x`);
+    }
   } else if (ccRatio < 0.8) {
     // Undersized engine (e.g., 1200cc in 1500kg car = eco/turbo)
     kmPerL *= 1.10; // 10% bonus
-    console.log(`   ✅ Efficient engine bonus: ${ccRatio.toFixed(2)}x`);
+    if (__DEV__) {
+      console.log(`   ✅ Efficient engine bonus: ${ccRatio.toFixed(2)}x`);
+    }
   }
 
   // Apply realistic bounds
@@ -1227,7 +1343,9 @@ export function calculateICEConsumptionEnhanced(params: {
 
   if (__DEV__) {
   const source = (engineCC && engineCC > 0) ? 'actual' : 'estimated';
-  console.log(`ICE: ${weight}kg, ${estimatedCC}cc (${source}) → ${finalKmPerL.toFixed(2)} km/L`);
+  if (__DEV__) {
+    console.log(`ICE: ${weight}kg, ${estimatedCC}cc (${source}) → ${finalKmPerL.toFixed(2)} km/L`);
+  }
 }
 
   return +finalKmPerL.toFixed(2);

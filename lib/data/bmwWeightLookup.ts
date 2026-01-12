@@ -206,8 +206,12 @@ export function estimateBMWWeight(
     if (lookup) {
       if (__DEV__) {
         console.log(`📊 BMW weight estimation for ${fullCode}:`);
-        console.log(`   Range: ${lookup.min}-${lookup.max}kg`);
-        console.log(`   Using typical: ${lookup.typical}kg`);
+        if (__DEV__) {
+          console.log(`   Range: ${lookup.min}-${lookup.max}kg`);
+        }
+        if (__DEV__) {
+          console.log(`   Using typical: ${lookup.typical}kg`);
+        }
       }
       return lookup.typical;
     }
@@ -224,8 +228,12 @@ export function estimateBMWWeight(
 
   if (__DEV__) {
     console.log(`📊 BMW weight estimation for ${modelCode}:`);
-    console.log(`   Range: ${lookup.min}-${lookup.max}kg`);
-    console.log(`   Using typical: ${lookup.typical}kg`);
+    if (__DEV__) {
+      console.log(`   Range: ${lookup.min}-${lookup.max}kg`);
+    }
+    if (__DEV__) {
+      console.log(`   Using typical: ${lookup.typical}kg`);
+    }
   }
 
   return lookup.typical;

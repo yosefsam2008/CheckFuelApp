@@ -1895,7 +1895,9 @@ const handleReset = async () => {
         <VideoAd
           onAdComplete={handleAdComplete}
           onAdError={(error: any) => {
-  console.log('Ad error:', error);
+  if (__DEV__) {
+    console.log('Ad error:', error);
+  }
   handleAdComplete();
 }}
 

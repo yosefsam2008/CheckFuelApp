@@ -109,7 +109,9 @@ type DataGovResult = { record: Record<string, any>; type: VehicleType; degem_nm?
  * Called when primary API response has missing/corrupt weight data
  */
 async function fetchWeightByDegemNm(degem_nm: string): Promise<{  mishkal_kolel?: number; misgeret?: number }> {
-  console.log(`🔍 Weight missing, searching fallback API with degem_nm: ${degem_nm}`);
+  if (__DEV__) {
+    console.log(`🔍 Weight missing, searching fallback API with degem_nm: ${degem_nm}`);
+  }
 
   const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${WEIGHT_FALLBACK_API}&filters=${encodeURIComponent(
     JSON.stringify({ degem_nm })
@@ -118,7 +120,9 @@ async function fetchWeightByDegemNm(degem_nm: string): Promise<{  mishkal_kolel?
   try {
     const res = await fetch(url);
     if (!res.ok) {
-      console.log(`❌ Fallback API failed (status: ${res.status})`);
+      if (__DEV__) {
+        console.log(`❌ Fallback API failed (status: ${res.status})`);
+      }
       return {};
     }
 
@@ -126,7 +130,9 @@ async function fetchWeightByDegemNm(degem_nm: string): Promise<{  mishkal_kolel?
     const rec = json?.result?.records?.[0];
 
     if (!rec) {
-      console.log('❌ Fallback API failed (no results)');
+      if (__DEV__) {
+        console.log('❌ Fallback API failed (no results)');
+      }
       return {};
     }
 
@@ -149,14 +155,20 @@ async function fetchWeightByDegemNm(degem_nm: string): Promise<{  mishkal_kolel?
     );
 
     if (mishkal_kolel || misgeret) {
-      console.log(`✅ Weight from fallback API: ${mishkal_kolel || 'N/A'}kg / ${misgeret || 'N/A'}kg`);
+      if (__DEV__) {
+        console.log(`✅ Weight from fallback API: ${mishkal_kolel || 'N/A'}kg / ${misgeret || 'N/A'}kg`);
+      }
       return { mishkal_kolel, misgeret };
     } else {
-      console.log('❌ Fallback API failed (no valid weight data)');
+      if (__DEV__) {
+        console.log('❌ Fallback API failed (no valid weight data)');
+      }
       return {};
     }
   } catch (error) {
-    console.log('❌ Fallback API failed (network error)');
+    if (__DEV__) {
+      console.log('❌ Fallback API failed (network error)');
+    }
     return {};
   }
 }
@@ -206,8 +218,12 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
   // - Motorcycles: BOTH weights from PRIMARY API (fallback likely has no motorcycle data)
   // - Cars/Trucks: misgeret from PRIMARY, mishkal_kolel from FALLBACK (more reliable)
 
-  console.log('\n⚖️  WEIGHT EXTRACTION STRATEGY:');
-  console.log(`   Vehicle Type: ${vehicleType || 'unknown'}`);
+  if (__DEV__) {
+    console.log('\n⚖️  WEIGHT EXTRACTION STRATEGY:');
+  }
+  if (__DEV__) {
+    console.log(`   Vehicle Type: ${vehicleType || 'unknown'}`);
+  }
 
   // STEP 1: Extract misgeret from PRIMARY API (all vehicle types)
   let misgeret = parseFloatSafeLocal(
@@ -219,9 +235,13 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
   );
 
   if (misgeret) {
-    console.log(`✅ misgeret (curb weight) from primary API: ${misgeret}kg`);
+    if (__DEV__) {
+      console.log(`✅ misgeret (curb weight) from primary API: ${misgeret}kg`);
+    }
   } else {
-    console.log('⚠️  misgeret not found in primary API');
+    if (__DEV__) {
+      console.log('⚠️  misgeret not found in primary API');
+    }
   }
 
   // STEP 2: mishkal_kolel strategy depends on vehicle type
@@ -229,7 +249,9 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
 
   if (vehicleType === 'motorcycle') {
     // 🏍️ MOTORCYCLES: Get mishkal_kolel from PRIMARY API only
-    console.log('🏍️  Motorcycle detected: using primary API for mishkal_kolel');
+    if (__DEV__) {
+      console.log('🏍️  Motorcycle detected: using primary API for mishkal_kolel');
+    }
     mishkal_kolel = parseFloatSafeLocal(
       record.mishkal_kolel ??
       record.mishkal_atzmi ??
@@ -240,33 +262,47 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
     );
 
     if (mishkal_kolel) {
-      console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+      if (__DEV__) {
+        console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+      }
     } else {
-      console.log('⚠️  mishkal_kolel not found in primary API');
+      if (__DEV__) {
+        console.log('⚠️  mishkal_kolel not found in primary API');
+      }
     }
   } else {
     // 🚗 CARS/TRUCKS: Try FALLBACK API for mishkal_kolel (more reliable)
     if (degem_nm) {
-      console.log(`🚗 Car/Truck detected: fetching mishkal_kolel from fallback API (degem_nm: ${degem_nm})...`);
+      if (__DEV__) {
+        console.log(`🚗 Car/Truck detected: fetching mishkal_kolel from fallback API (degem_nm: ${degem_nm})...`);
+      }
       const fallbackWeights = await fetchWeightByDegemNm(degem_nm);
       mishkal_kolel = fallbackWeights.mishkal_kolel;
 
       if (mishkal_kolel) {
-        console.log(`✅ mishkal_kolel (gross weight) from fallback API: ${mishkal_kolel}kg`);
+        if (__DEV__) {
+          console.log(`✅ mishkal_kolel (gross weight) from fallback API: ${mishkal_kolel}kg`);
+        }
       } else {
-        console.log('⚠️  mishkal_kolel not found in fallback API');
+        if (__DEV__) {
+          console.log('⚠️  mishkal_kolel not found in fallback API');
+        }
       }
 
       // If we didn't get misgeret from primary, try fallback as backup
       if (!misgeret && fallbackWeights.misgeret) {
         misgeret = fallbackWeights.misgeret;
-        console.log(`✅ misgeret (curb weight) from fallback API: ${misgeret}kg`);
+        if (__DEV__) {
+          console.log(`✅ misgeret (curb weight) from fallback API: ${misgeret}kg`);
+        }
       }
     }
 
     // STEP 3: If fallback failed, try PRIMARY API for mishkal_kolel as last resort
     if (!mishkal_kolel) {
-      console.log('🔍 Fallback failed, trying primary API for mishkal_kolel...');
+      if (__DEV__) {
+        console.log('🔍 Fallback failed, trying primary API for mishkal_kolel...');
+      }
       mishkal_kolel = parseFloatSafeLocal(
         record.mishkal_kolel ??
         record.mishkal_atzmi ??
@@ -277,12 +313,16 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
       );
 
       if (mishkal_kolel) {
-        console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+        if (__DEV__) {
+          console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+        }
       }
     }
   }
 
-  console.log(`📊 FINAL WEIGHTS: misgeret=${misgeret || 'N/A'}kg, mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
+  if (__DEV__) {
+    console.log(`📊 FINAL WEIGHTS: misgeret=${misgeret || 'N/A'}kg, mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
+  }
 
   // Legacy combined weight field (deprecated in favor of separate fields)
   const weightKg = mishkal_kolel ?? misgeret ?? parseFloatSafeLocal(record.weight_kg ?? record.mass_kg) ?? undefined;
@@ -399,7 +439,9 @@ function extractCCDirect(record: Record<string, any>): number | undefined {
 
     // Validate: CC should be between 50cc (tiny motorcycle) and 15000cc (massive truck)
     if (Number.isFinite(cc) && cc >= 50 && cc <= 15000) {
-      console.log(`   ✅ ${field}: ${cc}cc`);
+      if (__DEV__) {
+        console.log(`   ✅ ${field}: ${cc}cc`);
+      }
       return cc;
     }
   }
@@ -513,43 +555,59 @@ async function extractEngineCC(
   vehicleType: VehicleType
 ): Promise<number | undefined> {
 
-  console.log('\n🔍 CC Extraction - Engine:', record.degem_manoa ?? 'N/A');
+  if (__DEV__) {
+    console.log('\n🔍 CC Extraction - Engine:', record.degem_manoa ?? 'N/A');
+  }
 
   const engineCode = record.degem_manoa || record.engine_model || record.engine_type;
 
   // Phase 1: Direct API fields
-  console.log('Phase 1: API fields');
+  if (__DEV__) {
+    console.log('Phase 1: API fields');
+  }
   const directCC = extractCCDirect(record);
   if (directCC) {
-    console.log(`✅ Found: ${directCC}cc (API)`);
+    if (__DEV__) {
+      console.log(`✅ Found: ${directCC}cc (API)`);
+    }
     return directCC;
   }
 
   // Phase 2: API search by engine code
   if (engineCode && String(engineCode).trim().length > 1) {
-    console.log(`Phase 2: Search "${engineCode}"`);
+    if (__DEV__) {
+      console.log(`Phase 2: Search "${engineCode}"`);
+    }
     const apiCC = await searchCCByEngineCodeCached(
       String(engineCode).trim(),
       vehicleType
     );
     if (apiCC) {
-      console.log(`✅ Found: ${apiCC}cc (API search)`);
+      if (__DEV__) {
+        console.log(`✅ Found: ${apiCC}cc (API search)`);
+      }
       return apiCC;
     }
   }
 
   // Phase 3: Static lookup
   if (engineCode && String(engineCode).trim().length > 1) {
-    console.log(`Phase 3: Lookup "${engineCode}"`);
+    if (__DEV__) {
+      console.log(`Phase 3: Lookup "${engineCode}"`);
+    }
     const staticCC = lookupEngineCC(String(engineCode).trim());
     if (staticCC) {
-      console.log(`✅ Found: ${staticCC}cc (lookup)`);
+      if (__DEV__) {
+        console.log(`✅ Found: ${staticCC}cc (lookup)`);
+      }
       return staticCC;
     }
   }
   
 
-  console.log('❌ CC not found, using 1600cc default\n');
+  if (__DEV__) {
+    console.log('❌ CC not found, using 1600cc default\n');
+  }
   return undefined;
 }
 
@@ -646,17 +704,25 @@ function calculateSmartEngineCC(params: {
 }): number {
   const { apiCC, weight, year, vehicleType } = params;
 
-  console.log('\n🧮 SMART CC CALCULATION:');
+  if (__DEV__) {
+    console.log('\n🧮 SMART CC CALCULATION:');
+  }
 
   // אם יש נפח מנוע מה-API - השתמש בו ישירות
   if (apiCC) {
-    console.log(`   ✅ Using API CC: ${apiCC}cc [SOURCE: API DATA]`);
+    if (__DEV__) {
+      console.log(`   ✅ Using API CC: ${apiCC}cc [SOURCE: API DATA]`);
+    }
     return apiCC;
   }
 
   // חישוב דינמי על בסיס משקל ושנה
-  console.log(`   ⚠️  No API CC found - using FALLBACK calculation`);
-  console.log(`   Weight: ${weight || 'N/A'}kg | Year: ${year || 'N/A'} | Type: ${vehicleType}`);
+  if (__DEV__) {
+    console.log(`   ⚠️  No API CC found - using FALLBACK calculation`);
+  }
+  if (__DEV__) {
+    console.log(`   Weight: ${weight || 'N/A'}kg | Year: ${year || 'N/A'} | Type: ${vehicleType}`);
+  }
 
   // שלב 1: אמידה לפי משקל
   const estimatedCC = estimateEngineCCFromWeight(weight, vehicleType);
@@ -664,26 +730,40 @@ function calculateSmartEngineCC(params: {
   // בדיקה אם נעשה שימוש בברירת מחדל
   const usedDefault = !weight;
   if (usedDefault) {
-    console.log(`   ⚠️  No weight data - using DEFAULT CC: ${estimatedCC}cc`);
+    if (__DEV__) {
+      console.log(`   ⚠️  No weight data - using DEFAULT CC: ${estimatedCC}cc`);
+    }
   } else {
-    console.log(`   📏 Estimated from weight (${weight}kg): ${estimatedCC}cc`);
+    if (__DEV__) {
+      console.log(`   📏 Estimated from weight (${weight}kg): ${estimatedCC}cc`);
+    }
   }
 
   // שלב 2: התאמה לפי שנה
   const adjustedCC = adjustCCByYear(estimatedCC, year);
 
   if (adjustedCC !== estimatedCC) {
-    console.log(`   📅 Adjusted for year (${year}): ${adjustedCC}cc (downsizing applied)`);
+    if (__DEV__) {
+      console.log(`   📅 Adjusted for year (${year}): ${adjustedCC}cc (downsizing applied)`);
+    }
   } else if (year) {
-    console.log(`   📅 Year ${year}: No adjustment needed (pre-2010)`);
+    if (__DEV__) {
+      console.log(`   📅 Year ${year}: No adjustment needed (pre-2010)`);
+    }
   } else {
-    console.log(`   ⚠️  No year data - skipping downsizing adjustment`);
+    if (__DEV__) {
+      console.log(`   ⚠️  No year data - skipping downsizing adjustment`);
+    }
   }
 
   if (usedDefault) {
-    console.log(`   ✅ Final CC: ${adjustedCC}cc [SOURCE: DEFAULT VALUE]\n`);
+    if (__DEV__) {
+      console.log(`   ✅ Final CC: ${adjustedCC}cc [SOURCE: DEFAULT VALUE]\n`);
+    }
   } else {
-    console.log(`   ✅ Final CC: ${adjustedCC}cc [SOURCE: WEIGHT-BASED CALCULATION]\n`);
+    if (__DEV__) {
+      console.log(`   ✅ Final CC: ${adjustedCC}cc [SOURCE: WEIGHT-BASED CALCULATION]\n`);
+    }
   }
 
   return adjustedCC;
@@ -764,24 +844,40 @@ const handleAddVehicleByPlate = async () => {
 
   setLoading(true);
 
-  console.log('\n╔════════════════════════════════════════════════════════╗');
-  console.log('║  🚗 ADD VEHICLE BY LICENSE PLATE - PROCESS STARTED     ║');
-  console.log('╚════════════════════════════════════════════════════════╝');
-  console.log(`🔍 Searching for plate: ${plateTrimmed}`);
+  if (__DEV__) {
+    console.log('\n╔════════════════════════════════════════════════════════╗');
+  }
+  if (__DEV__) {
+    console.log('║  🚗 ADD VEHICLE BY LICENSE PLATE - PROCESS STARTED     ║');
+  }
+  if (__DEV__) {
+    console.log('╚════════════════════════════════════════════════════════╝');
+  }
+  if (__DEV__) {
+    console.log(`🔍 Searching for plate: ${plateTrimmed}`);
+  }
 
   try {
     const found = await fetchRecordByPlate(plateTrimmed);
     if (!found) {
-      console.log('❌ No data found in any API');
+      if (__DEV__) {
+        console.log('❌ No data found in any API');
+      }
       setToastMessage("❌ לא נמצאו נתונים עבור מספר זה באף מאגר");
       return;
     }
 
 
-      console.log(`\n✅ Found: ${found.record.tozeret_nm || found.record.tozeret} ${found.record.degem_nm || found.record.kinuy_mishari}`);
-      console.log(`   Type: ${found.type} | Engine: ${found.record.degem_manoa} | Year: ${found.record.shnat_yitzur}`);
+      if (__DEV__) {
+        console.log(`\n✅ Found: ${found.record.tozeret_nm || found.record.tozeret} ${found.record.degem_nm || found.record.kinuy_mishari}`);
+      }
+      if (__DEV__) {
+        console.log(`   Type: ${found.type} | Engine: ${found.record.degem_manoa} | Year: ${found.record.shnat_yitzur}`);
+      }
       if (found.degem_nm) {
-        console.log(`   Model Code (degem_nm): ${found.degem_nm}`);
+        if (__DEV__) {
+          console.log(`   Model Code (degem_nm): ${found.degem_nm}`);
+        }
       }
 
       const parsed = await parseRelevantFields(found.record, found.degem_nm, found.type);
@@ -790,7 +886,9 @@ const handleAddVehicleByPlate = async () => {
       let avgConsumption: number | undefined = undefined;
 
       if (parsed.fuelType === "Electric") {
-        console.log('⚡ Electric vehicle');
+        if (__DEV__) {
+          console.log('⚡ Electric vehicle');
+        }
         
       const evData = await calculateEVConsumptionAdvanced({  // ← שים לב ל-await!
         brand: parsed.brand,
@@ -802,11 +900,15 @@ const handleAddVehicleByPlate = async () => {
       });
         kwhPerKm = evData.kwhPer100Km / 100;
       } else {
-        console.log('⛽ ICE - Fuel:', parsed.fuelType);
+        if (__DEV__) {
+          console.log('⛽ ICE - Fuel:', parsed.fuelType);
+        }
 
         // ✅ PERFORMANCE: Skip FuelEconomy.gov API (slow + rarely works for Israeli vehicles)
         // Use physics-based calculation directly (faster + more accurate with Israeli weight data)
-        console.log('Using physics calculation with Israeli vehicle data...');
+        if (__DEV__) {
+          console.log('Using physics calculation with Israeli vehicle data...');
+        }
 
         const cc = await extractEngineCC(found.record, found.type);
 
@@ -826,24 +928,46 @@ const handleAddVehicleByPlate = async () => {
             effectiveMisgeret = estimatedWeight.curb;
             effectiveMishkalKolel = estimatedWeight.gross;
             const brandName = translateBrandToEnglish(parsed.brand);
-            console.log(`📊 ${brandName} weight estimated: ${effectiveMisgeret}kg (curb), ${effectiveMishkalKolel}kg (gross)`);
+            if (__DEV__) {
+              console.log(`📊 ${brandName} weight estimated: ${effectiveMisgeret}kg (curb), ${effectiveMishkalKolel}kg (gross)`);
+            }
           }
         }
 
         // חישוב חכם של נפח מנוע
         const effectiveWeightForCC = getEffectiveWeight(effectiveMishkalKolel, effectiveMisgeret);
 
-        console.log(`\n🔍 DEBUG: Effective Weight Calculation`);
-        console.log(`   mishkal_kolel (input): ${effectiveMishkalKolel || 'N/A'}kg`);
-        console.log(`   misgeret (input): ${effectiveMisgeret || 'N/A'}kg`);
-        console.log(`   effectiveWeight (output): ${effectiveWeightForCC || 'N/A'}kg`);
+        if (__DEV__) {
+          console.log(`\n🔍 DEBUG: Effective Weight Calculation`);
+        }
+        if (__DEV__) {
+          console.log(`   mishkal_kolel (input): ${effectiveMishkalKolel || 'N/A'}kg`);
+        }
+        if (__DEV__) {
+          console.log(`   misgeret (input): ${effectiveMisgeret || 'N/A'}kg`);
+        }
+        if (__DEV__) {
+          console.log(`   effectiveWeight (output): ${effectiveWeightForCC || 'N/A'}kg`);
+        }
 
-        console.log(`\n🔧 ICE Calculation Input:`);
-        console.log(`   misgeret (curb): ${effectiveMisgeret || 'N/A'}kg`);
-        console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
-        console.log(`   engineCC (from API): ${cc || 'N/A'}cc`);
-        console.log(`   year: ${parsed.year || 'N/A'}`);
-        console.log(`   fuelType: ${parsed.fuelType}`);
+        if (__DEV__) {
+          console.log(`\n🔧 ICE Calculation Input:`);
+        }
+        if (__DEV__) {
+          console.log(`   misgeret (curb): ${effectiveMisgeret || 'N/A'}kg`);
+        }
+        if (__DEV__) {
+          console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
+        }
+        if (__DEV__) {
+          console.log(`   engineCC (from API): ${cc || 'N/A'}cc`);
+        }
+        if (__DEV__) {
+          console.log(`   year: ${parsed.year || 'N/A'}`);
+        }
+        if (__DEV__) {
+          console.log(`   fuelType: ${parsed.fuelType}`);
+        }
 
         avgConsumption = calculateICEConsumptionEnhanced({
           mishkal_kolel: effectiveMishkalKolel,
@@ -853,7 +977,9 @@ const handleAddVehicleByPlate = async () => {
           fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
         });
 
-        console.log(`\n✅ ICE Result: ${avgConsumption} km/L`);
+        if (__DEV__) {
+          console.log(`\n✅ ICE Result: ${avgConsumption} km/L`);
+        }
       }
 
       const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");
@@ -871,18 +997,24 @@ const handleAddVehicleByPlate = async () => {
         misgeret: parsed.misgeret,
       };
 
-      console.log(`\n✅ ${newVehicle.name} ${newVehicle.model} (${newVehicle.plate})
-         ${newVehicle.avgConsumption} ${parsed.fuelType === "Electric" ? 'kWh/km' : 'km/L'} | ${newVehicle.year} | ${newVehicle.fueltype}`);
+      if (__DEV__) {
+        console.log(`\n✅ ${newVehicle.name} ${newVehicle.model} (${newVehicle.plate})
+        ${newVehicle.avgConsumption} ${parsed.fuelType === "Electric" ? 'kWh/km' : 'km/L'} | ${newVehicle.year} | ${newVehicle.fueltype}`);
+      }
 
       await saveVehicle(newVehicle);
-      console.log('Saved!\n');
+      if (__DEV__) {
+        console.log('Saved!\n');
+      }
 
       setToastMessage(`✅ ${newVehicle.name} (${newVehicle.plate}) נוסף בהצלחה — סוג דלק: ${newVehicle.fueltype} — דגם: ${newVehicle.model}`);
       setTimeout(() => router.back(), 1400);
 
     } catch (error) {
       console.error('\n❌ ERROR in AddVehicleByPlate:', error);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
+      if (__DEV__) {
+        console.log('╚════════════════════════════════════════════════════════╝\n');
+      }
       setToastMessage("❌ אירעה שגיאה בעת הוספת הרכב");
     } finally {
       setLoading(false);

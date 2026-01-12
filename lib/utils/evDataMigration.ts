@@ -83,8 +83,12 @@ export function migrateVehicle(vehicle: Vehicle): Vehicle {
     return vehicle;
   }
 
-  console.log(`[Migration] Converting vehicle ${vehicle.name} (${vehicle.plate})`);
-  console.log(`  Old value: ${vehicle.avgConsumption} km/%`);
+  if (__DEV__) {
+    console.log(`[Migration] Converting vehicle ${vehicle.name} (${vehicle.plate})`);
+  }
+  if (__DEV__) {
+    console.log(`  Old value: ${vehicle.avgConsumption} km/%`);
+  }
 
   // Use vehicle's battery capacity if available, otherwise use default
   const batteryCapacity = vehicle.tankCapacity || DEFAULT_BATTERY_CAPACITY_KWH;
@@ -95,8 +99,12 @@ export function migrateVehicle(vehicle: Vehicle): Vehicle {
     batteryCapacity
   );
 
-  console.log(`  Battery capacity: ${batteryCapacity} kWh`);
-  console.log(`  New value: ${newConsumption.toFixed(4)} kWh/km`);
+  if (__DEV__) {
+    console.log(`  Battery capacity: ${batteryCapacity} kWh`);
+  }
+  if (__DEV__) {
+    console.log(`  New value: ${newConsumption.toFixed(4)} kWh/km`);
+  }
 
   return {
     ...vehicle,
@@ -125,8 +133,12 @@ export function migrateTripRecord(
     return trip;
   }
 
-  console.log(`[Migration] Converting trip from ${trip.date}`);
-  console.log(`  Old consumption: ${trip.consumption} km/%`);
+  if (__DEV__) {
+    console.log(`[Migration] Converting trip from ${trip.date}`);
+  }
+  if (__DEV__) {
+    console.log(`  Old consumption: ${trip.consumption} km/%`);
+  }
 
   // Convert to new format
   const newConsumption = convertKmPerPercentToKwhPerKm(
@@ -134,7 +146,9 @@ export function migrateTripRecord(
     batteryCapacityKwh
   );
 
-  console.log(`  New consumption: ${newConsumption.toFixed(4)} kWh/km`);
+  if (__DEV__) {
+    console.log(`  New consumption: ${newConsumption.toFixed(4)} kWh/km`);
+  }
 
   return {
     ...trip,
@@ -155,12 +169,16 @@ export async function migrateAllVehicles(): Promise<{
   try {
     const vehiclesJson = await AsyncStorage.getItem('vehicles');
     if (!vehiclesJson) {
-      console.log('[Migration] No vehicles found in storage');
+      if (__DEV__) {
+        console.log('[Migration] No vehicles found in storage');
+      }
       return { total: 0, migrated: 0, skipped: 0 };
     }
 
     const vehicles: Vehicle[] = JSON.parse(vehiclesJson);
-    console.log(`[Migration] Found ${vehicles.length} vehicles`);
+    if (__DEV__) {
+      console.log(`[Migration] Found ${vehicles.length} vehicles`);
+    }
 
     let migratedCount = 0;
     let skippedCount = 0;
@@ -180,7 +198,9 @@ export async function migrateAllVehicles(): Promise<{
     // Save back to storage
     await AsyncStorage.setItem('vehicles', JSON.stringify(migratedVehicles));
 
-    console.log(`[Migration] Complete: ${migratedCount} migrated, ${skippedCount} skipped`);
+    if (__DEV__) {
+      console.log(`[Migration] Complete: ${migratedCount} migrated, ${skippedCount} skipped`);
+    }
 
     return {
       total: vehicles.length,
@@ -210,12 +230,16 @@ export async function migrateAllTrips(): Promise<{
   try {
     const tripsJson = await AsyncStorage.getItem('tripHistory');
     if (!tripsJson) {
-      console.log('[Migration] No trips found in storage');
+      if (__DEV__) {
+        console.log('[Migration] No trips found in storage');
+      }
       return { total: 0, migrated: 0, skipped: 0 };
     }
 
     const trips: TripRecord[] = JSON.parse(tripsJson);
-    console.log(`[Migration] Found ${trips.length} trips`);
+    if (__DEV__) {
+      console.log(`[Migration] Found ${trips.length} trips`);
+    }
 
     let migratedCount = 0;
     let skippedCount = 0;
@@ -235,7 +259,9 @@ export async function migrateAllTrips(): Promise<{
     // Save back to storage
     await AsyncStorage.setItem('tripHistory', JSON.stringify(migratedTrips));
 
-    console.log(`[Migration] Complete: ${migratedCount} trips migrated, ${skippedCount} skipped`);
+    if (__DEV__) {
+      console.log(`[Migration] Complete: ${migratedCount} trips migrated, ${skippedCount} skipped`);
+    }
 
     return {
       total: trips.length,
@@ -260,14 +286,22 @@ export async function migrateAllEVData(): Promise<{
   vehicles: { total: number; migrated: number; skipped: number };
   trips: { total: number; migrated: number; skipped: number };
 }> {
-  console.log('[Migration] Starting EV data migration...');
+  if (__DEV__) {
+    console.log('[Migration] Starting EV data migration...');
+  }
 
   const vehicleStats = await migrateAllVehicles();
   const tripStats = await migrateAllTrips();
 
-  console.log('[Migration] All migrations complete');
-  console.log(`  Vehicles: ${vehicleStats.migrated}/${vehicleStats.total} migrated`);
-  console.log(`  Trips: ${tripStats.migrated}/${tripStats.total} migrated`);
+  if (__DEV__) {
+    console.log('[Migration] All migrations complete');
+  }
+  if (__DEV__) {
+    console.log(`  Vehicles: ${vehicleStats.migrated}/${vehicleStats.total} migrated`);
+  }
+  if (__DEV__) {
+    console.log(`  Trips: ${tripStats.migrated}/${tripStats.total} migrated`);
+  }
 
   return {
     vehicles: vehicleStats,
@@ -314,11 +348,15 @@ export async function runAutoMigration(): Promise<void> {
     const alreadyRun = await hasMigrationRun();
 
     if (alreadyRun) {
-      console.log('[Migration] Already completed, skipping');
+      if (__DEV__) {
+        console.log('[Migration] Already completed, skipping');
+      }
       return;
     }
 
-    console.log('[Migration] Running automatic migration...');
+    if (__DEV__) {
+      console.log('[Migration] Running automatic migration...');
+    }
 
     // Run migration
     const stats = await migrateAllEVData();
@@ -329,9 +367,13 @@ export async function runAutoMigration(): Promise<void> {
     // Log summary
     const totalMigrated = stats.vehicles.migrated + stats.trips.migrated;
     if (totalMigrated > 0) {
-      console.log(`[Migration] Successfully migrated ${totalMigrated} records`);
+      if (__DEV__) {
+        console.log(`[Migration] Successfully migrated ${totalMigrated} records`);
+      }
     } else {
-      console.log('[Migration] No records needed migration');
+      if (__DEV__) {
+        console.log('[Migration] No records needed migration');
+      }
     }
   } catch (error) {
     console.error('[Migration] Auto-migration failed:', error);

@@ -305,11 +305,23 @@ export function quickEstimateKmPerL(params: VehicleEstimationParams): number {
  * פונקציה להדפסת פירוט מלא של האומדן
  */
 export function logEstimateDetails(estimate: ConsumptionEstimate): void {
-  console.log('\n=== אומדן צריכת דלק ===');
-  console.log(`צריכה משוערת: ${estimate.kmPerL} km/L`);
-  console.log(`טווח: ${estimate.range.min}-${estimate.range.max} km/L`);
-  console.log(`רמת ביטחון: ${estimate.confidence}`);
-  console.log('מבוסס על:');
+  if (__DEV__) {
+    console.log('\n=== אומדן צריכת דלק ===');
+  }
+  if (__DEV__) {
+    console.log(`צריכה משוערת: ${estimate.kmPerL} km/L`);
+  }
+  if (__DEV__) {
+    console.log(`טווח: ${estimate.range.min}-${estimate.range.max} km/L`);
+  }
+  if (__DEV__) {
+    console.log(`רמת ביטחון: ${estimate.confidence}`);
+  }
+  if (__DEV__) {
+    console.log('מבוסס על:');
+  }
   estimate.basedOn.forEach(item => console.log(`  - ${item}`));
-  console.log('========================\n');
+  if (__DEV__) {
+    console.log('========================\n');
+  }
 }

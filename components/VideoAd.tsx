@@ -47,7 +47,9 @@ if (__DEV__) console.log('VideoAd: Skipping ad on web');
       const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
         AdEventType.LOADED,
         () => {
-          console.log('VideoAd: Ad loaded successfully');
+          if (__DEV__) {
+            console.log('VideoAd: Ad loaded successfully');
+          }
           // Show the ad immediately when loaded
           rewardedInterstitial.show();
         }
@@ -89,7 +91,9 @@ if (__DEV__) console.log('VideoAd: Skipping ad on web');
       );
 
       // Load the ad
-      console.log('VideoAd: Loading ad...');
+      if (__DEV__) {
+        console.log('VideoAd: Loading ad...');
+      }
       rewardedInterstitial.load();
 
     } catch (error) {

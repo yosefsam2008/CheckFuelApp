@@ -7,6 +7,18 @@ interface AdBannerProps {
   style?: ViewStyle;
 }
 
+// Don't import AdMob on web - causes build errors
+let BannerAd: any = null;
+let BannerAdSize: any = null;
+let TestIds: any = null;
+
+if (Platform.OS !== 'web') {
+  const admob = require('react-native-google-mobile-ads');
+  BannerAd = admob.BannerAd;
+  BannerAdSize = admob.BannerAdSize;
+  TestIds = admob.TestIds;
+}
+
 const AdBanner = ({ style }: AdBannerProps) => {
   const { trackImpression } = useAdTracking();
 
@@ -14,10 +26,6 @@ const AdBanner = ({ style }: AdBannerProps) => {
   if (Platform.OS === 'web') {
     return null;
   }
-
-  // ב-Native טוענים את הפרסומות
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { BannerAd, BannerAdSize, TestIds } = require('react-native-google-mobile-ads');
 
   const adUnitId = __DEV__
     ? TestIds.BANNER

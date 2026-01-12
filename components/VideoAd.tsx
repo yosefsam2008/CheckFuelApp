@@ -6,13 +6,25 @@ interface VideoAdProps {
   onAdError?: (error: Error) => void;
 }
 
+// Don't import AdMob on web - causes build errors
+let RewardedInterstitialAd: any = null;
+let AdEventType: any = null;
+
+if (Platform.OS !== 'web') {
+  const admob = require('react-native-google-mobile-ads');
+  RewardedInterstitialAd = admob.RewardedInterstitialAd;
+  AdEventType = admob.AdEventType;
+}
+
 // This component will work only on native builds (iOS/Android)
 // For development/web, it will just call onAdComplete immediately
 const VideoAd: React.FC<VideoAdProps> = ({ onAdComplete, onAdError }) => {
   useEffect(() => {
     if (Platform.OS === 'web') {
       // On web, skip the ad
-if (__DEV__) console.log('VideoAd: Skipping ad on web');
+      if (__DEV__) {
+        console.log('VideoAd: Skipping ad on web');
+      }
       onAdComplete?.();
       return;
     }
@@ -24,14 +36,19 @@ if (__DEV__) console.log('VideoAd: Skipping ad on web');
 
   const loadAndShowAd = async () => {
     try {
-      // Dynamic import to avoid loading on web
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { RewardedInterstitialAd, AdEventType } = require('react-native-google-mobile-ads');
+
+      if (!RewardedInterstitialAd || !AdEventType) {
+        if (__DEV__) {
+          console.log('VideoAd: AdMob not available');
+        }
+        onAdComplete?.();
+        return;
+      }
 
       // Use your production AdMob ad unit ID
       // For testing, you can use TestIds.REWARDED_INTERSTITIAL
       // For production, use: 'ca-app-pub-6395480022343350/3839770059'
-      const AD_UNIT_ID = __DEV__ 
+      const AD_UNIT_ID = __DEV__
         ? 'ca-app-pub-3940256099942544/5224354917' // Test ad unit for development
         : 'ca-app-pub-6395480022343350/3839770059'; // Your production ad unit
 

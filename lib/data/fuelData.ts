@@ -1,6 +1,7 @@
 
 // lib/data/fuelData.ts
 
+import { getEnergyFactorForCC, FUEL_ENERGY_CONTENT } from '../constants/motorcycleFuelFactors';
 
   /**
  * Fetch with timeout protection
@@ -1292,25 +1293,9 @@ export function calculateICEConsumptionEnhanced(params: {
       }
   // ✅ HYBRID MODEL: Weight + Engine Size
   // Base consumption from weight (physics)
-  const GASOLINE_ENERGY = 32; // MJ/L
-  const DIESEL_ENERGY = 36;   // MJ/L
-  const energyContent = fuelType === 'Diesel' ? DIESEL_ENERGY : GASOLINE_ENERGY;
-
-  const energyFactor =
-    estimatedCC < 200 ? 5 :
-    estimatedCC < 400 ? 5.2 :
-    estimatedCC < 800 ? 5.5 :
-    estimatedCC < 1000 ? 2.1 :
-    estimatedCC < 1200 ? 2.16 :
-    estimatedCC < 1400 ? 2.1 :
-    estimatedCC < 1600 ? 1.5 :
-    estimatedCC < 1800 ? 1.68 :
-    estimatedCC < 2000 ? 1.65 :
-    estimatedCC < 2500 ? 1.55 :
-    estimatedCC < 3000 ? 1.40 :
-    estimatedCC < 4000 ? 1.30 :
-    estimatedCC < 5000 ? 1.12 :
-    1.5;                         // משאיות כבדות/מנועי ענק (>5000cc)
+  // Use energy factors from constants instead of magic numbers
+  const energyContent = fuelType === 'Diesel' ? FUEL_ENERGY_CONTENT.DIESEL : FUEL_ENERGY_CONTENT.GASOLINE;
+  const energyFactor = getEnergyFactorForCC(estimatedCC);
   const energyPer100Km = (weight / 1000) * energyFactor * 100;
   const litersPer100Km = energyPer100Km / energyContent;
   let kmPerL = 100 / litersPer100Km;

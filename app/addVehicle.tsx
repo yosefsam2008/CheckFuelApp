@@ -125,6 +125,24 @@ const handleSave = async () => {
 
     // Store vehicle for after ad completion
     setPendingVehicle(newVehicle);
+
+    // On web, skip ad and save directly
+    if (Platform.OS === 'web') {
+      try {
+        const stored = await AsyncStorage.getItem("vehicles");
+        const existing: Vehicle[] = stored ? JSON.parse(stored) : [];
+        existing.push(newVehicle);
+        await AsyncStorage.setItem("vehicles", JSON.stringify(existing));
+        router.back();
+      } catch (error) {
+        console.error("Error saving vehicle:", error);
+        setToastMessage("שגיאה בשמירה");
+        setShowToast(true);
+        setTimeout(() => resetToast(), 2500);
+      }
+      return;
+    }
+
     setShowAd(true);
   } catch (error) {
     console.error("Error saving vehicle:", error);

@@ -1,5 +1,5 @@
 // app/components/BannerAd.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Platform, ViewStyle } from 'react-native';
 import { useAdTracking } from '../hooks/useAdTracking';
 
@@ -7,25 +7,29 @@ interface AdBannerProps {
   style?: ViewStyle;
 }
 
-// Don't import AdMob on web - causes build errors
-let BannerAd: any = null;
-let BannerAdSize: any = null;
-let TestIds: any = null;
-
-if (Platform.OS !== 'web') {
-  const admob = require('react-native-google-mobile-ads');
-  BannerAd = admob.BannerAd;
-  BannerAdSize = admob.BannerAdSize;
-  TestIds = admob.TestIds;
-}
-
 const AdBanner = ({ style }: AdBannerProps) => {
   const { trackImpression } = useAdTracking();
+  const [adComponents, setAdComponents] = useState<any>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      // Dynamic import only on native
+      import('react-native-google-mobile-ads').then((admob) => {
+        setAdComponents({
+          BannerAd: admob.BannerAd,
+          BannerAdSize: admob.BannerAdSize,
+          TestIds: admob.TestIds,
+        });
+      });
+    }
+  }, []);
 
   // ב-Web לא מציגים כלום
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || !adComponents) {
     return null;
   }
+
+  const { BannerAd, BannerAdSize, TestIds } = adComponents;
 
   const adUnitId = __DEV__
     ? TestIds.BANNER
@@ -44,7 +48,7 @@ const AdBanner = ({ style }: AdBannerProps) => {
           if (__DEV__) console.log('✅ Banner ad loaded');
         }}
         onAdFailedToLoad={(error: any) => {
-          console.error('❌ Banner ad failed:', error); // KEEP - production debugging
+          console.error('❌ Banner ad failed:', error);
         }}
       />
     </View>

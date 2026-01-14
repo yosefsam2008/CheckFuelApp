@@ -18,7 +18,7 @@ import {
 import {
   translateBrandToEnglish,
   calculateICEConsumptionEnhanced,
-  getEffectiveWeight
+  fetchFallbackVehicleData
 } from "../lib/data/fuelData";
 import { calculateEVConsumptionAdvanced } from "../lib/data/advancedEvConsumption";
 import { lookupEngineCC } from "../lib/data/engineCCLookup";
@@ -27,8 +27,17 @@ import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
 
 // Conditional import for ads - only load on native platforms
-const AdBanner = Platform.OS === 'web' ? () => null : require("../components/BannerAd").default;
-
+let AdBannerComponent: any = null;
+const AdBanner = ({ style }: { style?: any }) => {
+  if (Platform.OS === 'web') return null;
+  
+  // Lazy load on first render (native only)
+  if (!AdBannerComponent) {
+    AdBannerComponent = require("../components/BannerAd").default;
+  }
+  
+  return <AdBannerComponent style={style} />;
+};
 const VEHICLE_APIS = [
   { type: "car", id: "053cea08-09bc-40ec-8f7a-156f0677aff3" },
   { type: "motorcycle", id: "bf9df4e2-d90d-4c0a-a400-19e15af8e95f" },
@@ -115,9 +124,8 @@ async function fetchWeightByDegemNm(degem_nm: string): Promise<{  mishkal_kolel?
     console.log(`🔍 Weight missing, searching fallback API with degem_nm: ${degem_nm}`);
   }
 
-  const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${WEIGHT_FALLBACK_API}&filters=${encodeURIComponent(
-    JSON.stringify({ degem_nm })
-  )}&limit=1`;
+  const filtersJson = JSON.stringify({ degem_nm });
+  const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${WEIGHT_FALLBACK_API}&filters=${encodeURIComponent(filtersJson)}&limit=1`;
 
   try {
     const res = await fetch(url);
@@ -181,9 +189,8 @@ async function fetchRecordByPlate(plate: string): Promise<DataGovResult> {
   // After: 1-2 seconds (parallel - limited by slowest API)
 
   const promises = VEHICLE_APIS.map(async (api) => {
-    const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${api.id}&filters=${encodeURIComponent(
-      JSON.stringify({ mispar_rechev: plate })
-    )}&limit=1`;
+    const filtersJson = JSON.stringify({ mispar_rechev: plate });
+    const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${api.id}&filters=${encodeURIComponent(filtersJson)}&limit=1`;
     try {
       const res = await fetch(url);
       if (!res.ok) return null;
@@ -473,10 +480,8 @@ async function searchCCByEngineCode(
     return undefined;
   }
 
-  const url = `https://data.gov.il/api/3/action/datastore_search?` +
-    `resource_id=${apiId}&` +
-    `filters=${encodeURIComponent(JSON.stringify({ degem_manoa: engineCode }))}&` +
-    `limit=10`;  // Get multiple vehicles with same engine
+  const filtersJson = JSON.stringify({ degem_manoa: engineCode });
+  const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${apiId}&filters=${encodeURIComponent(filtersJson)}&limit=10`;
 
   try {
     const response = await fetch(url);
@@ -906,19 +911,57 @@ const handleAddVehicleByPlate = async () => {
           console.log('⛽ ICE - Fuel:', parsed.fuelType);
         }
 
-        // ✅ PERFORMANCE: Skip FuelEconomy.gov API (slow + rarely works for Israeli vehicles)
-        // Use physics-based calculation directly (faster + more accurate with Israeli weight data)
-        if (__DEV__) {
-          console.log('Using physics calculation with Israeli vehicle data...');
-        }
-
-        const cc = await extractEngineCC(found.record, found.type);
-
-        // Multi-brand weight estimation (BMW, Mercedes, Audi, Toyota, VW, Hyundai, Kia, etc.)
+        // ============================================
+        // PHASE 1: GET ENGINE CC FROM PRIMARY API
+        // ============================================
+        let cc = await extractEngineCC(found.record, found.type);
         let effectiveMishkalKolel = parsed.mishkal_kolel;
         let effectiveMisgeret = parsed.misgeret;
 
-        // Try to estimate weight if API data is missing
+        // ============================================
+        // PHASE 2: FALLBACK API FOR MISSING DATA
+        // ============================================
+        const needsFallback = !cc || !effectiveMishkalKolel;
+
+        if (needsFallback) {
+          if (__DEV__) {
+            console.log('\n🔄 Missing data - trying fallback API...');
+            console.log(`   Need CC: ${!cc ? 'YES' : 'NO'}`);
+            console.log(`   Need Weight: ${!effectiveMishkalKolel ? 'YES' : 'NO'}`);
+          }
+
+          const fallbackData = await fetchFallbackVehicleData({
+            brand: parsed.brand,
+            model: parsed.model,
+            year: parsed.year,
+            engineCode: found.record.degem_manoa,
+            plateNumber: plateTrimmed,
+          });
+
+          if (fallbackData) {
+            if (!cc && fallbackData.nefach_manoa) {
+              cc = fallbackData.nefach_manoa;
+              if (__DEV__) {
+                console.log(`   ✅ CC from fallback: ${cc}cc`);
+              }
+            }
+
+            if (!effectiveMishkalKolel && fallbackData.mishkal_kolel) {
+              effectiveMishkalKolel = fallbackData.mishkal_kolel;
+              if (__DEV__) {
+                console.log(`   ✅ Weight from fallback: ${effectiveMishkalKolel}kg`);
+              }
+            }
+          } else {
+            if (__DEV__) {
+              console.log('   ⚠️  Fallback API found no data');
+            }
+          }
+        }
+
+        // ============================================
+        // PHASE 3: BRAND/MODEL WEIGHT ESTIMATION
+        // ============================================
         if (!effectiveMishkalKolel && !effectiveMisgeret && parsed.brand && parsed.model) {
           const estimatedWeight = estimateVehicleWeight(
             parsed.brand,
@@ -936,38 +979,15 @@ const handleAddVehicleByPlate = async () => {
           }
         }
 
-        // חישוב חכם של נפח מנוע
-        const effectiveWeightForCC = getEffectiveWeight(effectiveMishkalKolel, effectiveMisgeret);
-
+        // ============================================
+        // PHASE 4: ADVANCED PHYSICS CALCULATION
+        // ============================================
         if (__DEV__) {
-          console.log(`\n🔍 DEBUG: Effective Weight Calculation`);
-        }
-        if (__DEV__) {
-          console.log(`   mishkal_kolel (input): ${effectiveMishkalKolel || 'N/A'}kg`);
-        }
-        if (__DEV__) {
-          console.log(`   misgeret (input): ${effectiveMisgeret || 'N/A'}kg`);
-        }
-        if (__DEV__) {
-          console.log(`   effectiveWeight (output): ${effectiveWeightForCC || 'N/A'}kg`);
-        }
-
-        if (__DEV__) {
-          console.log(`\n🔧 ICE Calculation Input:`);
-        }
-        if (__DEV__) {
+          console.log('\n🔧 ICE Calculation Input:');
           console.log(`   misgeret (curb): ${effectiveMisgeret || 'N/A'}kg`);
-        }
-        if (__DEV__) {
           console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
-        }
-        if (__DEV__) {
-          console.log(`   engineCC (from API): ${cc || 'N/A'}cc`);
-        }
-        if (__DEV__) {
+          console.log(`   engineCC: ${cc || 'N/A'}cc`);
           console.log(`   year: ${parsed.year || 'N/A'}`);
-        }
-        if (__DEV__) {
           console.log(`   fuelType: ${parsed.fuelType}`);
         }
 
@@ -977,6 +997,7 @@ const handleAddVehicleByPlate = async () => {
           engineCC: cc,
           year: parsed.year,
           fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
+          vehicleType: found.type,
         });
 
         if (__DEV__) {

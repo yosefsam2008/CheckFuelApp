@@ -3,9 +3,20 @@
 // at build time so expo-router's require.context calls work on web.
 const createExpoWebpackConfigAsync = require('@expo/webpack-config');
 const webpack = require('webpack');
+const path = require('path');
 
 module.exports = async function (env, argv) {
   const config = await createExpoWebpackConfigAsync(env, argv);
+
+  // Mock react-native-google-mobile-ads on web
+  config.resolve = config.resolve || {};
+  config.resolve.alias = {
+    ...config.resolve.alias,
+    'react-native-google-mobile-ads': path.resolve(
+      __dirname,
+      'mocks/react-native-google-mobile-ads.web.js'
+    ),
+  };
 
   config.plugins = config.plugins || [];
   config.plugins.push(

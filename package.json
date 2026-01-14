@@ -2,6 +2,9 @@
   "name": "checkfuel",
   "main": "index.js",
   "version": "1.0.0",
+  "browser": {
+    "react-native-google-mobile-ads": false
+  },
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",

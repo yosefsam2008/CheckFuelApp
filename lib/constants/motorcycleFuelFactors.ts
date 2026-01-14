@@ -1,9 +1,5 @@
 /**
- * Energy consumption factors for motorcycles by engine size
- * Used in fuel economy calculations for electric vehicles
- *
- * These factors represent the average kWh consumption per 100km
- * based on motorcycle engine displacement (CC)
+
  */
 
 export const MOTORCYCLE_ENERGY_FACTORS = [

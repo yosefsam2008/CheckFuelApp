@@ -8,16 +8,6 @@ interface VehicleRewardedAdProps {
   onAdError?: (error: any) => void;
 }
 
-// Don't import AdMob on web - causes build errors
-let RewardedInterstitialAd: any = null;
-let AdEventType: any = null;
-
-if (Platform.OS !== 'web') {
-  const admob = require('react-native-google-mobile-ads');
-  RewardedInterstitialAd = admob.RewardedInterstitialAd;
-  AdEventType = admob.AdEventType;
-}
-
 const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
   onAdComplete,
   onAdError
@@ -34,14 +24,9 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
 
   const loadAndShowAd = async () => {
     try {
-      if (!RewardedInterstitialAd || !AdEventType) {
-        if (__DEV__) {
-          console.log('VehicleRewardedAd: AdMob not available');
-        }
-        setIsLoading(false);
-        onAdComplete?.();
-        return;
-      }
+      // Dynamic import to avoid loading on web
+      const admob = await import('react-native-google-mobile-ads') as any;
+      const { RewardedInterstitialAd, AdEventType } = admob;
 
       const AD_UNIT_ID = __DEV__
         ? 'ca-app-pub-3940256099942544/5354046379' // Test rewarded interstitial

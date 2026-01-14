@@ -15,13 +15,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import BannerAd from '../../components/BannerAd';
 import LegalScreen from '../LegalScreen';
 import UserGuideScreen from '../UserGuideScreen';
-
-// Conditional import for BannerAd - only load on native platforms
-const BannerAdComponent = Platform.OS === 'web'
-  ? () => null
-  : require('../../components/BannerAd').default;
 
 interface TripRecord {
   id: string;
@@ -198,7 +194,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, unit }) => (
 
         <View style={styles.content}>
           <Text style={styles.sectionTitle}>📊 סיכום כולל</Text>
-          <BannerAdComponent style={styles.bannerTop} />
+          <BannerAd style={styles.bannerTop} />
           <View style={styles.statsGrid}>
             <View style={styles.statsColumn}>
               <StatCard icon="📈" label="נסיעות" value={stats.totalTrips} />
@@ -228,7 +224,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, unit }) => (
             <ActionButton icon="⚖️" label="מדיניות ומשפט" onPress={() => setShowLegalModal(true)} />
           </View>
 
-          <BannerAdComponent style={styles.bannerMiddle} />
+          <BannerAd style={styles.bannerMiddle} />
           {recentTrips.length > 0 && (
             <>
               <View style={styles.recentHeader}>
@@ -240,7 +236,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, unit }) => (
               {recentTrips.map((trip) => <RecentTripCard key={trip.id} trip={trip} />)}
             </>
           )}
-          {recentTrips.length > 3 && <BannerAdComponent style={styles.bannerBottom} />}
+          {recentTrips.length > 3 && <BannerAd style={styles.bannerBottom} />}
           <View style={{ height: 40 }} />
         </View>
       </Animated.ScrollView>

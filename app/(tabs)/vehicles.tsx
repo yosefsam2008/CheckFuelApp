@@ -306,11 +306,22 @@ Animated.parallel([
     };
 
     const handleShowPlateAd = () => {
+      console.log('🚗 handleShowPlateAd called');
       setShowPlateDetectionModal(false);
+
+      // On web, skip ad and navigate directly
+      if (Platform.OS === 'web') {
+        console.log('🌐 Web platform - skipping ad');
+        router.push("/addVehicleByPlate");
+        return;
+      }
+
+      // On native, show ad
       setShowPlateDetectionAd(true);
     };
 
     const onPlateAdComplete = () => {
+      console.log('✅ onPlateAdComplete called - navigating to addVehicleByPlate');
       setShowPlateDetectionAd(false);
       router.push("/addVehicleByPlate");
       showToast("✓ זיהוי אוטומטי זמין!");
@@ -768,7 +779,7 @@ Animated.parallel([
         {showPlateDetectionAd && (
           <PlateDetectionRewardedAd
             onAdComplete={onPlateAdComplete}
-            onAdError={(error) => {
+            onAdError={(error: Error) => {
               console.error('Plate detection ad error:', error);
               onPlateAdComplete(); // Continue anyway on error
             }}

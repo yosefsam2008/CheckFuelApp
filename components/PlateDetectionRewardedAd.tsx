@@ -8,16 +8,6 @@ interface PlateDetectionRewardedAdProps {
   onAdError?: (error: any) => void;
 }
 
-// Don't import AdMob on web - causes build errors
-let RewardedAd: any = null;
-let AdEventType: any = null;
-
-if (Platform.OS !== 'web') {
-  const admob = require('react-native-google-mobile-ads');
-  RewardedAd = admob.RewardedAd;
-  AdEventType = admob.AdEventType;
-}
-
 const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
   onAdComplete,
   onAdError
@@ -34,13 +24,9 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
 
   const loadAndShowAd = async () => {
     try {
-      if (!RewardedAd || !AdEventType) {
-        if (__DEV__) {
-          console.log('PlateDetectionRewardedAd: AdMob not available');
-        }
-        onAdComplete?.();
-        return;
-      }
+      // Dynamic import to avoid loading on web
+      const admob = await import('react-native-google-mobile-ads') as any;
+      const { RewardedAd, AdEventType } = admob;
 
       const AD_UNIT_ID = __DEV__
         ? 'ca-app-pub-3940256099942544/5224354917' // Test ad unit
@@ -105,6 +91,9 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
     }
   };
 
+  // Show loading UI only while loading
+  // Return null when ad is showing (fullscreen ad covers everything)
+  // Component stays mounted to keep event listeners active
   if (!isLoading) return null;
 
   return (

@@ -64,11 +64,8 @@ async function fetchRecordByPlate(plate: string): Promise<{
 } | null> {
   for (const api of VEHICLE_APIS) {
     try {
-      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${
-        api.id
-      }&filters=${encodeURIComponent(
-        JSON.stringify({ mispar_rechev: plate })
-      )}`;
+      const filtersJson = JSON.stringify({ mispar_rechev: plate });
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${api.id}&filters=${encodeURIComponent(filtersJson)}`;
 
       console.log(`\n🔍 Searching ${api.type} API...`);
       const response = await fetch(url);

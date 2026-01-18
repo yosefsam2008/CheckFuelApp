@@ -278,7 +278,7 @@ function analyzeRecord(record: APIRecord, vehicleType: string) {
     });
   } else {
     console.log('\n⚠️  No valid CC fields found');
-    console.log('   Make sure engine code is in engineCCLookup.ts');
+    console.log('   Make sure engine code is in engineDatabase.ts (ENGINE_CC_LOOKUP)');
   }
 
   console.log('\n');

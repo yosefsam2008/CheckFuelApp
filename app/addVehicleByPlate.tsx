@@ -21,7 +21,7 @@ import {
   fetchFallbackVehicleData
 } from "../lib/data/fuelData";
 import { calculateEVConsumptionAdvanced } from "../lib/data/advancedEvConsumption";
-import { lookupEngineCC } from "../lib/data/engineCCLookup";
+import { lookupEngineCC, getKnownEngineCCs } from "../lib/data/engineDatabase";
 import { estimateVehicleWeight } from "../lib/data/vehicleWeightLookup";
 import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
@@ -555,7 +555,8 @@ async function searchCCByEngineCodeCached(
  * PRIORITY ORDER (most accurate → least accurate):
  * 1. Direct API field extraction (nefach_manoa, etc.)
  * 2. API search by engine code (searches other vehicles with same engine)
- * 3. Static lookup table (fallback for common engines)
+ * 3. Static lookup table by engine code
+ * 4. Brand-model database lookup (from extracted government data)
  */
 async function extractEngineCC(
   record: Record<string, any>,
@@ -567,6 +568,8 @@ async function extractEngineCC(
   }
 
   const engineCode = record.degem_manoa || record.engine_model || record.engine_type;
+  const brand = record.tozeret_nm || record.brand;
+  const model = record.kinuy_mishari || record.degem_nm || record.model;
 
   // Phase 1: Direct API fields
   if (__DEV__) {
@@ -597,7 +600,7 @@ async function extractEngineCC(
     }
   }
 
-  // Phase 3: Static lookup
+  // Phase 3: Static lookup by engine code
   if (engineCode && String(engineCode).trim().length > 1) {
     if (__DEV__) {
       console.log(`Phase 3: Lookup "${engineCode}"`);
@@ -605,15 +608,34 @@ async function extractEngineCC(
     const staticCC = lookupEngineCC(String(engineCode).trim());
     if (staticCC) {
       if (__DEV__) {
-        console.log(`✅ Found: ${staticCC}cc (lookup)`);
+        console.log(`✅ Found: ${staticCC}cc (engine code lookup)`);
       }
       return staticCC;
     }
   }
-  
+
+  // Phase 4: Brand-model database lookup
+  if (brand && model) {
+    if (__DEV__) {
+      console.log(`Phase 4: Brand-model lookup "${brand}" + "${model}"`);
+    }
+    const brandModelCCs = getKnownEngineCCs(brand, model);
+    if (brandModelCCs && brandModelCCs.length > 0) {
+      // Return median value for best estimate
+      const sorted = [...brandModelCCs].sort((a, b) => a - b);
+      const midIndex = Math.floor(sorted.length / 2);
+      const medianCC = sorted.length % 2 === 0
+        ? Math.round((sorted[midIndex - 1] + sorted[midIndex]) / 2)
+        : sorted[midIndex];
+      if (__DEV__) {
+        console.log(`✅ Found: ${medianCC}cc (brand-model database, options: [${brandModelCCs.join(', ')}])`);
+      }
+      return medianCC;
+    }
+  }
 
   if (__DEV__) {
-    console.log('❌ CC not found, using 1600cc default\n');
+    console.log('❌ CC not found in any source\n');
   }
   return undefined;
 }

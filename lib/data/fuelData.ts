@@ -59,9 +59,9 @@ type VehicleType = 'motorcycle' | 'car' | 'truck';
 // ============================================================================
 
 // Fallback APIs for missing vehicle data
-// Weight API - ביטול סופי (final cancellation database - has mishkal_kolel)
+// Weight API - כלי רכב שירדו מהכביש ובסטטוס ביטול סופי
 const WEIGHT_API_RESOURCE_ID = '851ecab1-0622-4dbe-a6c7-f950cf82abf9';
-// Engine CC API - יבוא אישי (personal imports database - has nefach_manoa)
+// Engine CC API - כלי רכב ביבוא אישי
 const ENGINE_CC_API_RESOURCE_ID = '03adc637-b6fe-402b-9937-7c3d3afc9140';
 const DATA_GOV_IL_BASE = 'https://data.gov.il/api/3/action/datastore_search';
 
@@ -75,14 +75,14 @@ const AERO_PARAMS: Record<VehicleType, { Cd: number; A: number; Crr: number }> =
 // Engine thermal efficiency - base values for reference years
 const THERMAL_EFFICIENCY_BASE = {
   gasoline: {
-    baseYear: 2025,           // שנת בסיס (השנה הנוכחית)
+    baseYear: 2026,           // שנת בסיס (השנה הנוכחית)
     baseEfficiency: 0.36,     // יעילות מקסימלית למנועי בנזין מודרניים
     degradationPerYear: 0.003, // ירידה של 0.3% יעילות לכל שנה אחורה
     minEfficiency: 0.26,      // יעילות מינימלית (רכבים ישנים מאוד)
   },
   diesel: {
-    baseYear: 2025,
-    baseEfficiency: 0.42,     // יעילות מקסימלית למנועי דיזל מודרניים
+    baseYear: 2026,           // שנת בסיס (השנה הנוכחית)
+    baseEfficiency: 0.42,     // יעילות מקסימליתני דיזל מודרניים
     degradationPerYear: 0.0025, // דיזל מתדרדר לאט יותר (0.25% לשנה)
     minEfficiency: 0.32,      // יעילות מינימלית
   },
@@ -90,8 +90,8 @@ const THERMAL_EFFICIENCY_BASE = {
 
 // Fuel energy content (MJ/L)
 const FUEL_ENERGY_MJ: Record<string, number> = {
-  diesel: 36,
-  gasoline: 32,
+  diesel: 38.6,
+  gasoline: 34.2,
 };
 
 // Consumption bounds by vehicle type (km/L)
@@ -134,16 +134,57 @@ function parseFloatSafe(value: any): number | undefined {
 }
 
 /**
- * Get thermal efficiency based on year and fuel type
- * חישוב רציף שנה-שנה במקום קפיצות של 10 שנים
+ * Extract, validate, and average numeric values from API records
  *
- * דוגמאות לבנזין:
- * - 2025: 36.0% יעילות
- * - 2020: 34.5% יעילות (ירידה של 0.3% × 5 שנים)
- * - 2015: 33.0% יעילות
- * - 2010: 31.5% יעילות
- * - 2000: 28.5% יעילות
- * - 1990: 26.0% יעילות (מינימום)
+ * This helper reduces code duplication in fetchWeightFromAPI and fetchEngineCCFromAPI
+ * by centralizing the common pattern of:
+ * 1. Extracting a field from multiple records
+ * 2. Parsing values using a safe parser
+ * 3. Filtering values within a valid range
+ * 4. Calculating the rounded average
+ *
+ * @param records - Array of API records to process
+ * @param fieldName - Field name to extract from each record (e.g., 'mishkal_kolel', 'nefach_manoa')
+ * @param min - Minimum valid value (inclusive) - values below are filtered out
+ * @param max - Maximum valid value (inclusive) - values above are filtered out
+ * @param parser - Parser function to convert raw values (parseIntSafe or parseFloatSafe)
+ * @returns Averaged value (rounded) or undefined if no valid values found
+ */
+function extractAndAverageField(
+  records: Record<string, any>[],
+  fieldName: string,
+  min: number,
+  max: number,
+  parser: (value: any) => number | undefined
+): number | undefined {
+  // Step 1: Extract and parse values from records
+  // Step 2: Filter to only valid numbers within the specified range
+  const values = records
+    .map(r => parser(r[fieldName]))
+    .filter((v): v is number => v !== undefined && v >= min && v <= max);
+
+  // Step 3: Calculate average if we have valid values
+  if (values.length > 0) {
+    const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+
+    if (__DEV__) {
+      console.log(`   📊 extractAndAverageField: Found ${values.length} valid ${fieldName} values`);
+      console.log(`   Values: [${values.join(', ')}]`);
+      console.log(`   Average (rounded): ${avg}`);
+    }
+
+    return avg;
+  }
+
+  if (__DEV__) {
+    console.log(`   ⚠️  extractAndAverageField: No valid ${fieldName} values in range [${min}, ${max}]`);
+  }
+
+  return undefined;
+}
+
+/**
+ * Calculate vehicle thermal efficiency based on year and fuel type
  */
 function getThermalEfficiency(year: number | undefined, fuelType: 'Gasoline' | 'Diesel'): number {
   const fuel = fuelType.toLowerCase() as 'gasoline' | 'diesel';
@@ -228,7 +269,7 @@ async function queryDataGovAPI(
     const filtersJson = JSON.stringify(filters);
     const url = `${DATA_GOV_IL_BASE}?resource_id=${resourceId}&filters=${encodeURIComponent(filtersJson)}&limit=${limit}`;
 
-    if (__DEV__) {
+    if (__DEV__) {  
       console.log(`   🔍 Querying fallback API with filters:`, filters);
       console.log(`   📡 URL:`, url);
     }
@@ -259,19 +300,55 @@ async function queryDataGovAPI(
 }
 
 /**
- * Fetch weight (mishkal_kolel) from ביטול סופי API
- * Uses multi-strategy search with cascading filters
+  * Fetch vehicle weight (mishkal_kolel) from ביטול סופי API
  */
 async function fetchWeightFromAPI(params: {
   brand?: string;
   model?: string;
   plateNumber?: string;
+  degem_nm?: string;
 }): Promise<number | undefined> {
-  const { brand, model, plateNumber } = params;
+  const { brand, model, degem_nm } = params;
 
   if (__DEV__) {
     console.log('\n   📦 WEIGHT API (ביטול סופי)');
-    console.log(`   🔍 Search parameters: brand="${brand || 'N/A'}", model="${model || 'N/A'}"`);
+    console.log(`   🔍 Search parameters: degem_nm="${degem_nm || 'N/A'}", brand="${brand || 'N/A'}", model="${model || 'N/A'}"`);
+  }
+
+  // ========================================
+  // STRATEGY 0: degem_nm ONLY (HIGHEST PRIORITY)
+  // ========================================
+  if (degem_nm) {
+    if (__DEV__) {
+      console.log(`\n   📌 STRATEGY 0: Searching by degem_nm="${degem_nm}" ONLY`);
+    }
+
+    const records = await queryDataGovAPI(WEIGHT_API_RESOURCE_ID, {
+      degem_nm: degem_nm,
+    }, 20);
+
+    if (records.length > 0) {
+      const avgWeight = extractAndAverageField(
+        records,
+        'mishkal_kolel',
+        500,    // min: 500kg
+        10000,  // max: 10000kg
+        parseFloatSafe
+      );
+
+      if (avgWeight !== undefined) {
+        if (__DEV__) {
+          console.log(`   ✅ SUCCESS: Found weight for degem_nm "${degem_nm}"`);
+          console.log(`   Average weight: ${avgWeight}kg`);
+        }
+          const curb = Math.round(avgWeight * 0.9); // GVW → curb
+          return curb;
+      }
+    }
+
+    if (__DEV__) {
+      console.log(`   ❌ No valid weight found for degem_nm "${degem_nm}"`);
+    }
   }
 
   // Strategy 1: brand + model (NO YEAR FILTER - to get more results)
@@ -286,15 +363,17 @@ async function fetchWeightFromAPI(params: {
     }, 20);
 
     if (records.length > 0) {
-      const weights = records
-        .map(r => parseFloatSafe(r.mishkal_kolel))
-        .filter((w): w is number => w !== undefined && w >= 500 && w <= 10000);
+      const avgWeight = extractAndAverageField(
+        records,
+        'mishkal_kolel',
+        500,    // min: 500kg (reasonable minimum vehicle weight)
+        10000,  // max: 10000kg (reasonable maximum vehicle weight)
+        parseFloatSafe
+      );
 
-      if (weights.length > 0) {
-        const avgWeight = Math.round(weights.reduce((a, b) => a + b, 0) / weights.length);
+      if (avgWeight !== undefined) {
         if (__DEV__) {
-          console.log(`   ✅ SUCCESS: Found ${weights.length} records for ${brand} ${model}`);
-          console.log(`   Weight values:`, weights);
+          console.log(`   ✅ SUCCESS: Found weight for ${brand} ${model}`);
           console.log(`   Average weight: ${avgWeight}kg`);
         }
         return avgWeight;
@@ -306,35 +385,6 @@ async function fetchWeightFromAPI(params: {
     }
   }
 
-  // Strategy 2: plate number lookup
-  if (plateNumber) {
-    if (__DEV__) {
-      console.log(`\n   📌 STRATEGY 2: Searching by plate number`);
-      console.log(`   Search term: "${plateNumber}"`);
-    }
-
-    const records = await queryDataGovAPI(WEIGHT_API_RESOURCE_ID, {
-      mispar_rechev: plateNumber,
-    }, 1);
-
-    if (records.length > 0) {
-      const weight = parseFloatSafe(records[0].mishkal_kolel);
-      if (weight && weight >= 500 && weight <= 10000) {
-        if (__DEV__) {
-          console.log(`   ✅ SUCCESS: Weight found for plate "${plateNumber}": ${weight}kg`);
-        }
-        return weight;
-      }
-    }
-
-    if (__DEV__) {
-      console.log(`   ❌ No valid weight found for plate "${plateNumber}"`);
-    }
-  }
-
-  if (__DEV__) {
-    console.log('\n   ❌ FAILED: No weight found from any strategy');
-  }
   return undefined;
 }
 
@@ -347,12 +397,48 @@ async function fetchEngineCCFromAPI(params: {
   brand?: string;
   model?: string;
   kinuyMishari?: string;
+  degem_nm?: string;
 }): Promise<number | undefined> {
-  const { engineCode, brand, model, kinuyMishari } = params;
+  const { engineCode, brand, model, kinuyMishari, degem_nm } = params;
 
   if (__DEV__) {
     console.log('\n   🔧 ENGINE CC API (יבוא אישי)');
-    console.log(`   🔍 Search parameters:`, { engineCode, brand, model, kinuyMishari });
+    console.log(`   🔍 Search parameters:`, { engineCode, brand, model, kinuyMishari, degem_nm });
+  }
+
+  // ========================================
+  // STRATEGY 0: degem_nm ONLY (NEW - HIGHEST PRIORITY)
+  // ========================================
+  if (degem_nm) {
+    if (__DEV__) {
+      console.log(`\n   📌 STRATEGY 0: Searching by degem_nm="${degem_nm}"`);
+    }
+
+    const records = await queryDataGovAPI(ENGINE_CC_API_RESOURCE_ID, {
+      degem_nm: degem_nm,
+    }, 20);
+
+    if (records.length > 0) {
+      const avgCC = extractAndAverageField(
+        records,
+        'nefach_manoa',
+        50,     // min: 50cc
+        15000,  // max: 15000cc
+        parseIntSafe
+      );
+
+      if (avgCC !== undefined) {
+        if (__DEV__) {
+          console.log(`   ✅ SUCCESS: Found CC for degem_nm "${degem_nm}"`);
+          console.log(`   Average CC: ${avgCC}cc`);
+        }
+        return avgCC;
+      }
+    }
+
+    if (__DEV__) {
+      console.log(`   ❌ No valid CC found for degem_nm "${degem_nm}"`);
+    }
   }
 
   // Strategy 1: Search by engine code (degem_manoa)
@@ -367,15 +453,17 @@ async function fetchEngineCCFromAPI(params: {
     }, 10);
 
     if (records.length > 0) {
-      const ccValues = records
-        .map(r => parseIntSafe(r.nefach_manoa))
-        .filter((cc): cc is number => cc !== undefined && cc >= 50 && cc <= 15000);
+      const avgCC = extractAndAverageField(
+        records,
+        'nefach_manoa',
+        50,     // min: 50cc (small motorcycles)
+        15000,  // max: 15000cc (large trucks/heavy vehicles)
+        parseIntSafe
+      );
 
-      if (ccValues.length > 0) {
-        const avgCC = Math.round(ccValues.reduce((a, b) => a + b, 0) / ccValues.length);
+      if (avgCC !== undefined) {
         if (__DEV__) {
-          console.log(`   ✅ SUCCESS: Found ${ccValues.length} records with engine code "${engineCode}"`);
-          console.log(`   CC values:`, ccValues);
+          console.log(`   ✅ SUCCESS: Found CC for engine code "${engineCode}"`);
           console.log(`   Average CC: ${avgCC}cc`);
         }
         return avgCC;
@@ -408,15 +496,17 @@ async function fetchEngineCCFromAPI(params: {
         const records = json?.result?.records || [];
 
         if (records.length > 0) {
-          const ccValues = records
-            .map((r: any) => parseIntSafe(r.nefach_manoa))
-            .filter((cc: number | undefined): cc is number => cc !== undefined && cc >= 50 && cc <= 15000);
+          const avgCC = extractAndAverageField(
+            records,
+            'nefach_manoa',
+            50,     // min: 50cc (small motorcycles)
+            15000,  // max: 15000cc (large trucks/heavy vehicles)
+            parseIntSafe
+          );
 
-          if (ccValues.length > 0) {
-            const avgCC = Math.round(ccValues.reduce((a: number, b: number) => a + b, 0) / ccValues.length);
+          if (avgCC !== undefined) {
             if (__DEV__) {
-              console.log(`   ✅ SUCCESS: Found ${ccValues.length} records with kinuy_mishari "${kinuyMishari}"`);
-              console.log(`   CC values:`, ccValues);
+              console.log(`   ✅ SUCCESS: Found CC for kinuy_mishari "${kinuyMishari}"`);
               console.log(`   Average CC: ${avgCC}cc`);
             }
             return avgCC;
@@ -447,15 +537,17 @@ async function fetchEngineCCFromAPI(params: {
     }, 20);
 
     if (records.length > 0) {
-      const ccValues = records
-        .map(r => parseIntSafe(r.nefach_manoa))
-        .filter((cc): cc is number => cc !== undefined && cc >= 50 && cc <= 15000);
+      const avgCC = extractAndAverageField(
+        records,
+        'nefach_manoa',
+        50,     // min: 50cc (small motorcycles)
+        15000,  // max: 15000cc (large trucks/heavy vehicles)
+        parseIntSafe
+      );
 
-      if (ccValues.length > 0) {
-        const avgCC = Math.round(ccValues.reduce((a, b) => a + b, 0) / ccValues.length);
+      if (avgCC !== undefined) {
         if (__DEV__) {
-          console.log(`   ✅ SUCCESS: Found ${ccValues.length} records for ${brand} ${model}`);
-          console.log(`   CC values:`, ccValues);
+          console.log(`   ✅ SUCCESS: Found CC for ${brand} ${model}`);
           console.log(`   Average CC: ${avgCC}cc`);
         }
         return avgCC;
@@ -488,11 +580,13 @@ export async function fetchFallbackVehicleData(params: {
   engineCode?: string;
   plateNumber?: string;
   kinuyMishari?: string;  // Commercial name from primary API (e.g., "CIVIC TOURER")
+  degem_nm?: string;      // Vehicle model code from primary API (e.g., "FK28")
 }): Promise<FallbackVehicleData | undefined> {
-  const { brand, model, year, engineCode, plateNumber, kinuyMishari } = params;
+  const { brand, model, year, engineCode, plateNumber, kinuyMishari, degem_nm } = params;
 
   if (__DEV__) {
     console.log('\n🔄 FALLBACK APIs - Dual Search');
+    console.log(`   degem_nm: ${degem_nm || 'N/A'}`);
     console.log(`   Brand: ${brand || 'N/A'}`);
     console.log(`   Model: ${model || 'N/A'}`);
     console.log(`   Year: ${year || 'N/A'}`);
@@ -502,8 +596,8 @@ export async function fetchFallbackVehicleData(params: {
 
   // Query both APIs in parallel for efficiency
   const [weight, engineCC] = await Promise.all([
-    fetchWeightFromAPI({ brand, model, plateNumber }),
-    fetchEngineCCFromAPI({ engineCode, brand, model, kinuyMishari }),
+    fetchWeightFromAPI({ brand, model, plateNumber, degem_nm }),
+    fetchEngineCCFromAPI({ engineCode, brand, model, kinuyMishari, degem_nm }),
   ]);
 
   if (weight || engineCC) {
@@ -596,18 +690,17 @@ function estimateAeroData(weight: number, year: number): AeroData {
  *
  * @param params - Configuration object
  * @param params.mishkal_kolel - Gross vehicle weight (kg) - OPTIONAL
- * @param params.misgeret - Curb weight (kg) - OPTIONAL
  * @param params.year - Manufacturing year - OPTIONAL
  * @returns Energy consumption with floating point precision fixed
  */
 export function calculateEVConsumptionEnhanced(params: {
   mishkal_kolel?: number;
-  misgeret?: number;
+  // misgeret removed - not reliable
   year?: number;
 }): { kwhPer100Km: number; kmPerKwh: number } {
 
   // STEP 1: DETERMINE EFFECTIVE OPERATING WEIGHT
-  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, params.misgeret);
+  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel);
   const year = params.year || new Date().getFullYear();
 
   // Default to typical compact EV if no weight data (e.g., Nissan Leaf, BYD Dolphin)
@@ -713,22 +806,19 @@ export function calculateEVConsumptionEnhanced(params: {
  */
 export function getEffectiveWeight(
   mishkal_kolel?: number,
-  _misgeret?: number  // Kept for backward compatibility but not used
+  _misgeret?: number
 ): number | undefined {
 
   if (mishkal_kolel) {
-    // Convert gross weight to operational weight
-    // 0.85 multiplier = curb weight + 2 passengers (~150kg)
-    const effectiveWeight = mishkal_kolel * 0.85;
-
+    const effectiveWeight = mishkal_kolel * 0.9;
+    
     if (__DEV__) {
-      console.log(`📐 Weight calculation: ${mishkal_kolel}kg × 0.85 = ${effectiveWeight.toFixed(0)}kg`);
+      console.log(`📐 Weight calculation: ${mishkal_kolel}kg × 0.95 = ${effectiveWeight.toFixed(0)}kg`);
     }
 
     return Math.round(effectiveWeight);
   }
 
-  // No weight data available - caller should use brand/model estimation
   return undefined;
 }
 
@@ -756,7 +846,7 @@ export function getEffectiveWeight(
  */
 export function calculateICEConsumptionEnhanced(params: {
   mishkal_kolel?: number;
-  misgeret?: number;
+  // misgeret removed - not reliable in Israeli API
   engineCC?: number;
   year?: number;
   fuelType: 'Gasoline' | 'Diesel';
@@ -772,7 +862,7 @@ export function calculateICEConsumptionEnhanced(params: {
   // ============================================
   // STEP 1: DETERMINE EFFECTIVE WEIGHT
   // ============================================
-  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, params.misgeret);
+  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel);
 
   // Default weights by vehicle type
   const defaultWeights: Record<VehicleType, number> = {
@@ -786,7 +876,6 @@ export function calculateICEConsumptionEnhanced(params: {
   if (__DEV__) {
     console.log(`\n📊 STEP 1: Weight Determination`);
     console.log(`   mishkal_kolel: ${params.mishkal_kolel || 'N/A'}kg`);
-    console.log(`   misgeret: ${params.misgeret || 'N/A'}kg`);
     console.log(`   Effective weight: ${weight}kg (${effectiveWeight ? 'calculated' : 'default'})`);
     console.log(`   Vehicle type: ${vehicleType}`);
   }
@@ -889,17 +978,20 @@ export function calculateICEConsumptionEnhanced(params: {
   const baseEfficiency = getThermalEfficiency(params.year, fuelType);
 
   if (__DEV__) {
-    console.log(`\n📊 STEP 5: Thermal Efficiency (חישוב שנתי רציף)`);
-    console.log(`   Year: ${params.year || 'N/A'}`);
-    console.log(`   Fuel type: ${fuelType}`);
-    console.log(`   Base efficiency: ${(baseEfficiency * 100).toFixed(2)}%`);
-    if (params.year) {
-      const yearsDiff = 2025 - params.year;
-      if (yearsDiff > 0) {
-        console.log(`   Years old: ${yearsDiff} → Efficiency degradation: -${(yearsDiff * (fuelType === 'Diesel' ? 0.25 : 0.30)).toFixed(2)}%`);
-      }
+  const BASE_YEAR = 2026;
+  const DEG_PER_YEAR = fuelType === 'Diesel' ? 0.25 : 0.30;
+
+  console.log(`\n📊 STEP 5: Thermal Efficiency (חישוב שנתי רציף)`);
+  console.log(`   Year: ${params.year || 'N/A'}`);
+  console.log(`   Fuel type: ${fuelType}`);
+  console.log(`   Base efficiency: ${(baseEfficiency * 100).toFixed(2)}%`);
+  if (params.year) {
+    const yearsDiff = BASE_YEAR - params.year;
+    if (yearsDiff > 0) {
+      console.log(`   Years old: ${yearsDiff} → Efficiency degradation: -${(yearsDiff * DEG_PER_YEAR).toFixed(2)}%`);
     }
   }
+}
 
   // ============================================
   // STEP 6: POWER-TO-WEIGHT RATIO ADJUSTMENT
@@ -1078,8 +1170,8 @@ export function translateBrandToEnglish(hebrewBrand: string): string {
     "ב מ וו גרמניה": "BMW",
     "מ.ג סין": "MG",
     "סיטרואן צרפת": "Citroen",
-    "פיאג'ו איטליה": "Peugeot",
-    "איווקו איטליה": "Audi",
+    "פיג'ו איטליה": "Peugeot",
+    "איווקו איטליה": "Iveco",
     "מרצדס בנץ ארהב": "Mercedes-Benz",
     "מיצובישי יפן": "Mitsubishi",
     "פולקסווגן ארהב": "Volkswagen",

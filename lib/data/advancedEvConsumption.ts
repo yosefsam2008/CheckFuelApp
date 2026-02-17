@@ -479,7 +479,7 @@ export async function calculateEVConsumptionAdvanced(params: {
   year: number;
   vehicleType: 'car' | 'motorcycle' | 'truck';
   mishkal_kolel?: number;
-  misgeret?: number;
+  // misgeret removed - unreliable in Israeli API
   combE?: number; // EPA data (kWh/100 miles) - rare bonus
 }): Promise<EVConsumptionResult> {
 
@@ -506,7 +506,7 @@ export async function calculateEVConsumptionAdvanced(params: {
   // ========================================
 
   // Step 1: Get or estimate weight
-  let weight = getEffectiveWeight(params.mishkal_kolel, params.misgeret);
+  let weight = getEffectiveWeight(params.mishkal_kolel);
 
   if (!weight) {
     // Try to estimate from brand/model
@@ -560,7 +560,7 @@ export async function calculateEVConsumptionAdvanced(params: {
 
   // Calculate overall confidence
   // Based on: aerodynamic confidence (75%) + weight data quality (25%)
-  const weightConfidence = params.misgeret || params.mishkal_kolel ? 0.90 : 0.60;
+  const weightConfidence = params.mishkal_kolel ? 0.90 : 0.60;
   const overallConfidence = aeroData.confidence * 0.75 + weightConfidence * 0.25;
 
   if (__DEV__) {
@@ -608,10 +608,10 @@ function defaultWeight(vehicleType: string): number {
  */
 export function calculateEVConsumptionEnhanced(params: {
   mishkal_kolel?: number;
-  misgeret?: number;
+  // misgeret removed - unreliable
   year?: number;
 }): { kwhPer100Km: number; kmPerKwh: number } {
-  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, params.misgeret);
+  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel);
 
   let kwhPer100Km: number;
 

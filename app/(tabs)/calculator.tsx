@@ -810,8 +810,16 @@ const loadProgress = useCallback(async () => {
 
     setResult(calculation);
 
-    // Show video ad before results
-    setShowVideoAd(true);
+    // Show video ad before results (only on mobile, not on web)
+    if (Platform.OS !== 'web') {
+      setShowVideoAd(true);
+    } else {
+      // On web, skip the ad and go directly to results
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 1000);
+      AsyncStorage.removeItem("calculatorProgress");
+      next();
+    }
   };
 
   // ============================================

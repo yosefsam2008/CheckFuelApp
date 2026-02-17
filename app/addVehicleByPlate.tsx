@@ -44,9 +44,6 @@ const VEHICLE_APIS = [
   { type: "truck", id: "cd3acc5c-03c3-4c89-9c54-d40f93c0d790" },
 ] as const;
 
-// Fallback API for weight data lookup by vehicle model code (degem_nm)
-const WEIGHT_FALLBACK_API = "851ecab1-0622-4dbe-a6c7-f950cf82abf9";
-
 type VehicleType = typeof VEHICLE_APIS[number]["type"];
 type FuelType = "Electric" | "Gasoline" | "Diesel" | "Unknown";
 
@@ -115,74 +112,6 @@ function parseFloatSafeLocal(value: any): number | undefined {
 
 type DataGovResult = { record: Record<string, any>; type: VehicleType; degem_nm?: string } | null;
 
-/**
- * Fallback weight lookup using degem_nm (vehicle model code)
- * Called when primary API response has missing/corrupt weight data
- */
-async function fetchWeightByDegemNm(degem_nm: string): Promise<{  mishkal_kolel?: number; misgeret?: number }> {
-  if (__DEV__) {
-    console.log(`🔍 Weight missing, searching fallback API with degem_nm: ${degem_nm}`);
-  }
-
-  const filtersJson = JSON.stringify({ degem_nm });
-  const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${WEIGHT_FALLBACK_API}&filters=${encodeURIComponent(filtersJson)}&limit=1`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      if (__DEV__) {
-        console.log(`❌ Fallback API failed (status: ${res.status})`);
-      }
-      return {};
-    }
-
-    const json = await res.json();
-    const rec = json?.result?.records?.[0];
-
-    if (!rec) {
-      if (__DEV__) {
-        console.log('❌ Fallback API failed (no results)');
-      }
-      return {};
-    }
-
-    // Extract weight data with same validation as primary API
-    const mishkal_kolel = parseFloatSafeLocal(
-      rec.mishkal_kolel ??
-      rec.mishkal_atzmi ??
-      rec.total_weight ??
-      rec.gross_weight ??
-      rec.gvwr ??
-      rec.mishkal
-    );
-
-    const misgeret = parseFloatSafeLocal(
-      rec.misgeret ??
-      rec.curb_weight ??
-      rec.tare_weight ??
-      rec.empty_weight ??
-      rec.kerb_weight
-    );
-
-    if (mishkal_kolel || misgeret) {
-      if (__DEV__) {
-        console.log(`✅ Weight from fallback API: ${mishkal_kolel || 'N/A'}kg / ${misgeret || 'N/A'}kg`);
-      }
-      return { mishkal_kolel, misgeret };
-    } else {
-      if (__DEV__) {
-        console.log('❌ Fallback API failed (no valid weight data)');
-      }
-      return {};
-    }
-  } catch (error) {
-    if (__DEV__) {
-      console.log('❌ Fallback API failed (network error)');
-    }
-    return {};
-  }
-}
-
 async function fetchRecordByPlate(plate: string): Promise<DataGovResult> {
   // ✅ PERFORMANCE OPTIMIZATION: Query all 3 APIs in parallel instead of sequentially
   // Before: 3-6 seconds (sequential)
@@ -215,7 +144,7 @@ async function fetchRecordByPlate(plate: string): Promise<DataGovResult> {
   return results.find(r => r !== null) ?? null;
 }
 
-async function parseRelevantFields(record: Record<string, any>, degem_nm?: string, vehicleType?: VehicleType) {
+async function parseRelevantFields(record: Record<string, any>, _degem_nm?: string, vehicleType?: VehicleType) {
   const fuelTypeRaw = record.sug_delek_nm ?? record.fuel ?? '';
   const fuelType = detectFuelTypeCanonical({ sug_delek_nm: fuelTypeRaw });
 
@@ -223,37 +152,16 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
   const model = (record.kinuy_mishari || record.degem_nm || '').toString().trim();
   const year = parseIntSafeLocal(record.shnat_yitzur) ?? undefined;
 
-  // ✅ SMART HYBRID WEIGHT STRATEGY:
-  // - Motorcycles: BOTH weights from PRIMARY API (fallback likely has no motorcycle data)
-  // - Cars/Trucks: misgeret from PRIMARY, mishkal_kolel from FALLBACK (more reliable)
+  // ⚠️  MISGERET NOT USED - unreliable in Israeli API (often contains VIN)
+  // We use only mishkal_kolel (gross weight) for all calculations
 
   if (__DEV__) {
     console.log('\n⚖️  WEIGHT EXTRACTION STRATEGY:');
-  }
-  if (__DEV__) {
     console.log(`   Vehicle Type: ${vehicleType || 'unknown'}`);
+    console.log('   NOTE: misgeret (curb weight) is NOT used - unreliable in Israeli API');
   }
 
-  // STEP 1: Extract misgeret from PRIMARY API (all vehicle types)
-  let misgeret = parseFloatSafeLocal(
-    record.misgeret ??
-    record.curb_weight ??
-    record.tare_weight ??
-    record.empty_weight ??
-    record.kerb_weight
-  );
-
-  if (misgeret) {
-    if (__DEV__) {
-      console.log(`✅ misgeret (curb weight) from primary API: ${misgeret}kg`);
-    }
-  } else {
-    if (__DEV__) {
-      console.log('⚠️  misgeret not found in primary API');
-    }
-  }
-
-  // STEP 2: mishkal_kolel strategy depends on vehicle type
+  // mishkal_kolel strategy depends on vehicle type
   let mishkal_kolel: number | undefined;
 
   if (vehicleType === 'motorcycle') {
@@ -280,61 +188,38 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
       }
     }
   } else {
-    // 🚗 CARS/TRUCKS: Try FALLBACK API for mishkal_kolel (more reliable)
-    if (degem_nm) {
-      if (__DEV__) {
-        console.log(`🚗 Car/Truck detected: fetching mishkal_kolel from fallback API (degem_nm: ${degem_nm})...`);
-      }
-      const fallbackWeights = await fetchWeightByDegemNm(degem_nm);
-      mishkal_kolel = fallbackWeights.mishkal_kolel;
-
-      if (mishkal_kolel) {
-        if (__DEV__) {
-          console.log(`✅ mishkal_kolel (gross weight) from fallback API: ${mishkal_kolel}kg`);
-        }
-      } else {
-        if (__DEV__) {
-          console.log('⚠️  mishkal_kolel not found in fallback API');
-        }
-      }
-
-      // If we didn't get misgeret from primary, try fallback as backup
-      if (!misgeret && fallbackWeights.misgeret) {
-        misgeret = fallbackWeights.misgeret;
-        if (__DEV__) {
-          console.log(`✅ misgeret (curb weight) from fallback API: ${misgeret}kg`);
-        }
-      }
+    // 🚗 CARS/TRUCKS: Extract from PRIMARY API first, fallback handled in main flow
+    if (__DEV__) {
+      console.log('🚗 Car/Truck detected: extracting weight from primary API');
+      console.log('   (Fallback via fetchFallbackVehicleData will be used in main flow if needed)');
     }
 
-    // STEP 3: If fallback failed, try PRIMARY API for mishkal_kolel as last resort
-    if (!mishkal_kolel) {
-      if (__DEV__) {
-        console.log('🔍 Fallback failed, trying primary API for mishkal_kolel...');
-      }
-      mishkal_kolel = parseFloatSafeLocal(
-        record.mishkal_kolel ??
-        record.mishkal_atzmi ??
-        record.total_weight ??
-        record.gross_weight ??
-        record.gvwr ??
-        record.mishkal
-      );
+    mishkal_kolel = parseFloatSafeLocal(
+      record.mishkal_kolel ??
+      record.mishkal_atzmi ??
+      record.total_weight ??
+      record.gross_weight ??
+      record.gvwr ??
+      record.mishkal
+    );
 
-      if (mishkal_kolel) {
-        if (__DEV__) {
-          console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
-        }
+    if (mishkal_kolel) {
+      if (__DEV__) {
+        console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+      }
+    } else {
+      if (__DEV__) {
+        console.log('⚠️  mishkal_kolel not found in primary API - will use fallback');
       }
     }
   }
 
   if (__DEV__) {
-    console.log(`📊 FINAL WEIGHTS: misgeret=${misgeret || 'N/A'}kg, mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
+    console.log(`📊 FINAL WEIGHT: mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
   }
 
-  // Legacy combined weight field (deprecated in favor of separate fields)
-  const weightKg = mishkal_kolel ?? misgeret ?? parseFloatSafeLocal(record.weight_kg ?? record.mass_kg) ?? undefined;
+  // Use mishkal_kolel directly for weight
+  const weightKg = mishkal_kolel ?? parseFloatSafeLocal(record.weight_kg ?? record.mass_kg) ?? undefined;
   const batteryCapacity = parseFloatSafeLocal(record.battery_capacity ?? record.battery_kwh ?? record.batt_kwh ?? record.battery) ?? undefined;
   const rangeKm = parseFloatSafeLocal(record.range_km ?? record.range) ?? undefined;
 
@@ -344,7 +229,6 @@ async function parseRelevantFields(record: Record<string, any>, degem_nm?: strin
     model,
     year,
     mishkal_kolel,
-    misgeret,
     weightKg,
     batteryCapacity,
     rangeKm,
@@ -648,7 +532,7 @@ async function extractEngineCC(
  * חישוב נפח מנוע משוער על בסיס משקל הרכב
  * משמש כ-fallback כאשר לא ניתן לקבוע את נפח המנוע מה-API או מטבלת lookup
  *
- * @param weight - משקל הרכב בק"ג (misgeret או mishkal_kolel)
+ * @param weight - משקל הרכב בק"ג (mishkal_kolel)
  * @param vehicleType - סוג הרכב (אופנוע/משאית/רכב פרטי)
  * @returns נפח מנוע משוער ב-CC
  */
@@ -919,13 +803,13 @@ const handleAddVehicleByPlate = async () => {
           console.log('⚡ Electric vehicle');
         }
         
-      const evData = await calculateEVConsumptionAdvanced({  // ← שים לב ל-await!
+      const evData = await calculateEVConsumptionAdvanced({
         brand: parsed.brand,
         model: parsed.model,
         year: parsed.year || new Date().getFullYear(),
         vehicleType: found.type,
         mishkal_kolel: parsed.mishkal_kolel,
-        misgeret: parsed.misgeret,
+        // misgeret removed - unreliable in Israeli API
       });
         kwhPerKm = evData.kwhPer100Km / 100;
       } else {
@@ -938,7 +822,6 @@ const handleAddVehicleByPlate = async () => {
         // ============================================
         let cc = await extractEngineCC(found.record, found.type);
         let effectiveMishkalKolel = parsed.mishkal_kolel;
-        let effectiveMisgeret = parsed.misgeret;
 
         // ============================================
         // PHASE 2: FALLBACK API FOR MISSING DATA
@@ -958,6 +841,7 @@ const handleAddVehicleByPlate = async () => {
             year: parsed.year,
             engineCode: found.record.degem_manoa,
             plateNumber: plateTrimmed,
+            degem_nm: found.degem_nm,
           });
 
           if (fallbackData) {
@@ -984,7 +868,7 @@ const handleAddVehicleByPlate = async () => {
         // ============================================
         // PHASE 3: BRAND/MODEL WEIGHT ESTIMATION
         // ============================================
-        if (!effectiveMishkalKolel && !effectiveMisgeret && parsed.brand && parsed.model) {
+        if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
           const estimatedWeight = estimateVehicleWeight(
             parsed.brand,
             parsed.model,
@@ -992,11 +876,10 @@ const handleAddVehicleByPlate = async () => {
           );
 
           if (estimatedWeight) {
-            effectiveMisgeret = estimatedWeight.curb;
             effectiveMishkalKolel = estimatedWeight.gross;
             const brandName = translateBrandToEnglish(parsed.brand);
             if (__DEV__) {
-              console.log(`📊 ${brandName} weight estimated: ${effectiveMisgeret}kg (curb), ${effectiveMishkalKolel}kg (gross)`);
+              console.log(`📊 ${brandName} weight estimated: ${effectiveMishkalKolel}kg (gross)`);
             }
           }
         }
@@ -1006,7 +889,6 @@ const handleAddVehicleByPlate = async () => {
         // ============================================
         if (__DEV__) {
           console.log('\n🔧 ICE Calculation Input:');
-          console.log(`   misgeret (curb): ${effectiveMisgeret || 'N/A'}kg`);
           console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
           console.log(`   engineCC: ${cc || 'N/A'}cc`);
           console.log(`   year: ${parsed.year || 'N/A'}`);
@@ -1015,7 +897,7 @@ const handleAddVehicleByPlate = async () => {
 
         avgConsumption = calculateICEConsumptionEnhanced({
           mishkal_kolel: effectiveMishkalKolel,
-          misgeret: effectiveMisgeret,
+          // misgeret removed - not needed
           engineCC: cc,
           year: parsed.year,
           fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
@@ -1039,7 +921,7 @@ const handleAddVehicleByPlate = async () => {
         fueltype: parsed.fuelType,
         year: parsed.year ?? new Date().getFullYear(),
         mishkal_kolel: parsed.mishkal_kolel,
-        misgeret: parsed.misgeret,
+        // misgeret removed - unreliable field
       };
 
       if (__DEV__) {

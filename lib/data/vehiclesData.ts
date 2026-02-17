@@ -15,7 +15,8 @@ export interface Vehicle {
 
   // Weight data for improved consumption calculations
   mishkal_kolel?: number;  // Gross vehicle weight (kg) - from Israeli gov API
-  misgeret?: number;        // Curb weight (kg) - from Israeli gov API
+  /** @deprecated misgeret is unreliable in Israeli API (often contains VIN) - do not use */
+  misgeret?: number;
 }
 
 export interface CalculationResult {

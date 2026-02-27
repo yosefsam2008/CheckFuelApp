@@ -9,6 +9,9 @@
  * Fetch with timeout protection
  * Prevents indefinite hangs on slow networks
  */
+// הוסף את השורה הזו בראש הקובץ, מתחת ליבואים (Imports)
+const IS_DEV = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
+
 const fetchWithTimeout = async (
   url: string,
   options?: RequestInit,
@@ -76,13 +79,13 @@ const AERO_PARAMS: Record<VehicleType, { Cd: number; A: number; Crr: number }> =
 const THERMAL_EFFICIENCY_BASE = {
   gasoline: {
     baseYear: 2026,           // שנת בסיס (השנה הנוכחית)
-    baseEfficiency: 0.36,     // יעילות מקסימלית למנועי בנזין מודרניים
+    baseEfficiency: 0.21,     // יעילות ממוצעת מציאותית למנועי בנזין מודרניים (כ-17%)
     degradationPerYear: 0.003, // ירידה של 0.3% יעילות לכל שנה אחורה
-    minEfficiency: 0.26,      // יעילות מינימלית (רכבים ישנים מאוד)
+    minEfficiency: 0.12,      // יעילות מינימלית (רכבים ישנים/שחוקים מאוד)
   },
   diesel: {
     baseYear: 2026,           // שנת בסיס (השנה הנוכחית)
-    baseEfficiency: 0.42,     // יעילות מקסימליתני דיזל מודרניים
+    baseEfficiency: 0.22,     // דיזל יעיל יותר (כ-30% בעבודה משולבת)
     degradationPerYear: 0.0025, // דיזל מתדרדר לאט יותר (0.25% לשנה)
     minEfficiency: 0.32,      // יעילות מינימלית
   },
@@ -105,6 +108,42 @@ const CONSUMPTION_BOUNDS: Record<VehicleType, { min: number; max: number }> = {
 // UTILITY FUNCTIONS
 // ============================================================================
 
+/**
+ * Calculate engine displacement efficiency factor.
+ * Larger engines suffer from higher internal friction and pumping losses,
+ * regardless of the vehicle's weight.
+ */
+function getEngineDisplacementFactor(cc: number): number {
+// קטגוריה 1: מיקרו ועירוניות קטנות (למשל 1.0L בפיקנטו/אייגו) - 3 צילינדרים יעילים
+  if (cc <= 1050) return 1.08; 
+  
+  // קטגוריה 2: סופר-מיני (למשל 1.2L בפיג'ו 208, סוזוקי סוויפט)
+  if (cc <= 1250) return 1.12; 
+  
+  // קטגוריה 3: משפחתיות מודרניות מוקטנות (למשל 1.33L של רנו/מרצדס, 1.4L של קונצרן פולקסווגן)
+  if (cc <= 1450) return 1.11; 
+  
+  // קטגוריה 4: הסטנדרט החדש והישן (1.5L - 2.0L) - מנועים אופטימליים, ללא קנס וללא בונוס
+    if (cc <= 1800) return 1.1; 
+
+  // מכסה את הקורולה (1.5/1.8), מאזדה 3 (2.0), ספורטאז' וטוסון
+  if (cc <= 2050) return 1.00; 
+  
+  // קטגוריה 5: רכבי מנהלים/פנאי גדולים (למשל 2.4L אאוטלנדר, 2.5L ראב4) - ירידה קלה מאוד
+  if (cc <= 2550) return 0.97; 
+  
+  // קטגוריה 6: מנועי V6 או דיזל כבדים (למשל 2.8L לנד קרוזר, 3.0L אאודי/ב.מ.וו)
+  if (cc <= 3050) return 0.94; 
+  
+  // קטגוריה 7: רכבי שטח כבדים/ספורט (למשל 3.6L בראנגלר, 3.8L בפאליסייד)
+  if (cc <= 4050) return 0.90; 
+  
+  // קטגוריה 8: טנדרים כבדים אמריקאיים ומנועי V8 (למשל 5.0L מוסטנג, 5.7L בראם/צ'ירוקי)
+  if (cc <= 5800) return 0.86; 
+  
+  // קטגוריה 9: מפלצות קיצון (6.0L+ כמו סילברדו V8 כבד או סופר-קארס)
+  return 0.82;
+}
 /**
  * Safe integer parsing (returns undefined on invalid input)
  */
@@ -167,7 +206,7 @@ function extractAndAverageField(
   if (values.length > 0) {
     const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   📊 extractAndAverageField: Found ${values.length} valid ${fieldName} values`);
       console.log(`   Values: [${values.join(', ')}]`);
       console.log(`   Average (rounded): ${avg}`);
@@ -176,7 +215,7 @@ function extractAndAverageField(
     return avg;
   }
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`   ⚠️  extractAndAverageField: No valid ${fieldName} values in range [${min}, ${max}]`);
   }
 
@@ -190,7 +229,7 @@ function getThermalEfficiency(year: number | undefined, fuelType: 'Gasoline' | '
   const fuel = fuelType.toLowerCase() as 'gasoline' | 'diesel';
   const config = THERMAL_EFFICIENCY_BASE[fuel];
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n   🔬 Thermal Efficiency Calculation (${fuelType})`);
     console.log(`   Base year: ${config.baseYear}`);
     console.log(`   Base efficiency: ${(config.baseEfficiency * 100).toFixed(2)}%`);
@@ -207,7 +246,7 @@ function getThermalEfficiency(year: number | undefined, fuelType: 'Gasoline' | '
       config.baseEfficiency - (yearsDiff * config.degradationPerYear)
     );
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   ⚠️  No year provided - using default (10 years old)`);
       console.log(`   Default year: ${defaultYear}`);
       console.log(`   Degradation: ${yearsDiff} years × ${(config.degradationPerYear * 100).toFixed(2)}% = -${(yearsDiff * config.degradationPerYear * 100).toFixed(2)}%`);
@@ -222,7 +261,7 @@ function getThermalEfficiency(year: number | undefined, fuelType: 'Gasoline' | '
 
   // אם הרכב חדש יותר משנת הבסיס - תיתן את היעילות המקסימלית
   if (yearsDiff <= 0) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   Vehicle year: ${year} (newer or equal to base year)`);
       console.log(`   → Using maximum efficiency: ${(config.baseEfficiency * 100).toFixed(2)}%`);
     }
@@ -234,7 +273,7 @@ function getThermalEfficiency(year: number | undefined, fuelType: 'Gasoline' | '
   const finalEfficiency = Math.max(config.minEfficiency, calculatedEfficiency);
   const isAtMinimum = finalEfficiency === config.minEfficiency;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`   Vehicle year: ${year}`);
     console.log(`   Years difference: ${yearsDiff} years`);
     console.log(`   Degradation: ${yearsDiff} × ${(config.degradationPerYear * 100).toFixed(2)}% = -${(yearsDiff * config.degradationPerYear * 100).toFixed(2)}%`);
@@ -269,7 +308,7 @@ async function queryDataGovAPI(
     const filtersJson = JSON.stringify(filters);
     const url = `${DATA_GOV_IL_BASE}?resource_id=${resourceId}&filters=${encodeURIComponent(filtersJson)}&limit=${limit}`;
 
-    if (__DEV__) {  
+    if (IS_DEV) {  
       console.log(`   🔍 Querying fallback API with filters:`, filters);
       console.log(`   📡 URL:`, url);
     }
@@ -277,7 +316,7 @@ async function queryDataGovAPI(
     const response = await fetchWithTimeout(url, undefined, 10000);
 
     if (!response.ok) {
-      if (__DEV__) {
+      if (IS_DEV) {
         console.log(`   ❌ Fallback API returned status: ${response.status}`);
       }
       return [];
@@ -286,13 +325,13 @@ async function queryDataGovAPI(
     const json = await response.json();
     const records = json?.result?.records || [];
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   📊 Found ${records.length} matching records`);
     }
 
     return records;
   } catch (error) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.error(`   ❌ Fallback API query failed:`, error);
     }
     return [];
@@ -310,7 +349,7 @@ async function fetchWeightFromAPI(params: {
 }): Promise<number | undefined> {
   const { brand, model, degem_nm } = params;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log('\n   📦 WEIGHT API (ביטול סופי)');
     console.log(`   🔍 Search parameters: degem_nm="${degem_nm || 'N/A'}", brand="${brand || 'N/A'}", model="${model || 'N/A'}"`);
   }
@@ -319,7 +358,7 @@ async function fetchWeightFromAPI(params: {
   // STRATEGY 0: degem_nm ONLY (HIGHEST PRIORITY)
   // ========================================
   if (degem_nm) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`\n   📌 STRATEGY 0: Searching by degem_nm="${degem_nm}" ONLY`);
     }
 
@@ -337,23 +376,22 @@ async function fetchWeightFromAPI(params: {
       );
 
       if (avgWeight !== undefined) {
-        if (__DEV__) {
+        if (IS_DEV) {
           console.log(`   ✅ SUCCESS: Found weight for degem_nm "${degem_nm}"`);
           console.log(`   Average weight: ${avgWeight}kg`);
         }
-          const curb = Math.round(avgWeight * 0.9); // GVW → curb
-          return curb;
+          return avgWeight;
       }
     }
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   ❌ No valid weight found for degem_nm "${degem_nm}"`);
     }
   }
 
   // Strategy 1: brand + model (NO YEAR FILTER - to get more results)
   if (brand && model) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`\n   📌 STRATEGY 1: Searching by brand + model (no year filter)`);
     }
 
@@ -372,7 +410,7 @@ async function fetchWeightFromAPI(params: {
       );
 
       if (avgWeight !== undefined) {
-        if (__DEV__) {
+        if (IS_DEV) {
           console.log(`   ✅ SUCCESS: Found weight for ${brand} ${model}`);
           console.log(`   Average weight: ${avgWeight}kg`);
         }
@@ -380,7 +418,7 @@ async function fetchWeightFromAPI(params: {
       }
     }
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   ❌ No valid weight found for ${brand} ${model}`);
     }
   }
@@ -401,7 +439,7 @@ async function fetchEngineCCFromAPI(params: {
 }): Promise<number | undefined> {
   const { engineCode, brand, model, kinuyMishari, degem_nm } = params;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log('\n   🔧 ENGINE CC API (יבוא אישי)');
     console.log(`   🔍 Search parameters:`, { engineCode, brand, model, kinuyMishari, degem_nm });
   }
@@ -410,7 +448,7 @@ async function fetchEngineCCFromAPI(params: {
   // STRATEGY 0: degem_nm ONLY (NEW - HIGHEST PRIORITY)
   // ========================================
   if (degem_nm) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`\n   📌 STRATEGY 0: Searching by degem_nm="${degem_nm}"`);
     }
 
@@ -428,7 +466,7 @@ async function fetchEngineCCFromAPI(params: {
       );
 
       if (avgCC !== undefined) {
-        if (__DEV__) {
+        if (IS_DEV) {
           console.log(`   ✅ SUCCESS: Found CC for degem_nm "${degem_nm}"`);
           console.log(`   Average CC: ${avgCC}cc`);
         }
@@ -436,14 +474,14 @@ async function fetchEngineCCFromAPI(params: {
       }
     }
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   ❌ No valid CC found for degem_nm "${degem_nm}"`);
     }
   }
 
   // Strategy 1: Search by engine code (degem_manoa)
   if (engineCode) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`\n   📌 STRATEGY 1: Searching by engine code (degem_manoa)`);
       console.log(`   Search term: "${engineCode}"`);
     }
@@ -462,7 +500,7 @@ async function fetchEngineCCFromAPI(params: {
       );
 
       if (avgCC !== undefined) {
-        if (__DEV__) {
+        if (IS_DEV) {
           console.log(`   ✅ SUCCESS: Found CC for engine code "${engineCode}"`);
           console.log(`   Average CC: ${avgCC}cc`);
         }
@@ -470,7 +508,7 @@ async function fetchEngineCCFromAPI(params: {
       }
     }
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   ❌ No valid CC found for engine code "${engineCode}"`);
     }
   }
@@ -478,7 +516,7 @@ async function fetchEngineCCFromAPI(params: {
   // Strategy 2: Search by kinuy_mishari (commercial name like "CIVIC TOURER")
   // Uses full-text search (q parameter) since kinuy_mishari is not indexed for exact filtering
   if (kinuyMishari) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`\n   📌 STRATEGY 2: Searching by commercial name (kinuy_mishari)`);
       console.log(`   Search term: "${kinuyMishari}"`);
     }
@@ -486,7 +524,7 @@ async function fetchEngineCCFromAPI(params: {
     try {
       const url = `${DATA_GOV_IL_BASE}?resource_id=${ENGINE_CC_API_RESOURCE_ID}&q=${encodeURIComponent(kinuyMishari)}&limit=20`;
 
-      if (__DEV__) {
+      if (IS_DEV) {
         console.log(`   📡 Full-text search URL:`, url);
       }
 
@@ -505,7 +543,7 @@ async function fetchEngineCCFromAPI(params: {
           );
 
           if (avgCC !== undefined) {
-            if (__DEV__) {
+            if (IS_DEV) {
               console.log(`   ✅ SUCCESS: Found CC for kinuy_mishari "${kinuyMishari}"`);
               console.log(`   Average CC: ${avgCC}cc`);
             }
@@ -513,12 +551,12 @@ async function fetchEngineCCFromAPI(params: {
           }
         }
 
-        if (__DEV__) {
+        if (IS_DEV) {
           console.log(`   ❌ No valid CC found for kinuy_mishari "${kinuyMishari}"`);
         }
       }
     } catch (error) {
-      if (__DEV__) {
+      if (IS_DEV) {
         console.log(`   ❌ kinuy_mishari search failed:`, error);
       }
     }
@@ -526,7 +564,7 @@ async function fetchEngineCCFromAPI(params: {
 
   // Strategy 3: Search by brand + model
   if (brand && model) {
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`\n   📌 STRATEGY 3: Searching by brand + model`);
       console.log(`   Search terms: brand="${brand}", model="${model}"`);
     }
@@ -546,7 +584,7 @@ async function fetchEngineCCFromAPI(params: {
       );
 
       if (avgCC !== undefined) {
-        if (__DEV__) {
+        if (IS_DEV) {
           console.log(`   ✅ SUCCESS: Found CC for ${brand} ${model}`);
           console.log(`   Average CC: ${avgCC}cc`);
         }
@@ -554,12 +592,12 @@ async function fetchEngineCCFromAPI(params: {
       }
     }
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`   ❌ No valid CC found for ${brand} ${model}`);
     }
   }
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log('\n   ❌ FAILED: No engine CC found from any strategy');
   }
   return undefined;
@@ -584,7 +622,7 @@ export async function fetchFallbackVehicleData(params: {
 }): Promise<FallbackVehicleData | undefined> {
   const { brand, model, year, engineCode, plateNumber, kinuyMishari, degem_nm } = params;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log('\n🔄 FALLBACK APIs - Dual Search');
     console.log(`   degem_nm: ${degem_nm || 'N/A'}`);
     console.log(`   Brand: ${brand || 'N/A'}`);
@@ -605,13 +643,13 @@ export async function fetchFallbackVehicleData(params: {
     if (weight) result.mishkal_kolel = weight;
     if (engineCC) result.nefach_manoa = engineCC;
 
-    if (__DEV__) {
+    if (IS_DEV) {
       console.log(`\n   ✅ FALLBACK RESULT: weight=${weight || 'N/A'}kg, cc=${engineCC || 'N/A'}cc`);
     }
     return result;
   }
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log('\n   ❌ No fallback data found');
   }
   return undefined;
@@ -706,7 +744,7 @@ export function calculateEVConsumptionEnhanced(params: {
   // Default to typical compact EV if no weight data (e.g., Nissan Leaf, BYD Dolphin)
   const weight = effectiveWeight || 1600;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n⚡ ADVANCED EV CALCULATION`);
     console.log(`   Weight: ${weight}kg (${effectiveWeight ? 'measured' : 'estimated'})`);
     console.log(`   Year: ${year}`);
@@ -715,7 +753,7 @@ export function calculateEVConsumptionEnhanced(params: {
   // STEP 2: ESTIMATE AERODYNAMIC CHARACTERISTICS
   const aero = estimateAeroData(weight, year);
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`   Body Type: ${estimateBodyType(weight)}`);
     console.log(`   Drag Coefficient (Cd): ${aero.dragCoefficient.toFixed(3)}`);
     console.log(`   Frontal Area: ${aero.frontalArea.toFixed(2)} m²`);
@@ -743,7 +781,7 @@ export function calculateEVConsumptionEnhanced(params: {
   // Component 4: Auxiliary systems
   const auxiliaryEnergyKwh = 1.0;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n   Energy Components (at wheels):`);
     console.log(`   - Rolling Resistance: ${rollingEnergyKwh.toFixed(2)} kWh/100km`);
     console.log(`   - Aerodynamic Drag: ${dragEnergyKwh.toFixed(2)} kWh/100km`);
@@ -760,7 +798,7 @@ export function calculateEVConsumptionEnhanced(params: {
   const REGEN_RECOVERY = 0.20;
   totalEnergyKwh = energyFromBattery * (1 - REGEN_RECOVERY);
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`   - After System Losses: ${energyFromBattery.toFixed(2)} kWh/100km`);
     console.log(`   - After Regen Recovery (${(REGEN_RECOVERY * 100).toFixed(0)}%): ${totalEnergyKwh.toFixed(2)} kWh/100km`);
   }
@@ -771,7 +809,7 @@ export function calculateEVConsumptionEnhanced(params: {
   const degradationPercent = Math.min(vehicleAge / 10, 1.0) * 0.10;
   totalEnergyKwh *= (1 + degradationPercent);
 
-  if (__DEV__ && vehicleAge > 0) {
+  if (IS_DEV && vehicleAge > 0) {
     console.log(`   - Battery Degradation (${vehicleAge}y): +${(degradationPercent * 100).toFixed(1)}%`);
   }
 
@@ -781,7 +819,7 @@ export function calculateEVConsumptionEnhanced(params: {
   const kwhPerKm = parseFloat((kwhPer100Km / 100).toFixed(4));
   const kmPerKwh = parseFloat((100 / kwhPer100Km).toFixed(2));
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n   ✅ FINAL RESULT: ${kwhPer100Km} kWh/100km (${kmPerKwh} km/kWh)`);
     console.log(`   kWh/km: ${kwhPerKm} (for AddVehicleByPlate compatibility)\n`);
   }
@@ -797,8 +835,8 @@ export function calculateEVConsumptionEnhanced(params: {
  *
  * SIMPLIFIED STRATEGY:
  * - Israeli API's 'misgeret' field is unreliable (contains VIN codes)
- * - Use only mishkal_kolel and convert using accurate 0.85 multiplier
- * - If no API data: return undefined (will trigger estimation by brand/model)
+* - Use only mishkal_kolel and convert using accurate 0.73 multiplier * 
+* - If no API data: return undefined (will trigger estimation by brand/model)
  *
  * @param mishkal_kolel - Gross vehicle weight (kg) from API
  * @param misgeret - DEPRECATED: Not used (kept for backward compatibility)
@@ -810,10 +848,10 @@ export function getEffectiveWeight(
 ): number | undefined {
 
   if (mishkal_kolel) {
-    const effectiveWeight = mishkal_kolel * 0.9;
+    const effectiveWeight = mishkal_kolel * 0.73;
     
-    if (__DEV__) {
-      console.log(`📐 Weight calculation: ${mishkal_kolel}kg × 0.95 = ${effectiveWeight.toFixed(0)}kg`);
+    if (IS_DEV) {
+      console.log(`📐 Weight calculation: ${mishkal_kolel}kg × 0.73 = ${effectiveWeight.toFixed(0)}kg`);
     }
 
     return Math.round(effectiveWeight);
@@ -854,7 +892,7 @@ export function calculateICEConsumptionEnhanced(params: {
 }): number {
   const { fuelType, vehicleType = 'car' } = params;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log('\n🔧 ADVANCED ICE PHYSICS CALCULATION');
     console.log('═══════════════════════════════════════');
   }
@@ -873,7 +911,7 @@ export function calculateICEConsumptionEnhanced(params: {
 
   const weight = effectiveWeight || defaultWeights[vehicleType];
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n📊 STEP 1: Weight Determination`);
     console.log(`   mishkal_kolel: ${params.mishkal_kolel || 'N/A'}kg`);
     console.log(`   Effective weight: ${weight}kg (${effectiveWeight ? 'calculated' : 'default'})`);
@@ -896,7 +934,7 @@ export function calculateICEConsumptionEnhanced(params: {
     ccSource = `estimated from weight (${weight}kg × 0.9)`;
   }
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n📊 STEP 2: Engine CC Determination`);
     console.log(`   Provided CC from API: ${params.engineCC || 'N/A'}cc`);
     if (!params.engineCC || params.engineCC <= 0) {
@@ -912,7 +950,7 @@ export function calculateICEConsumptionEnhanced(params: {
   // ============================================
   const aero = AERO_PARAMS[vehicleType];
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n📊 STEP 3: Aerodynamic Parameters`);
     console.log(`   Drag coefficient (Cd): ${aero.Cd}`);
     console.log(`   Frontal area (A): ${aero.A} m²`);
@@ -945,9 +983,9 @@ export function calculateICEConsumptionEnhanced(params: {
   // Accounts for: multiple cycles, kinetic energy, braking losses, drivetrain friction
   // Values derived from EPA/WLTP test cycle analysis
   const accelFactor: Record<VehicleType, number> = {
-    motorcycle: 8.5,   // Lighter vehicle, more aggressive riding style, frequent stops
-    car: 12.0,         // Mixed urban/highway driving, moderate acceleration
-    truck: 10.0,       // Heavier vehicle, fewer stops, gentler acceleration
+   motorcycle: 10.0,  // Aggressive riding, poor aerodynamics relatively
+    car: 14.5,         // Real-world stop-and-go traffic penalty
+    truck: 12.0,       // Heavy momentum to overcome
   };
   const accelerationEnergyMJ = (weight / 1000) * accelFactor[vehicleType];
 
@@ -955,15 +993,20 @@ export function calculateICEConsumptionEnhanced(params: {
   // ICE vehicles consume extra fuel for: alternator, A/C, power steering, water pump, oil pump
   // Typical range: 10-15% of mechanical energy
   const auxiliaryFactor: Record<VehicleType, number> = {
-    motorcycle: 0.08,  // Minimal accessories (lights, ignition)
-    car: 0.12,         // Full accessories (A/C, alternator, power steering, etc.)
-    truck: 0.15,       // Heavy-duty accessories (air brakes, larger alternator)
+    motorcycle: 0.05,  // Minimal
+    car: 0.14,         // Full A/C, infotainment, lights
+    truck: 0.18,       // Heavy-duty accessories (air brakes, larger alternator)
   };
   const auxiliaryEnergyMJ = (rollingEnergyMJ + dragEnergyMJ + accelerationEnergyMJ) * auxiliaryFactor[vehicleType];
 
-  const totalEnergyMJ = rollingEnergyMJ + dragEnergyMJ + accelerationEnergyMJ + auxiliaryEnergyMJ;
+  // Base energy required at wheels
+  let totalEnergyMJ = rollingEnergyMJ + dragEnergyMJ + accelerationEnergyMJ + auxiliaryEnergyMJ;
+  
+  // Drivetrain & transmission losses (~10-15% lost between engine output and wheels)
+  const DRIVETRAIN_EFFICIENCY = 0.88; // 88% of power reaches the wheels
+  totalEnergyMJ = totalEnergyMJ / DRIVETRAIN_EFFICIENCY;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n📊 STEP 4: Energy Components (MJ/100km)`);
     console.log(`   Rolling resistance: ${rollingEnergyMJ.toFixed(2)} MJ`);
     console.log(`   Aerodynamic drag: ${dragEnergyMJ.toFixed(2)} MJ`);
@@ -977,7 +1020,7 @@ export function calculateICEConsumptionEnhanced(params: {
   // ============================================
   const baseEfficiency = getThermalEfficiency(params.year, fuelType);
 
-  if (__DEV__) {
+  if (IS_DEV) {
   const BASE_YEAR = 2026;
   const DEG_PER_YEAR = fuelType === 'Diesel' ? 0.25 : 0.30;
 
@@ -1019,16 +1062,21 @@ export function calculateICEConsumptionEnhanced(params: {
     }
   }
 
-  const finalEfficiency = baseEfficiency * efficiencyMultiplier;
+ // החישוב החדש: הוספת מקדם נפח המנוע (Friction & Pumping losses)
+  const displacementFactor = getEngineDisplacementFactor(estimatedCC);
+  const totalMultiplier = efficiencyMultiplier * displacementFactor;
+  
+  const finalEfficiency = baseEfficiency * totalMultiplier;
 
   if (__DEV__) {
-    console.log(`\n📊 STEP 6: Power-to-Weight Adjustment`);
+    console.log(`\n📊 STEP 6: Power-to-Weight & Displacement Adjustment`);
     console.log(`   Expected CC for ${weight}kg: ${expectedCC.toFixed(0)}cc (formula: weight × 0.9)`);
     console.log(`   Actual CC used: ${estimatedCC}cc (${ccSource})`);
     console.log(`   CC ratio: ${ccRatio.toFixed(2)} ${ccRatio > 1.3 ? '(oversized ⚠️)' : ccRatio < 0.8 ? '(undersized ⚠️)' : '(optimal ✅)'}`);
-    console.log(`   Adjustment: ${adjustmentReason}`);
+    console.log(`   Weight adjustment: ${adjustmentReason} (${efficiencyMultiplier.toFixed(2)}x)`);
+    console.log(`   Displacement factor (${estimatedCC}cc): ${displacementFactor.toFixed(2)}x`);
+    console.log(`   Total combined multiplier: ${totalMultiplier.toFixed(2)}x`);
     console.log(`   Base efficiency: ${(baseEfficiency * 100).toFixed(2)}%`);
-    console.log(`   Efficiency multiplier: ${efficiencyMultiplier.toFixed(2)}`);
     console.log(`   ✅ Final thermal efficiency: ${(finalEfficiency * 100).toFixed(2)}%`);
   }
 
@@ -1041,7 +1089,7 @@ export function calculateICEConsumptionEnhanced(params: {
   const fuelLitersPer100Km = totalEnergyMJ / (fuelEnergyMJ * finalEfficiency);
   let kmPerL = 100 / fuelLitersPer100Km;
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log(`\n📊 STEP 7: Fuel Calculation`);
     console.log(`   Fuel energy content: ${fuelEnergyMJ} MJ/L`);
     console.log(`   Fuel needed: ${fuelLitersPer100Km.toFixed(2)} L/100km`);
@@ -1054,13 +1102,13 @@ export function calculateICEConsumptionEnhanced(params: {
   const bounds = CONSUMPTION_BOUNDS[vehicleType];
   const finalKmPerL = Math.max(bounds.min, Math.min(bounds.max, kmPerL));
 
-  if (finalKmPerL !== kmPerL && __DEV__) {
+  if (finalKmPerL !== kmPerL && IS_DEV) {
     console.log(`\n📊 STEP 8: Bounds Applied`);
     console.log(`   Bounds for ${vehicleType}: ${bounds.min}-${bounds.max} km/L`);
     console.log(`   Adjusted from ${kmPerL.toFixed(2)} to ${finalKmPerL.toFixed(2)} km/L`);
   }
 
-  if (__DEV__) {
+  if (IS_DEV) {
     console.log('\n═══════════════════════════════════════');
     console.log(`✅ FINAL RESULT: ${finalKmPerL.toFixed(2)} km/L`);
     console.log(`   (${(100 / finalKmPerL).toFixed(2)} L/100km)`);

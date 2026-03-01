@@ -887,21 +887,39 @@ const handleAddVehicleByPlate = async () => {
         // ============================================
         // PHASE 4: ADVANCED PHYSICS CALCULATION
         // ============================================
+
+        // 🔥 זיהוי רכב היברידי משופר (לוכד גם היברידיות סמויות)
+        const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
+        const engineStr = found.record.degem_manoa ? String(found.record.degem_manoa).toUpperCase() : '';
+
+        // 1. זיהוי רגיל לפי שם מפורש
+        const isExplicitHybrid = modelStr.includes('HYBRID') || modelStr.includes('HEV') || modelStr.includes('PHEV') || modelStr.includes('HSD');
+
+        // 2. זיהוי לפי דגמים שהם תמיד היברידיים בישראל
+        const isKnownHybridModel = ['IONIQ', 'NIRO', 'PRIUS', 'COROLLA CROSS', 'C-HR', 'YARIS CROSS'].some(m => modelStr.includes(m));
+
+        // 3. זיהוי לפי קודי מנוע קלאסיים של מערכות היברידיות (2ZR של טויוטה, G4LE של יונדאי/קיה)
+        const isKnownHybridEngine = ['2ZR', 'G4LE'].includes(engineStr);
+
+        // אם אחד מהתנאים מתקיים - הרכב היברידי
+        const isHybridCar = isExplicitHybrid || isKnownHybridModel || isKnownHybridEngine;
+
         if (__DEV__) {
           console.log('\n🔧 ICE Calculation Input:');
           console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
           console.log(`   engineCC: ${cc || 'N/A'}cc`);
           console.log(`   year: ${parsed.year || 'N/A'}`);
           console.log(`   fuelType: ${parsed.fuelType}`);
+          console.log(`   isHybrid: ${isHybridCar ? 'YES 🔋' : 'NO'}`);
         }
 
         avgConsumption = calculateICEConsumptionEnhanced({
           mishkal_kolel: effectiveMishkalKolel,
-          // misgeret removed - not needed
           engineCC: cc,
           year: parsed.year,
           fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
           vehicleType: found.type,
+          isHybrid: isHybridCar, // <-- מעבירים את הנתון לפונקציית הפיזיקה
         });
 
         if (__DEV__) {

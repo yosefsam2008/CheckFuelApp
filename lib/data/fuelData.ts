@@ -152,33 +152,19 @@ const AERO_PARAMS: Record<VehicleType, { Cd: number; A: number; Crr: number }> =
 
 
 // Engine thermal efficiency - base values for reference years
-
 const THERMAL_EFFICIENCY_BASE = {
-
   gasoline: {
-
-    baseYear: 2026,           // שנת בסיס (השנה הנוכחית)
-
-    baseEfficiency: 0.19,     // יעילות ממוצעת מציאותית למנועי בנזין מודרניים (כ-19 %)
-
-    degradationPerYear: 0.0025, // ירידה של 0.25% יעילות לכל שנה אחורה
-
-    minEfficiency: 0.12,      // יעילות מינימלית (רכבים ישנים/שחוקים מאוד)
-
+    baseYear: 2026,           // Base year
+    baseEfficiency: 0.215,     // Average efficiency for modern gasoline engines (~19% combined)
+    degradationPerYear: 0.0025, // Loss of 0.25% efficiency per year
+    minEfficiency: 0.14,      // Minimum efficiency floor
   },
-
   diesel: {
-
-    baseYear: 2026,           // שנת בסיס (השנה הנוכחית)
-
-    baseEfficiency: 0.22,     // דיזל יעיל יותר (כ-30% בעבודה משולבת)
-
-    degradationPerYear: 0.0025, // דיזל מתדרדר לאט יותר (0.25% לשנה)
-
-    minEfficiency: 0.32,      // יעילות מינימלית
-
+    baseYear: 2026,           // Base year
+    baseEfficiency: 0.36,     // CORRECTED: Diesels are much more efficient (~36% combined)
+    degradationPerYear: 0.0020, // Diesels degrade slightly slower than gasoline (0.20% per year)
+    minEfficiency: 0.25,      // CORRECTED: Minimum efficiency floor for old diesels
   },
-
 };
 
 
@@ -257,20 +243,15 @@ function getEngineDisplacementFactor(cc: number): number {
   if (cc <= 2550) return 0.97; 
 
   // קטגוריה 7: מנועי V6 או דיזל כבדים (עד 3.0L)
-
-  if (cc <= 3050) return 0.92; 
-
-  // קטגוריה 8: רכבי שטח כבדים/ספורט (עד 4.0L)
-
-  if (cc <= 4050) return 0.86; 
-
-  // קטגוריה 9: טנדרים כבדים אמריקאיים ומנועי V8 (עד 5.8L)
-
-  if (cc <= 5800) return 0.81; 
-
-  // קטגוריה 10: מפלצות קיצון (6.0L+)
-
-  return 0.78;
+    if (cc <= 3050) return 0.92; 
+    // קטגוריה 8: רכבי שטח כבדים/ספורט (עד 4.0L)
+    if (cc <= 4050) return 0.86; 
+    // קטגוריה 9: מנועי V8 בינוניים (עד 5.2L)
+    if (cc <= 5200) return 0.80; 
+    // קטגוריה 10: טנדרים כבדים אמריקאיים (Heavy Duty) מנועי דיזל עצומים (עד 6.8L)
+    if (cc <= 6800) return 0.68; // Massive drop to account for huge internal friction/rotational mass (e.g., Cummins 6.7)
+    // קטגוריה 11: מפלצות קיצון (7.0L+)
+    return 0.60;
 
 }
 
@@ -1664,22 +1645,31 @@ export function calculateEVConsumptionEnhanced(params: {
 
 export function getEffectiveWeight(
   mishkal_kolel?: number,
-  isEV: boolean = false
+  isEV: boolean = false,
+  vehicleType: VehicleType = 'car'
 ): number | undefined {
   if (mishkal_kolel) {
-    // 0.85 לרכב חשמלי (סוללה כבדה), 0.76 לרכב רגיל
-    const multiplier = isEV ? 0.85 : 0.76;
-    const effectiveWeight = mishkal_kolel * multiplier;
+    let effectiveWeight: number;
+
+    if (vehicleType === 'motorcycle') {
+      // אופנוע: משקל כולל פחות 150 ק"ג (מטען מורשה ממוצע: שני רוכבים) + 80 ק"ג (רוכב יחיד ממוצע)
+      // מינימום 120 ק"ג כדי לשמור על היגיון פיזיקלי גם לכלים קלים
+      effectiveWeight = Math.max(120, mishkal_kolel - 70);
+    }
+    else {
+      // רכב פרטי / משאית
+      const multiplier = isEV ? 0.85 : 0.76;
+      effectiveWeight = mishkal_kolel * multiplier;
+    }
     
     if (IS_DEV) {
-      console.log(`📐 Weight calculation: ${mishkal_kolel}kg × ${multiplier} = ${effectiveWeight.toFixed(0)}kg`);
+      console.log(`📐 Weight calculation: ${mishkal_kolel}kg → ${effectiveWeight.toFixed(0)}kg (type: ${vehicleType})`);
     }
 
     return Math.round(effectiveWeight);
   }
   return undefined;
 }
-
 
 
 // ============================================================================
@@ -1751,13 +1741,10 @@ export function calculateICEConsumptionEnhanced(params: {
 
 
 
-  // ============================================
-
+// ============================================
   // STEP 1: DETERMINE EFFECTIVE WEIGHT
-
   // ============================================
-
-  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, false);
+  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, false, vehicleType);
 
 
 
@@ -1870,7 +1857,7 @@ const aero = { ...AERO_PARAMS[vehicleType] };
       aero.Cd = 0.33;
       aero.Crr = 0.010;
     } 
-    else {
+else {
       // משפחתיות וסדאן (כמו הונדה סיוויק, טויוטה קורולה)
       // המבנה הארוך והנמוך חותך את האוויר הכי טוב
       aero.A = 2.30;   
@@ -1879,6 +1866,41 @@ const aero = { ...AERO_PARAMS[vehicleType] };
     }
   }
 
+  // >>> התוספת שלנו לאופנועים: <<<
+  if (vehicleType === 'motorcycle') {
+    // זיהוי חכם של תצורת האופנוע לפי יחס המשקל והנפח
+    if (weight > 220 && estimatedCC > 600) {
+      // אדוונצ'ר / תיור (כבד, גבוה, ארגזי צד) - שטח חזיתי וגרר גדולים
+      aero.Cd = 0.55; 
+      aero.A = 0.70;
+    } else if (weight < 210 && estimatedCC > 550) {
+      // אופנוע ספורט (קל, מנוע גדול, פיירינג שחותך אוויר מצוין)
+      aero.Cd = 0.45; 
+      aero.A = 0.55;
+    } else {
+      // נייקד / קטנועים / קלאסי (הרוכב חשוף ומשמש "מפרש")
+      aero.Cd = 0.60; 
+      aero.A = 0.65;
+    }
+  }
+  // >>> סוף התוספת לאופנועים <<<
+  // >>> תוספת אווירודינמיקה חכמה למשאיות ומסחריות <<<
+  if (vehicleType === 'truck') {
+    if (weight < 4000) {
+      // מסחריות וטנדרים (כמו שברולט סילברדו, פיאט דוקאטו)
+      aero.A = 3.5;
+      aero.Cd = 0.42;
+    } else if (weight < 10000) {
+      // משאיות חלוקה בינוניות עם ארגז (כמו איווקו 7 טון, איסוזו סומו) - התנגדות אוויר גדולה
+      aero.A = 5.5;
+      aero.Cd = 0.55;
+    } else {
+      // משאיות כבדות / סמי-טריילר
+      aero.A = 8.0;
+      aero.Cd = 0.65;
+    }
+  }
+  // >>> סוף תוספת משאיות <<<
 
   if (IS_DEV) {
 
@@ -1909,15 +1931,10 @@ const aero = { ...AERO_PARAMS[vehicleType] };
 
 
   // Average speed varies by vehicle type
-
   const avgSpeedKmh: Record<VehicleType, number> = {
-
-    motorcycle: 60,
-
-    car: 50,
-
-    truck: 45,
-
+    motorcycle: 75,
+    car: 75,
+    truck: 50,
   };
 
   const avgSpeedMs = avgSpeedKmh[vehicleType] / 3.6;
@@ -1939,19 +1956,12 @@ const aero = { ...AERO_PARAMS[vehicleType] };
 
 
   // Acceleration energy calibrated from real-world driving data
-
   // Accounts for: multiple cycles, kinetic energy, braking losses, drivetrain friction
-
   // Values derived from EPA/WLTP test cycle analysis
-
   const accelFactor: Record<VehicleType, number> = {
-
    motorcycle: 10.0,  // Aggressive riding, poor aerodynamics relatively
-
-    car: 14.5,         // Real-world stop-and-go traffic penalty
-
-    truck: 12.0,       // Heavy momentum to overcome
-
+    car: 12.5,        // Real-world stop-and-go traffic penalty
+    truck: 12.2,       // Heavy momentum to overcome
   };
 
   const accelerationEnergyMJ = (weight / 1000) * accelFactor[vehicleType];
@@ -1965,14 +1975,10 @@ const aero = { ...AERO_PARAMS[vehicleType] };
   // Typical range: 10-15% of mechanical energy
 
   const auxiliaryFactor: Record<VehicleType, number> = {
-
-    motorcycle: 0.05,  // Minimal
-
+    motorcycle: 0.10,  
     car: 0.14,         // Full A/C, infotainment, lights
-
     truck: 0.18,       // Heavy-duty accessories (air brakes, larger alternator)
-
-  };
+    };
 
   const auxiliaryEnergyMJ = (rollingEnergyMJ + dragEnergyMJ + accelerationEnergyMJ) * auxiliaryFactor[vehicleType];
 
@@ -2052,22 +2058,53 @@ const aero = { ...AERO_PARAMS[vehicleType] };
 
 
 
-  // ============================================
+// ============================================
   // STEP 6: POWER-TO-WEIGHT & TECH ADJUSTMENT
   // ============================================
 
-  const expectedCC = weight < 1200 ? weight * 1.15 : weight * 0.9;
+  let expectedCC: number;
+  if (vehicleType === 'motorcycle') {
+    expectedCC = weight * 2.5; // אופנועים צריכים הרבה יותר סמ"ק פר קילו
+  } else if (vehicleType === 'truck') {
+    // משאיות מסתמכות על יחסי העברה נמוכים ומומנט מטורבו, לא על נפח עצום. 
+    // מנוע 3.0L תוכנן בדיוק למשאית 7 טון. לכן הנוסחה מתאימה את עצמה לעולם המסחרי.
+    expectedCC = 1500 + (weight * 0.35); 
+  } else {
+    expectedCC = weight < 1200 ? weight * 1.15 : weight * 0.9;
+  }
+  
   const ccRatio = estimatedCC / expectedCC;
 
   let efficiencyMultiplier = 1.0;
   let adjustmentReason = 'Optimal engine-to-weight ratio';
 
-  if (ccRatio > 1.55) { // עודכן מקודם כדי לא להעניש מנועי 1.8 סטנדרטיים
-    efficiencyMultiplier = 0.95;
-    adjustmentReason = 'Oversized engine penalty (-5%)';
-  } else if (ccRatio < 0.8) {
-    efficiencyMultiplier = 0.92;
-    adjustmentReason = 'Undersized engine working hard (-8%)';
+  if (vehicleType !== 'motorcycle') {
+    if (ccRatio > 2.0) {
+      efficiencyMultiplier = 0.88; 
+      adjustmentReason = 'Massively oversized engine penalty (-12%)';
+    } else if (ccRatio > 1.55) {
+      efficiencyMultiplier = 0.95;
+      adjustmentReason = 'Oversized engine penalty (-5%)';
+    } else if (ccRatio < 0.8) {
+      efficiencyMultiplier = 0.92;
+      adjustmentReason = 'Undersized engine working hard (-8%)';
+    }
+} else { // vehicleType === 'motorcycle'
+    // אופנועי ספורט מרובעי צילינדרים עובדים בסל"ד גבוה מאוד (מעל 6000 בשיוט) ומאבדים המון יעילות תרמית.
+    // מנועי קטנועים וטווינים קטנים רגועים יותר.
+    if (estimatedCC > 550 && weight < 230) {
+      // אופנועי ספורט/נייקד (מנוע גדול על משקל קל)
+      efficiencyMultiplier *= 0.55; 
+      adjustmentReason = 'Sport Motorcycle High-RPM penalty (-45%)';
+    } else if (estimatedCC > 900 && weight >= 230) {
+      // אדוונצ'ר או ספורט-תיור כבדים גדולים (למשל BMW GS, אפריקה טווין)
+      efficiencyMultiplier *= 0.60;
+      adjustmentReason = 'Heavy Motorcycle drag & RPM penalty (-40%)';
+    } else {
+      // קטנועים, אופנועי מתחילים (A1), נייקדים קטנים (כמו Voge 500)
+      efficiencyMultiplier *= 0.65; 
+      adjustmentReason = 'Standard Motorcycle RPM penalty (-35%)';
+    }
   }
 
   if (
@@ -2082,8 +2119,8 @@ const aero = { ...AERO_PARAMS[vehicleType] };
   }
 
   if (params.isHybrid) {
-    efficiencyMultiplier *= 1.56; // תוספת של 65% ליעילות המערכת (מבטל את קנס המשקל של הסוללות)
-    adjustmentReason += ' + Hybrid System Synergy (1.65x)';
+    efficiencyMultiplier *= 1.80; // תוספת של 80% ליעילות המערכת (מבטל את קנס המשקל של הסוללות)
+    adjustmentReason += ' + Hybrid System Synergy (1.80x)';
   }
 
   const displacementFactor = getEngineDisplacementFactor(estimatedCC);

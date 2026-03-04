@@ -98,9 +98,9 @@ function parseFloatSafeLocal(value: any): number | undefined {
   if (Number.isFinite(n)) {
     // If this looks like weight data, validate the range
     const isWeightField = str.length >= 3 && n >= 100;
-    if (isWeightField && (n < 500 || n > 10000)) {
+    if (isWeightField && (n < 80 || n > 15000)) {
       if (__DEV__) {
-        console.warn(`Invalid weight value detected: ${n}kg (outside 500-10000kg range)`);
+        console.warn(`Invalid weight value detected: ${n}kg (outside 80-15000kg range)`);
       }
       return undefined;
     }

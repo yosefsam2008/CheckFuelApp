@@ -125,11 +125,11 @@ export function estimateAeroData(params: {
       // Compact/Small EVs (e.g., Nissan Leaf, VW ID.3)
       Cd = 0.28;
       frontalArea = 2.2;
-    } else if (weight < 1800) {
+    } else if (weight < 2050) {
       // Mid-size EVs (e.g., Tesla Model 3, Hyundai Ioniq 5)
-      Cd = 0.27;
-      frontalArea = 2.4;
-    } else if (weight < 2200) {
+      Cd = 0.28;
+      frontalArea = 2.55;
+    } else if (weight < 2400) {
       // Large/SUV EVs (e.g., Tesla Model X, Audi e-tron)
       Cd = 0.30;
       frontalArea = 2.8;
@@ -296,7 +296,7 @@ export function calculateEVPhysics(params: {
   // ========================================
   const g = 9.81;              // m/s² - gravitational acceleration
   const rho = 1.225;           // kg/m³ - air density at sea level
-  const Crr = 0.007;           // Rolling resistance coefficient (EV low-resistance tires)
+  const Crr = 0.008;           // Rolling resistance coefficient (EV low-resistance tires)
   const velocityMS = avgSpeed / 3.6; // Convert km/h to m/s
 
   // ========================================
@@ -319,16 +319,16 @@ export function calculateEVPhysics(params: {
   const dragForce = 0.5 * rho * Cd * frontalArea * Math.pow(velocityMS, 2); // Newtons
   const dragEnergyPer100Km = (dragForce * 100000) / 3600000; // kWh/100km
 
-  // ========================================
+// ========================================
   // 3. AUXILIARY POWER
   // ========================================
-  // HVAC: 1.2 kW average (heating/cooling - moderate climate)
+  // HVAC: Adjusted for Israeli climate (significant AC usage)
   // Electronics: 0.3 kW (computers, displays, lights)
-  // צריכת חשמל נוספת: מיזוג אוויר + אלקטרוניקה
+  // צריכת חשמל נוספת: מיזוג אוויר (ישראל) + אלקטרוניקה
 
-  const hvacPower = 0.9;        // kW
+  const hvacPower = 1.2;       
   const electronicsPower = 0.3; // kW
-  const totalAuxPower = hvacPower + electronicsPower; // kW
+  const totalAuxPower = hvacPower + electronicsPower; // kW (סה"כ 2.3kW)
 
   // Time to travel 100km at avgSpeed
   const timeHours = 100 / avgSpeed; // hours
@@ -346,7 +346,7 @@ export function calculateEVPhysics(params: {
   const motorEfficiency = 0.92;
   const inverterEfficiency = 0.96;
   const batteryEfficiency = 0.94;
-  const regenSavings = 0.20; // 20% energy recovery ✅
+  const regenSavings = 0.25; // 25% energy recovery
 
   const totalEfficiency =
     motorEfficiency *
@@ -420,24 +420,21 @@ export function applyBatteryDegradation(
 
   let totalDegradation = 0;
 
-  // Years 0-3: 0.5% per year
+// בלאי סוללה משפיע בעיקר על הקיבולת הכוללת (טווח) ופחות על צריכת המנוע (kWh/km)
+  // לכן הקנס הופחת משמעותית כדי למנוע הטיה בצריכה.
+  
+  // Years 0-3: 0.2% per year
   const phase1Years = Math.min(vehicleAge, 3);
-  totalDegradation += phase1Years * 0.005;
+  totalDegradation += phase1Years * 0.002;
 
-  // Years 4-7: 1.0% per year
+  // Years 4+: 0.4% per year
   if (vehicleAge > 3) {
-    const phase2Years = Math.min(vehicleAge - 3, 4);
-    totalDegradation += phase2Years * 0.010;
+    const phase2Years = vehicleAge - 3;
+    totalDegradation += phase2Years * 0.004;
   }
 
-  // Years 8+: 1.5% per year
-  if (vehicleAge > 7) {
-    const phase3Years = vehicleAge - 7;
-    totalDegradation += phase3Years * 0.015;
-  }
-
-  // Cap at 15% total degradation
-  totalDegradation = Math.min(totalDegradation, 0.15);
+  // Cap at 4% total degradation for efficiency (NOT capacity)
+  totalDegradation = Math.min(totalDegradation, 0.04);
   
 
   const adjustedConsumption = baseConsumption * (1 + totalDegradation);
@@ -506,7 +503,7 @@ export async function calculateEVConsumptionAdvanced(params: {
   // ========================================
 
   // Step 1: Get or estimate weight
-  let weight = getEffectiveWeight(params.mishkal_kolel);
+  let weight = getEffectiveWeight(params.mishkal_kolel, true); 
 
   if (!weight) {
     // Try to estimate from brand/model
@@ -611,7 +608,7 @@ export function calculateEVConsumptionEnhanced(params: {
   // misgeret removed - unreliable
   year?: number;
 }): { kwhPer100Km: number; kmPerKwh: number } {
-  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel);
+  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, true); // העברת true מפעילה את המכפיל 0.85
 
   let kwhPer100Km: number;
 

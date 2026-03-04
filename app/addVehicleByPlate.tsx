@@ -798,24 +798,71 @@ const handleAddVehicleByPlate = async () => {
       let kwhPerKm: number | undefined;
       let avgConsumption: number | undefined = undefined;
 
+      // 1. משתנים בסיסיים - שולפים CC רק אם זה לא רכב חשמלי
+      let effectiveMishkalKolel = parsed.mishkal_kolel;
+      let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
+
+      // ============================================
+      // PHASE 2: FALLBACK API FOR MISSING DATA (לכל הרכבים!)
+      // ============================================
+      const needsFallbackWeight = !effectiveMishkalKolel;
+      const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
+
+      if (needsFallbackWeight || needsFallbackCC) {
+        if (__DEV__) {
+          console.log('\n🔄 Missing data - trying fallback API...');
+        }
+
+        const fallbackData = await fetchFallbackVehicleData({
+          brand: parsed.brand,
+          model: parsed.model,
+          year: parsed.year,
+          engineCode: found.record.degem_manoa,
+          plateNumber: plateTrimmed,
+          degem_nm: found.degem_nm,
+          isElectric: parsed.fuelType === "Electric",
+        });
+
+        if (fallbackData) {
+          if (needsFallbackWeight && fallbackData.mishkal_kolel) {
+            effectiveMishkalKolel = fallbackData.mishkal_kolel;
+            if (__DEV__) console.log(`   ✅ Weight from fallback: ${effectiveMishkalKolel}kg`);
+          }
+          if (needsFallbackCC && fallbackData.nefach_manoa) {
+            cc = fallbackData.nefach_manoa;
+            if (__DEV__) console.log(`   ✅ CC from fallback: ${cc}cc`);
+          }
+        }
+      }
+
+      // ============================================
+      // PHASE 3: BRAND/MODEL WEIGHT ESTIMATION
+      // ============================================
+      if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
+        const estimatedWeight = estimateVehicleWeight(parsed.brand, parsed.model, parsed.year);
+        if (estimatedWeight) {
+          effectiveMishkalKolel = estimatedWeight.gross;
+          if (__DEV__) console.log(`📊 Weight estimated from DB: ${effectiveMishkalKolel}kg (gross)`);
+        }
+      }
+
+      // ============================================
+      // PHASE 4: SPLIT BY FUEL TYPE FOR FINAL CALCULATION
+      // ============================================
       if (parsed.fuelType === "Electric") {
-        if (__DEV__) {
-          console.log('⚡ Electric vehicle');
-        }
+        if (__DEV__) console.log('⚡ Electric vehicle calculation...');
         
-      const evData = await calculateEVConsumptionAdvanced({
-        brand: parsed.brand,
-        model: parsed.model,
-        year: parsed.year || new Date().getFullYear(),
-        vehicleType: found.type,
-        mishkal_kolel: parsed.mishkal_kolel,
-        // misgeret removed - unreliable in Israeli API
-      });
-        kwhPerKm = evData.kwhPer100Km / 100;
+        const evData = await calculateEVConsumptionAdvanced({
+          brand: parsed.brand,
+          model: parsed.model,
+          year: parsed.year || new Date().getFullYear(),
+          vehicleType: found.type,
+          mishkal_kolel: effectiveMishkalKolel,
+        });
+        kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
+        
       } else {
-        if (__DEV__) {
-          console.log('⛽ ICE - Fuel:', parsed.fuelType);
-        }
+        if (__DEV__) console.log('⛽ ICE vehicle calculation - Fuel:', parsed.fuelType);
 
         // ============================================
         // PHASE 1: GET ENGINE CC FROM PRIMARY API
@@ -842,6 +889,7 @@ const handleAddVehicleByPlate = async () => {
             engineCode: found.record.degem_manoa,
             plateNumber: plateTrimmed,
             degem_nm: found.degem_nm,
+            isElectric: false,
           });
 
           if (fallbackData) {

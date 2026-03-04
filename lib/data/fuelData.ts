@@ -1209,21 +1209,14 @@ async function fetchEngineCCFromAPI(params: {
  */
 
 export async function fetchFallbackVehicleData(params: {
-
   brand?: string;
-
   model?: string;
-
   year?: number;
-
   engineCode?: string;
-
   plateNumber?: string;
-
-  kinuyMishari?: string;  // Commercial name from primary API (e.g., "CIVIC TOURER")
-
-  degem_nm?: string;      // Vehicle model code from primary API (e.g., "FK28")
-
+  kinuyMishari?: string;
+  degem_nm?: string;
+  isElectric?: boolean;
 }): Promise<FallbackVehicleData | undefined> {
 
   const { brand, model, year, engineCode, plateNumber, kinuyMishari, degem_nm } = params;
@@ -1253,11 +1246,10 @@ export async function fetchFallbackVehicleData(params: {
   // Query both APIs in parallel for efficiency
 
   const [weight, engineCC] = await Promise.all([
-
     fetchWeightFromAPI({ brand, model, plateNumber, degem_nm }),
-
-    fetchEngineCCFromAPI({ engineCode, brand, model, kinuyMishari, degem_nm }),
-
+    params.isElectric 
+      ? Promise.resolve(undefined) 
+      : fetchEngineCCFromAPI({ engineCode, brand, model, kinuyMishari, degem_nm }),
   ]);
 
 
@@ -1462,7 +1454,7 @@ export function calculateEVConsumptionEnhanced(params: {
 
   // STEP 1: DETERMINE EFFECTIVE OPERATING WEIGHT
 
-  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel);
+  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, true);
 
   const year = params.year || new Date().getFullYear();
 
@@ -1512,7 +1504,7 @@ export function calculateEVConsumptionEnhanced(params: {
 
   const GRAVITY = 9.81; // m/s²
 
-  const AVG_SPEED_KMH = 50; // Mixed city/highway driving
+  const AVG_SPEED_KMH = 75; // Mixed city/highway driving
 
   const AVG_SPEED_MS = AVG_SPEED_KMH / 3.6; // Convert to m/s
 
@@ -1576,7 +1568,7 @@ export function calculateEVConsumptionEnhanced(params: {
 
 
 
-  const REGEN_RECOVERY = 0.20;
+  const REGEN_RECOVERY = 0.25;
 
   totalEnergyKwh = energyFromBattery * (1 - REGEN_RECOVERY);
 
@@ -1598,7 +1590,7 @@ export function calculateEVConsumptionEnhanced(params: {
 
   const vehicleAge = Math.max(0, currentYear - year);
 
-  const degradationPercent = Math.min(vehicleAge / 10, 1.0) * 0.10;
+  const degradationPercent = Math.min(vehicleAge / 10, 1.0) * 0.02;
 
   totalEnergyKwh *= (1 + degradationPercent);
 
@@ -1671,37 +1663,21 @@ export function calculateEVConsumptionEnhanced(params: {
  */
 
 export function getEffectiveWeight(
-
   mishkal_kolel?: number,
-
-  _misgeret?: number
-
+  isEV: boolean = false
 ): number | undefined {
-
-
-
   if (mishkal_kolel) {
-
-    const effectiveWeight = mishkal_kolel * 0.76;
-
+    // 0.85 לרכב חשמלי (סוללה כבדה), 0.76 לרכב רגיל
+    const multiplier = isEV ? 0.85 : 0.76;
+    const effectiveWeight = mishkal_kolel * multiplier;
     
-
     if (IS_DEV) {
-
-      console.log(`📐 Weight calculation: ${mishkal_kolel}kg × 0.76 = ${effectiveWeight.toFixed(0)}kg`);
-
+      console.log(`📐 Weight calculation: ${mishkal_kolel}kg × ${multiplier} = ${effectiveWeight.toFixed(0)}kg`);
     }
 
-
-
     return Math.round(effectiveWeight);
-
   }
-
-
-
   return undefined;
-
 }
 
 
@@ -1781,7 +1757,7 @@ export function calculateICEConsumptionEnhanced(params: {
 
   // ============================================
 
-  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel);
+  const effectiveWeight = getEffectiveWeight(params.mishkal_kolel, false);
 
 
 

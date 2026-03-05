@@ -1,3 +1,4 @@
+// api/fuel-prices.ts
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 /**
@@ -73,100 +74,57 @@ async function fetchFromDataGovIl(resourceId: string): Promise<any> {
 }
 
 /**
- * Calculate national average price from all records
+ * שולף את המחיר העדכני ביותר (הראשון התקין) במקום לחשב ממוצע היסטורי
+ * רץ בסיבוכיות O(1) במקום O(N)
  */
-function calculateAveragePrice(
+function getLatestValidPrice(
   records: any[],
   fieldName: string
-): { average: number; count: number } | null {
-  if (!Array.isArray(records) || records.length === 0) {
-    return null;
-  }
+): { price: number; timestamp: string } | null {
+  if (!Array.isArray(records) || records.length === 0) return null;
 
-  const prices: number[] = [];
-
-  // Helper to normalize various numeric formats (commas, currency, whitespace)
+  // פונקציית עזר לניקוי המספר
   const normalizeNumber = (val: any): number => {
     if (val == null) return NaN;
     if (typeof val === 'number') return val;
-    // Remove non numeric except dot and comma and minus
     const s = String(val).replace(/[^0-9.,-]/g, '').trim();
     if (s === '') return NaN;
-    // Replace comma with dot when comma used as decimal separator
     const dotified = s.indexOf(',') > -1 && s.indexOf('.') === -1 ? s.replace(/,/g, '.') : s.replace(/,/g, '');
     return parseFloat(dotified);
   };
 
-  // If the expected field exists in records, prefer it
-  const firstHasField = records.some((r) => Object.prototype.hasOwnProperty.call(r, fieldName));
+  const candidateTimestampFields = ['date', 'Date', 'timestamp', 'time', 'תאריך', 'עדכון'];
 
-  if (firstHasField) {
-    records.forEach((record) => {
-      const priceValue = normalizeNumber(record[fieldName]);
-      if (!isNaN(priceValue) && priceValue > 0) prices.push(priceValue);
-    });
-  } else {
-    // Fallback: try to autodetect the most likely numeric price field
-    const keyCounts: Record<string, number> = {};
-    records.forEach((record) => {
-      Object.keys(record).forEach((k) => {
-        const v = normalizeNumber(record[k]);
-        if (!isNaN(v) && v > 0) {
-          keyCounts[k] = (keyCounts[k] || 0) + 1;
+  // עוברים על הרשומות (הן כבר ממוינות מהחדש לישן מה-API)
+  for (const record of records) {
+    let priceValue = normalizeNumber(record[fieldName]);
+    
+    // Fallback: אם אין שדה מדויק, נחפש ערך מספרי סביר למחיר דלק (בין 4 ל-15 שקלים)
+    if (isNaN(priceValue) || priceValue <= 0) {
+      for (const key of Object.keys(record)) {
+        const v = normalizeNumber(record[key]);
+        if (!isNaN(v) && v > 4 && v < 15) {
+          priceValue = v;
+          break;
         }
-      });
-    });
-
-    // Choose the key that has the most numeric values
-    const candidate = Object.entries(keyCounts).sort((a, b) => b[1] - a[1])[0];
-    const detectedKey = candidate ? candidate[0] : null;
-
-    if (detectedKey) {
-      records.forEach((record) => {
-        const priceValue = normalizeNumber(record[detectedKey]);
-        if (!isNaN(priceValue) && priceValue > 0) prices.push(priceValue);
-      });
-    }
-  }
-
-  if (prices.length === 0) {
-    return null;
-  }
-
-  const sum = prices.reduce((acc, p) => acc + p, 0);
-  const average = sum / prices.length;
-
-  return {
-    average: parseFloat(average.toFixed(2)),
-    count: prices.length,
-  };
-}
-
-/**
- * Try to extract the most recent timestamp from records.
- * Supports common field names in English and Hebrew.
- */
-function extractLatestTimestamp(records: any[]): string | null {
-  if (!Array.isArray(records) || records.length === 0) return null;
-
-  const candidateFields = ['date', 'Date', 'timestamp', 'time', 'created_at', 'updated_at', 'תאריך', 'עדכון', 'datetime'];
-
-  let latestTs: number | null = null;
-
-  records.forEach((record) => {
-    candidateFields.forEach((f) => {
-      if (!record) return;
-      const v = record[f];
-      if (!v) return;
-      const parsed = Date.parse(String(v));
-      if (!isNaN(parsed)) {
-        if (latestTs === null || parsed > latestTs) latestTs = parsed;
       }
-    });
-  });
+    }
 
-  if (latestTs !== null) {
-    return new Date(latestTs).toISOString();
+    // ברגע שמצאנו את המחיר התקין הראשון (הכי חדש), אנחנו מחזירים אותו מיד ויוצאים מהלולאה!
+    if (!isNaN(priceValue) && priceValue > 0) {
+      let timestamp = new Date().toISOString();
+      for (const f of candidateTimestampFields) {
+        if (record[f] && !isNaN(Date.parse(String(record[f])))) {
+          timestamp = new Date(String(record[f])).toISOString();
+          break;
+        }
+      }
+
+      return { 
+        price: parseFloat(priceValue.toFixed(2)), 
+        timestamp 
+      };
+    }
   }
 
   return null;
@@ -235,22 +193,18 @@ export default async function handler(
       throw new Error('No records found in API response');
     }
 
-    // Calculate national average price
-    const priceData = calculateAveragePrice(records, fieldName);
-    if (!priceData) {
-      throw new Error('Could not calculate average price from records');
+    // חילוץ המחיר העדכני ביותר (הראשון התקין במערך הממוין)
+    const latestPriceData = getLatestValidPrice(records, fieldName);
+    if (!latestPriceData) {
+      throw new Error('Could not find a valid latest price in the records');
     }
 
-    // Try to extract a timestamp from the records (if present)
-    const derivedTimestamp = extractLatestTimestamp(records) || new Date().toISOString();
-
-    // Return success response with official national average
+    // Return success response with official current price
     return res.status(200).json({
-      price: priceData.average,
+      price: latestPriceData.price,
       currency: 'ILS',
       fuel_type: fuelType,
-      timestamp: derivedTimestamp,
-      station_count: priceData.count,
+      timestamp: latestPriceData.timestamp,
       data_source: 'data.gov.il',
     });
   } catch (error: any) {

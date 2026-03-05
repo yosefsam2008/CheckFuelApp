@@ -20,6 +20,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
 } from "react-native";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 import {
@@ -198,7 +201,7 @@ const AnimatedNumber: React.FC<{
   duration?: number;
   prefix?: string;
   suffix?: string;
-  style?: any;
+  style?: StyleProp<TextStyle>;
 }> = ({ value, duration = 1500, prefix = "", suffix = "", style }) => {
   const [displayValue, setDisplayValue] = useState(0);
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -316,7 +319,7 @@ const QuickChip: React.FC<QuickChipProps> = ({ label, onPress, isActive = false,
 // ============================================
 const GlassCard: React.FC<{
   children: React.ReactNode;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
   animated?: boolean;
 }> = ({ children, style, animated = true }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -412,14 +415,16 @@ const FuelGauge: React.FC<{
   const clampedPercentage = Math.min(100, Math.max(0, percentage));
 
   useEffect(() => {
-  Animated.timing(animatedWidth, {
-    toValue: clampedPercentage,
-    duration: 1000,
-    easing: Easing.out(Easing.cubic),
-    useNativeDriver: false,
-  }).start();
-}, [clampedPercentage, animatedWidth]);
+    Animated.timing(animatedWidth, {
+      toValue: clampedPercentage,
+      duration: 1000,
+      easing: Easing.out(Easing.cubic),
+      // חייב להיות false כדי לתמוך באנימציה של מאפיין width
+      useNativeDriver: false, 
+    }).start();
+  }, [clampedPercentage, animatedWidth]);
 
+  // ממיר את המספר לאחוזים כדי שהמילוי יתחיל מהצד הנכון (לפי RTL)
   const widthInterpolated = animatedWidth.interpolate({
     inputRange: [0, 100],
     outputRange: ["0%", "100%"],
@@ -432,7 +437,7 @@ const FuelGauge: React.FC<{
           style={[
             styles.fuelGaugeFill,
             {
-              width: widthInterpolated,
+              width: widthInterpolated, // חזרנו לאחוזים - המילוי יהיה מהצד!
               backgroundColor: isElectric ? COLORS.electric : COLORS.fuel,
             },
           ]}
@@ -588,11 +593,17 @@ const loadProgress = useCallback(async () => {
   }
 }, [vehicles]);
 
-  // Auto-save on changes
+  // Auto-save on changes with simple debounce
   useEffect(() => {
-    if (step < 4) { // Don't save results step
+    if (step >= 4) return; // Don't save results step
+    
+    // משהה את השמירה עד שהמשתמש מסיים להקליד (חצי שנייה)
+    const timeoutId = setTimeout(() => {
       saveProgress();
-    }
+    }, 500);
+
+    // ניקוי הטיימר אם המשתמש הקליד שוב לפני שעברה חצי שנייה
+    return () => clearTimeout(timeoutId);
   }, [step, distance, vehicle, fuelPrice, drivingStyle, tripType, acUsage, saveProgress]);
 
   // ============================================
@@ -789,11 +800,12 @@ const loadProgress = useCallback(async () => {
         totalAdjustmentFactor: adjustmentResult.totalAdjustmentFactor,
         baseConsumption: baseConsumptionForAdjustment,
       };
-    } else {
-      // חישוב לרכב דלק - adjustedConsumption הוא km/L (נמוך יותר מהמקור = צריכה גבוהה יותר)
-      const fuelConsumed = d / adjustedConsumption;
-      const totalCost = fuelConsumed * p;
-      const costPerKm = totalCost / d;
+      } else {
+        // חישוב לרכב דלק - מוודאים שהצריכה תמיד גדולה מ-0 למניעת חלוקה באפס
+        const safeConsumption = Math.max(adjustedConsumption, 0.1); 
+        const fuelConsumed = d / safeConsumption;
+        const totalCost = fuelConsumed * p;
+        const costPerKm = totalCost / d;
 
       calculation = {
         totalCost,

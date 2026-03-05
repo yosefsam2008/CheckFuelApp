@@ -1,3 +1,4 @@
+// FuelPriceStep.tsx
 import React from 'react';
 import { DollarSign, ArrowLeft, ArrowRight } from 'lucide-react-native';
 import { Vehicle } from '@/lib/data/vehiclesData';

@@ -1,5 +1,4 @@
-// app/fuelConsumptionAdjustments.ts
-
+// fuelConsumptionAdjustments.ts
 /**
  * ============================================================================
  * מערכת חישוב צריכת דלק דינמית - ללא קבועים מיותרים
@@ -109,9 +108,9 @@ function calculateClimateFactor(climate: 'hot' | 'moderate' | 'cold'): number {
  */
 function calculateTripTypeFactor(tripType: 'city' | 'highway' | 'mixed'): number {
   const factors = {
-    city: 1.15,    // +15% בעיר (פקקים, עצירות)
-    mixed: 1.05,   // +5% מעורב
-    highway: 1.02, // +2% כביש מהיר
+    city: 1.18,    // +18% בעיר (פקקים, עצירות)
+    mixed: 1.08,   // +8% מעורב
+    highway: 1.03, // +3% כביש מהיר
   };
   return factors[tripType];
 }
@@ -155,8 +154,8 @@ export function calculateAdjustedConsumption(
   const acFactor = factors.useAC ? 1.05 : 1.0;  // +5% עם מיזוג
   const shortTripsFactor = factors.shortTrips ? 1.10 : 1.0;  // +10% נסיעות קצרות
 
-  // חישוב מקדם כולל
-  const totalFactor =
+// חישוב מקדם כולל ראשוני
+  let totalFactor =
     ageFactor *
     styleFactor *
     climateFactor *
@@ -164,6 +163,9 @@ export function calculateAdjustedConsumption(
     conditionFactor *
     acFactor *
     shortTripsFactor;
+
+  // חסם עליון ותחתון כדי למנוע תוצאות קיצוניות מדי (Outliers)
+  totalFactor = Math.min(Math.max(totalFactor, 0.7), 2.2);
 
   // חישוב צריכה מתוקנת
   let adjustedConsumption: number;
@@ -201,40 +203,66 @@ export function calculateVehicleAge(manufacturingYear: number): number {
 }
 
 /**
- * המלצות לשיפור צריכת הדלק
+ * מערכת המלצות חכמה המדורגת לפי גודל ההשפעה על צריכת הדלק
  */
 export function getConsumptionRecommendations(result: ConsumptionResult): string[] {
-  const recommendations: string[] = [];
+  // ניצור מערך של אובייקטים כדי שנוכל למיין אותם לפי חומרת ההשפעה
+  const impactList: { impact: number; text: string }[] = [];
 
-  if (result.breakdown.ageDegradation > 1.15) {
-    recommendations.push('🔧 הרכב שלך ישן יחסית - שקול תחזוקה מקיפה או שדרוג');
+  // פונקציית עזר לחישוב אחוז הפגיעה (לדוגמה: 1.15 -> 15)
+  const getPercent = (factor: number) => Math.round((factor - 1) * 100);
+
+  const { breakdown } = result;
+
+  // 1. סגנון נהיגה
+  if (breakdown.drivingStyle >= 1.20) {
+    impactList.push({ impact: breakdown.drivingStyle, text: `🚗 נהיגה ספורטיבית/אגרסיבית מוסיפה כ-${getPercent(breakdown.drivingStyle)}% לצריכה. נסה האצות מתונות יותר.` });
+  } else if (breakdown.drivingStyle > 1.0) {
+    impactList.push({ impact: breakdown.drivingStyle, text: `🚗 מעבר לנהיגה במצב 'Eco' יכול לחסוך לך מעט דלק ביומיום.` });
   }
 
-  if (result.breakdown.drivingStyle > 1.15) {
-    recommendations.push('🚗 נהיגה אגרסיבית מגדילה צריכת דלק - נסה נהיגה רגועה יותר');
+  // 2. גיל הרכב
+  if (breakdown.ageDegradation >= 1.20) {
+    impactList.push({ impact: breakdown.ageDegradation, text: `🔧 בלאי טבעי של רכב ישן גובה מחיר של כ-${getPercent(breakdown.ageDegradation)}%. שקול טיפול מקיף למנוע/לסוללה.` });
+  } else if (breakdown.ageDegradation >= 1.10) {
+    impactList.push({ impact: breakdown.ageDegradation, text: `🔧 הרכב מתחיל להתבגר (+${getPercent(breakdown.ageDegradation)}% לצריכה). הקפד על שגרת טיפולים בזמן.` });
   }
 
-  if (result.breakdown.vehicleCondition > 1.10) {
-    recommendations.push('⚙️ תחזוקה לקויה - בצע החלפת פילטרים ובדיקת לחץ אוויר בצמיגים');
+  // 3. מצב הרכב (תחזוקה)
+  if (breakdown.vehicleCondition >= 1.10) {
+    impactList.push({ impact: breakdown.vehicleCondition, text: `⚙️ תחזוקה לקויה עולה לך ב-${getPercent(breakdown.vehicleCondition)}%. בדוק לחץ אוויר בצמיגים והחלף מסננים.` });
+  } else if (breakdown.vehicleCondition > 1.0) {
+    impactList.push({ impact: breakdown.vehicleCondition, text: `⚙️ שמירה על לחץ אוויר תקין בצמיגים יכולה לשפר מעט את הצריכה.` });
   }
 
-  if (result.breakdown.tripType > 1.15) {
-    recommendations.push('🏙️ נסיעות בעיר צורכות יותר - שקול שימוש בתחבורה ציבורית לנסיעות קצרות');
+  // 4. סוג נסיעה ופקקים
+  if (breakdown.tripType >= 1.10) {
+    impactList.push({ impact: breakdown.tripType, text: `🏙️ ריבוי נסיעות עירוניות/פקקים מגדיל את הצריכה בכ-${getPercent(breakdown.tripType)}%.` });
   }
 
-  if (result.breakdown.shortTrips > 1.0) {
-    recommendations.push('📏 נסיעות קצרות לא יעילות - שקול איחוד נסיעות או הליכה רגלית');
+  // 5. נסיעות קצרות מנוע קר
+  if (breakdown.shortTrips > 1.0) {
+    impactList.push({ impact: breakdown.shortTrips, text: `📏 נסיעות קצרות לא מאפשרות למנוע להתחמם (תוספת של כ-${getPercent(breakdown.shortTrips)}%). שקול הליכה ברגל כשמתאפשר.` });
   }
 
-  if (result.breakdown.acUsage > 1.0) {
-    recommendations.push('❄️ שימוש במיזוג מגדיל צריכת דלק - השתמש בחכמה');
+  // 6. מזגן
+  if (breakdown.acUsage > 1.0) {
+    impactList.push({ impact: breakdown.acUsage, text: `❄️ כיבוי המזגן כשמזג האוויר מאפשר יחסוך לך כ-${getPercent(breakdown.acUsage)}%.` });
   }
 
-  if (recommendations.length === 0) {
-    recommendations.push('✅ הרכב והנהיגה שלך בצורה מעולה!');
+  // סינון המלצות זניחות (פחות מ-2% השפעה), מיון מהגורם המשפיע ביותר להכי פחות משפיע, ושליפת הטקסט
+  const sortedRecommendations = impactList
+    .filter(item => item.impact > 1.02)
+    .sort((a, b) => b.impact - a.impact)
+    .map(item => item.text);
+
+  // הוספת מחמאה אם הכל מעולה
+  if (sortedRecommendations.length === 0) {
+    sortedRecommendations.push('✅ איזה יופי! פרופיל הנסיעה והתחזוקה שלך חסכוניים ויעילים במיוחד.');
   }
 
-  return recommendations;
+  // נחזיר רק את 3 ההמלצות החשובות ביותר כדי לא להציף את המשתמש
+  return sortedRecommendations.slice(0, 3);
 }
 
 /**

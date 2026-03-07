@@ -12,16 +12,20 @@
     },
     "scheme": "checkfuel",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "description": "מחשבון עלות נסיעה וניהול רכבים - חשב עלות דלק, צריכת דלק, והשווה למוניות ואוטובוסים",
-    "primaryColor": "#34C759",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.checkfuel.app",
       "requireFullScreen": true,
-      "orientation": "portrait",
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
+      },
+      "newArchEnabled": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -33,12 +37,10 @@
       },
       "package": "com.checkfuel.app",
       "versionCode": 1,
+      "newArchEnabled": true,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "orientation": "portrait",
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
         "INTERNET"
       ],
       "config": {
@@ -80,6 +82,7 @@
       "reactCompiler": true
     },
     "extra": {
+      "primaryColor": "#34C759",
       "router": {},
       "eas": {
         "projectId": "8a6e291b-1c4a-4993-a5eb-556b3f09ab0a"

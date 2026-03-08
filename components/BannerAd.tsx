@@ -1,7 +1,8 @@
 // app/components/BannerAd.tsx
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Platform, ViewStyle } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, ViewStyle } from 'react-native';
 import { useAdTracking } from '../hooks/useAdTracking';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 interface AdBannerProps {
   style?: ViewStyle;
@@ -9,27 +10,6 @@ interface AdBannerProps {
 
 const AdBanner = ({ style }: AdBannerProps) => {
   const { trackImpression } = useAdTracking();
-  const [adComponents, setAdComponents] = useState<any>(null);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      // Dynamic import only on native
-      import('react-native-google-mobile-ads').then((admob) => {
-        setAdComponents({
-          BannerAd: admob.BannerAd,
-          BannerAdSize: admob.BannerAdSize,
-          TestIds: admob.TestIds,
-        });
-      });
-    }
-  }, []);
-
-  // ב-Web לא מציגים כלום
-  if (Platform.OS === 'web' || !adComponents) {
-    return null;
-  }
-
-  const { BannerAd, BannerAdSize, TestIds } = adComponents;
 
   const adUnitId = __DEV__
     ? TestIds.BANNER

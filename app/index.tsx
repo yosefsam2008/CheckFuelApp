@@ -1,25 +1,19 @@
+// app/index.tsx
 import { Redirect } from 'expo-router';
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import mobileAds from 'react-native-google-mobile-ads';
 
 export default function Index() {
   useEffect(() => {
-    // Dynamic import רק ב-runtime ורק ב-Native
-    if (Platform.OS !== 'web') {
-      import('react-native-google-mobile-ads')
-        .then((module) => {
-          const mobileAds = module.default;
-          return mobileAds().initialize();
-        })
-        .then((adapterStatuses: any) => {
-          if (__DEV__) console.log('✅ AdMob initialized:', adapterStatuses);
-        })
-        .catch((error: any) => {
-          console.error('❌ AdMob initialization failed:', error);
-        });
-    } else {
-      if (__DEV__) console.log('AdMob not initialized (Web platform)');
-    }
+    // אתחול רגיל ונקי של הפרסומות
+    mobileAds()
+      .initialize()
+      .then((adapterStatuses) => {
+        if (__DEV__) console.log('✅ AdMob initialized:', adapterStatuses);
+      })
+      .catch((error) => {
+        console.error('❌ AdMob initialization failed:', error);
+      });
   }, []);
   
   return <Redirect href="/dashboard" />;

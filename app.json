@@ -44,7 +44,7 @@
         "INTERNET"
       ],
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-6395480022343350~3069634494"
+        "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
       }
     },
     "web": {
@@ -70,11 +70,10 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-6395480022343350~3069634494",
+          "androidAppId": "ca-app-pub-6395480022343350~7292610150",
           "iosAppId": "ca-app-pub-6395480022343350~7292610150"
         }
       ],
-      "./plugins/withAdMobManifest.js",
       "expo-font"
     ],
     "experiments": {

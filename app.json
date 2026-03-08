@@ -26,7 +26,6 @@
     },
     "android": {
       "package": "com.checkfuel.app",
-      "versionCode": 1,
       "permissions": [
         "INTERNET"
       ],
@@ -61,7 +60,8 @@
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-6395480022343350~7292610150",
-          "iosAppId": "ca-app-pub-6395480022343350~7292610150"
+          "iosAppId": "ca-app-pub-6395480022343350~7292610150",
+          "delayAppMeasurementInit": true
         }
       ]
     ],

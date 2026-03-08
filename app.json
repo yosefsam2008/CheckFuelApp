@@ -5,43 +5,36 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0A192F"
-    },
     "scheme": "checkfuel",
     "userInterfaceStyle": "automatic",
     "description": "מחשבון עלות נסיעה וניהול רכבים - חשב עלות דלק, צריכת דלק, והשווה למוניות ואוטובוסים",
     "assetBundlePatterns": [
       "**/*"
     ],
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A192F"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.checkfuel.app",
       "requireFullScreen": true,
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
-      },
-      "newArchEnabled": true,
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png",
-        "backgroundColor": "#FFFFFF"
-      },
       "package": "com.checkfuel.app",
       "versionCode": 1,
-      "newArchEnabled": true,
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
       "permissions": [
         "INTERNET"
       ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png",
+        "backgroundColor": "#0A192F"
+      },
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
       }
@@ -52,36 +45,30 @@
       "bundler": "metro"
     },
     "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "expo-font",
       [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0A192F",
-          "dark": {
-            "backgroundColor": "#0A192F"
-          }
+          "backgroundColor": "#0A192F"
         }
       ],
-      "expo-router",
-      "expo-web-browser",
       [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-6395480022343350~7292610150",
           "iosAppId": "ca-app-pub-6395480022343350~7292610150"
         }
-      ],
-      "expo-font"
+      ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
-      "primaryColor": "#34C759",
-      "router": {},
       "eas": {
         "projectId": "8a6e291b-1c4a-4993-a5eb-556b3f09ab0a"
       }

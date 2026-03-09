@@ -112,11 +112,9 @@
       }
     }, []);
 
-    // --- Load vehicles ---
+    
     const loadVehicles = useCallback(async () => {
-      if (__DEV__) {
-        console.log("🔄 Loading vehicles...");
-      }
+      
       try {
         const saved = await AsyncStorage.getItem("vehicles");
         if (saved) {

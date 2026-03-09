@@ -1,13 +1,14 @@
+//c
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 
@@ -34,13 +35,11 @@ const COLORS = {
 interface FirstLaunchModalProps {
   visible: boolean;
   onAccept: () => void;
-  onReject: () => void;
 }
 
 export const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({
   visible,
   onAccept,
-  onReject,
 }) => {
   const [accepted, setAccepted] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -75,10 +74,6 @@ export const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({
     } catch (error) {
       console.error("Failed to save acceptance:", error);
     }
-  };
-
-  const handleReject = () => {
-    onReject();
   };
 
   return (
@@ -126,11 +121,11 @@ export const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({
               <View style={styles.legalSection}>
                 <Text style={styles.legalSectionTitle}>📋 תנאי השימוש</Text>
                 <Text style={styles.legalSectionText}>
-                  באמצעות שימוש באפליקציה זו, אתה מסכים עם תנאי השימוש שלנו.{"\n\n"}
-                  • אפליקציה זו מחושבת על ידי נתונים ממקורות שונים{"\n"}
-                  • התוצאות הן הערכות בלבד ולא מהוות תחליף לבדיקה בפועל{"\n"}
+                  • החישובים באפליקציה מבוססים על נתונים המוזנים על ידי המשתמש ונוסחאות כלליות.{"\n\n"}
+                  • התוצאות מהוות הערכה בלבד ואינן תחליף לבדיקת צריכה בפועל.{"\n"}
+                  • מפתח האפליקציה אינו נושא באחריות לנזק, הפסד או שגיאות חישוב כלשהן.{"\n"}
                   • אנחנו לא אחראים לשגיאות חישוביות{"\n"}
-                  • אתה עלול להשתמש באפליקציה לצרכים אישיים בלבד
+                  • השימוש באפליקציה מותר לצרכים אישיים ושאינם מסחריים בלבד.
                 </Text>
               </View>
 
@@ -179,16 +174,6 @@ export const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({
 
             {/* Buttons */}
             <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.rejectButton}
-                onPress={handleReject}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rejectButtonText}>
-                  {LEGAL_UI_STRINGS.firstLaunch.buttonReject}
-                </Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={[
                   styles.acceptButton,
@@ -323,25 +308,10 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   buttonContainer: {
-    flexDirection: "row-reverse",
-    gap: 12,
-  },
-  rejectButton: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.textTertiary,
     alignItems: "center",
   },
-  rejectButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
-  },
   acceptButton: {
-    flex: 1,
+    width: "100%",
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 12,

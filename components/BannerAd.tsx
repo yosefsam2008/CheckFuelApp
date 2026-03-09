@@ -1,3 +1,4 @@
+//components/BannerAd.tsx
 import React from 'react';
 import { View, Platform } from 'react-native';
 
@@ -14,8 +15,7 @@ export default function AdBanner() {
   // בודק אם אנחנו במצב פיתוח ושם מזהה בדיקה, אחרת (בחנות) ישים מזהה אמיתי
   const adUnitId = __DEV__ 
     ? (TestIds?.BANNER || fallbackTestId) 
-    : 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx'; // לכאן תכניס את מזהה יחידת המודעה בעתיד
-
+        : 'ca-app-pub-6395480022343350/6667384343';
   // הגנה קריטית: אם הספרייה נכשלה לחלוטין, נחזיר שטח ריק במקום לקרוס
   if (!BannerAd) {
     return <View style={{ height: 50, width: '100%' }} />;

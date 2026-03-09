@@ -1,49 +1,35 @@
-// app/components/BannerAd.tsx
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
-import { useAdTracking } from '../hooks/useAdTracking';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { View, Platform } from 'react-native';
 
-interface AdBannerProps {
-  style?: ViewStyle;
-}
+// ייבוא חסין תקלות (עוקף את הבאג של השרת)
+const admobModule = require('react-native-google-mobile-ads');
+const { BannerAd, BannerAdSize, TestIds } = admobModule.default || admobModule;
 
-const AdBanner = ({ style }: AdBannerProps) => {
-  const { trackImpression } = useAdTracking();
+export default function AdBanner() {
+  // מזהי בדיקה רשמיים של גוגל למקרה ש-TestIds לא מזוהה
+  const fallbackTestId = Platform.OS === 'ios' 
+    ? 'ca-app-pub-3940256099942544/2934735716' 
+    : 'ca-app-pub-3940256099942544/6300978111';
 
-  const adUnitId = __DEV__
-    ? TestIds.BANNER
-    : 'ca-app-pub-6395480022343350/8414120131';
+  // בודק אם אנחנו במצב פיתוח ושם מזהה בדיקה, אחרת (בחנות) ישים מזהה אמיתי
+  const adUnitId = __DEV__ 
+    ? (TestIds?.BANNER || fallbackTestId) 
+    : 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx'; // לכאן תכניס את מזהה יחידת המודעה בעתיד
+
+  // הגנה קריטית: אם הספרייה נכשלה לחלוטין, נחזיר שטח ריק במקום לקרוס
+  if (!BannerAd) {
+    return <View style={{ height: 50, width: '100%' }} />;
+  }
 
   return (
-    <View style={[styles.adContainer, style]}>
+    <View style={{ alignItems: 'center', width: '100%', marginVertical: 10 }}>
       <BannerAd
         unitId={adUnitId}
-        size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+        size={BannerAdSize?.ANCHORED_ADAPTIVE_BANNER || 'ANCHORED_ADAPTIVE_BANNER'}
         requestOptions={{
-          requestNonPersonalizedAdsOnly: false,
-        }}
-        onAdLoaded={() => {
-          trackImpression();
-          if (__DEV__) console.log('✅ Banner ad loaded');
-        }}
-        onAdFailedToLoad={(error: any) => {
-          console.error('❌ Banner ad failed:', error);
+          requestNonPersonalizedAdsOnly: true,
         }}
       />
     </View>
   );
-};
-
-const styles = StyleSheet.create({
-  adContainer: {
-    width: '100%',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-});
-
-export default AdBanner;
+}

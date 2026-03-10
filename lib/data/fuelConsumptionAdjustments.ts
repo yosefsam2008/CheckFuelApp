@@ -27,6 +27,7 @@ export interface AdjustmentFactors {
   tripType?: 'city' | 'highway' | 'mixed';
   vehicleCondition?: 'excellent' | 'good' | 'fair' | 'poor';
   useAC?: boolean;              // שימוש במיזוג
+  acUsageLevel?: 'always' | 'sometimes' | 'rarely'; // עוצמת שימוש במיזוג
   shortTrips?: boolean;         // נסיעות קצרות (<5 ק"מ)
 }
 
@@ -64,7 +65,7 @@ function calculateAgeDegradation(
 ): number {
   // פרמטרים לפי סוג דלק
   const params = {
-    Gasoline: { baseRate: 0.015, growth: 1.08 },  // בנזין - הידרדרות בינונית
+    Gasoline: { baseRate: 0.010, growth: 1.05 },  // בנזין - הידרדרות בינונית
     Diesel: { baseRate: 0.012, growth: 1.06 },     // דיזל - עמיד יותר
     Electric: { baseRate: 0.020, growth: 1.10 },   // חשמלי - סוללה מתדרדרת מהר בחום
   };
@@ -84,9 +85,9 @@ function calculateAgeDegradation(
  */
 function calculateDrivingStyleFactor(style: 'eco' | 'normal' | 'aggressive'): number {
   const factors = {
-    eco: 0.95,        // חסכון של 5%
-    normal: 1.05,     // +5% - נהיגה רגילה
-    aggressive: 1.20, // +20% - נהיגה אגרסיבית
+    eco: 0.92,        // חסכון של 8%
+    normal: 1.0,     //  נהיגה רגילה
+    aggressive: 1.25, // +20% - נהיגה אגרסיבית
   };
   return factors[style];
 }
@@ -108,9 +109,9 @@ function calculateClimateFactor(climate: 'hot' | 'moderate' | 'cold'): number {
  */
 function calculateTripTypeFactor(tripType: 'city' | 'highway' | 'mixed'): number {
   const factors = {
-    city: 1.18,    // +18% בעיר (פקקים, עצירות)
+    city: 1.20,    // +18% בעיר (פקקים, עצירות)
     mixed: 1.08,   // +8% מעורב
-    highway: 1.03, // +3% כביש מהיר
+    highway: 1.00, // +3% כביש מהיר
   };
   return factors[tripType];
 }
@@ -151,7 +152,11 @@ export function calculateAdjustedConsumption(
   const climateFactor = calculateClimateFactor(factors.climate || 'hot');
   const tripFactor = calculateTripTypeFactor(factors.tripType || 'mixed');
   const conditionFactor = calculateConditionFactor(factors.vehicleCondition || 'good');
-  const acFactor = factors.useAC ? 1.05 : 1.0;  // +5% עם מיזוג
+  const acFactor = factors.useAC === undefined
+    ? 1.0
+    : factors.useAC
+      ? (factors.acUsageLevel === 'sometimes' ? 1.03 : 1.05)
+      : 1.0;
   const shortTripsFactor = factors.shortTrips ? 1.10 : 1.0;  // +10% נסיעות קצרות
 
 // חישוב מקדם כולל ראשוני

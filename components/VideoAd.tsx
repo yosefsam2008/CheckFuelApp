@@ -1,99 +1,115 @@
 // components/VideoAd.tsx
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+
+const REWARDED_INTERSTITIAL_ID = 'ca-app-pub-6395480022343350/4460223754';
 
 interface VideoAdProps {
   onAdComplete?: () => void;
   onAdError?: (error: any) => void;
+  requireReward?: boolean;
 }
 
-// This component will work only on native builds (iOS/Android)
-// For development/web, it will just call onAdComplete immediately
-const VideoAd: React.FC<VideoAdProps> = ({ onAdComplete, onAdError }) => {
-  const [adLoaded, setAdLoaded] = useState(false);
+const VideoAd: React.FC<VideoAdProps> = ({
+  onAdComplete,
+  onAdError,
+  requireReward = false,
+}) => {
+  const unsubscribersRef = useRef<(() => void)[]>([]);
+  const rewardEarnedRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  const cleanup = () => {
+    unsubscribersRef.current.forEach(fn => fn());
+    unsubscribersRef.current = [];
+  };
+
+  const safeComplete = () => {
+    if (mountedRef.current) onAdComplete?.();
+  };
+
+  const safeError = (error: any) => {
+    if (mountedRef.current) onAdError?.(error);
+  };
 
   useEffect(() => {
     if (Platform.OS === 'web') {
-      // On web, skip the ad
       console.log('VideoAd: Skipping ad on web');
       onAdComplete?.();
       return;
     }
 
-    // Try to load the ad module
     loadAndShowAd();
+
+    return () => {
+      mountedRef.current = false;
+      cleanup();
+    };
   }, []);
 
   const loadAndShowAd = async () => {
     try {
-      // Dynamic import to avoid loading on web
       const admob = await import('react-native-google-mobile-ads') as any;
       const { RewardedInterstitialAd, TestIds, AdEventType } = admob;
 
-      // Create ad instance
-      const rewardedInterstitial = RewardedInterstitialAd.createForAdRequest(
-        TestIds.REWARDED_INTERSTITIAL,
-        {
-          requestNonPersonalizedAdsOnly: true,
-        }
-      );
+      const adUnitId = __DEV__
+        ? TestIds.REWARDED_INTERSTITIAL
+        : REWARDED_INTERSTITIAL_ID;
 
-      // Set up event listeners
-      const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
+      const ad = RewardedInterstitialAd.createForAdRequest(adUnitId, {
+        requestNonPersonalizedAdsOnly: true,
+      });
+
+      const unsubLoaded = ad.addAdEventListener(
         AdEventType.LOADED,
         () => {
           console.log('VideoAd: Ad loaded');
-          setAdLoaded(true);
-          // Show the ad immediately when loaded
-          rewardedInterstitial.show();
+          ad.show();
         }
       );
 
-      const unsubscribeEarned = rewardedInterstitial.addAdEventListener(
+      const unsubEarned = ad.addAdEventListener(
         AdEventType.EARNED_REWARD,
         (reward: any) => {
-          console.log('VideoAd: User earned reward', reward);
+          console.log('VideoAd: Reward earned', reward);
+          rewardEarnedRef.current = true;
         }
       );
 
-      const unsubscribeClosed = rewardedInterstitial.addAdEventListener(
+      const unsubClosed = ad.addAdEventListener(
         AdEventType.CLOSED,
         () => {
           console.log('VideoAd: Ad closed');
-          onAdComplete?.();
-          // Clean up listeners
-          unsubscribeLoaded();
-          unsubscribeEarned();
-          unsubscribeClosed();
-          unsubscribeError();
+          if (requireReward && !rewardEarnedRef.current) {
+            safeError(new Error('Ad closed before reward was earned'));
+          } else {
+            safeComplete();
+          }
+          cleanup();
         }
       );
 
-      const unsubscribeError = rewardedInterstitial.addAdEventListener(
+      const unsubError = ad.addAdEventListener(
         AdEventType.ERROR,
         (error: any) => {
           console.log('VideoAd: Ad error', error);
-          onAdError?.(error);
-          onAdComplete?.(); // Continue even if ad fails
-          // Clean up listeners
-          unsubscribeLoaded();
-          unsubscribeEarned();
-          unsubscribeClosed();
-          unsubscribeError();
+          safeError(error);
+          safeComplete();
+          cleanup();
         }
       );
 
-      // Load the ad
-      rewardedInterstitial.load();
+      unsubscribersRef.current = [unsubLoaded, unsubEarned, unsubClosed, unsubError];
+
+      ad.load();
 
     } catch (error) {
-      console.log('VideoAd: Failed to load ad module', error);
-      // If module not available (Expo Go), just continue
+      console.log('VideoAd: Module unavailable (Expo Go?)', error);
       onAdComplete?.();
     }
   };
 
-  // This component doesn't render anything
   return null;
 };
 

@@ -1933,7 +1933,7 @@ else {
   // Average speed varies by vehicle type
   const avgSpeedKmh: Record<VehicleType, number> = {
     motorcycle: 75,
-    car: 75,
+    car: 70,
     truck: 50,
   };
 

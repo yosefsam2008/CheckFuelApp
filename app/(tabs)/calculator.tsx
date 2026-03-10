@@ -771,7 +771,8 @@ const loadProgress = useCallback(async () => {
         tripType,
         vehicleCondition: 'good',
         useAC: acUsage === 'always' || acUsage === 'sometimes',
-        shortTrips: false,
+        acUsageLevel: acUsage,
+        shortTrips: tripType === 'city',
       }
     );
 

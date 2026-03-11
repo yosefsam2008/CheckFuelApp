@@ -1,3 +1,4 @@
+// app.json
 {
   "expo": {
     "name": "CheckFuel",
@@ -32,7 +33,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
-        "backgroundColor": "#0A192F"
+        "backgroundColor": "#e3ecea"
       },
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"

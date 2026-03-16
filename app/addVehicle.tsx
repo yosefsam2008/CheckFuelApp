@@ -1,3 +1,4 @@
+// app/AddVehicle.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -14,36 +15,20 @@ import {
 import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
 
-// Conditional import for ads - only load on native platforms
-import VehicleRewardedAd from '../components/VehicleRewardedAd';
+// Conditional import for ads
+const VehicleRewardedAd = Platform.OS === 'web' ? () => null : require('../components/VehicleRewardedAd').default;
 
 const manufacturers = [
-  "Toyota",
-  "Kia",
-  "Hyundai",
-  "Mazda",
-  "Honda",
-  "Nissan",
-  "Mitsubishi",
-  "Subaru",
-  "Ford",
-  "Chevrolet",
-  "Volkswagen",
-  "Peugeot",
-  "Renault",
-  "Fiat",
-  "Skoda",
-  "Suzuki",
-  "Seat",
-  "BMW",
-  "Mercedes-Benz",
-  "Audi",
-  "Opel",
+  "Toyota", "Kia", "Hyundai", "Mazda", "Honda", "Nissan",
+  "Mitsubishi", "Subaru", "Ford", "Chevrolet", "Volkswagen",
+  "Peugeot", "Renault", "Fiat", "Skoda", "Suzuki", "Seat",
+  "BMW", "Mercedes-Benz", "Audi", "Opel",
 ];
 
 type FuelType = "Gasoline" | "Diesel" | "Electric" | "";
 
 export default function AddVehicle() {
+  const router = useRouter();
   const [manufacturer, setManufacturer] = useState("");
   const [filteredManufacturers, setFilteredManufacturers] = useState<string[]>([]);
   const [plate, setPlate] = useState("");
@@ -52,12 +37,14 @@ export default function AddVehicle() {
   const [avgConsumption, setAvgConsumption] = useState("");
   const [year, setYear] = useState("");
   const [fuelType, setFuelType] = useState<FuelType>("");
+  
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  
+  // Ad and pending state
   const [showAd, setShowAd] = useState(false);
   const [pendingVehicle, setPendingVehicle] = useState<Vehicle | null>(null);
-  const router = useRouter();
 
   const handleManufacturerChange = (text: string) => {
     setManufacturer(text);
@@ -75,45 +62,56 @@ export default function AddVehicle() {
     setFilteredManufacturers([]);
   };
 
-  const resetToast = () => {
-    setShowToast(false);
-    setToastMessage("");
+  const showTemporaryToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+      setToastMessage("");
+    }, 2500);
   };
 
   const validate = () => {
     if (!manufacturer.trim()) {
-      setToastMessage("אנא מלא את היצרן");
+      showTemporaryToast("אנא מלא את היצרן");
       return false;
     }
     if (!fuelType) {
-      setToastMessage("אנא בחר סוג דלק");
+      showTemporaryToast("אנא בחר סוג דלק");
       return false;
     }
     if (!avgConsumption.trim()) {
-      setToastMessage(
+      showTemporaryToast(
         fuelType === "Electric" ? "אנא מלא את צריכת האנרגיה (kWh/ק״מ)" : "אנא מלא את הצריכה הממוצעת (km/l)"
       );
       return false;
     }
     if (isNaN(Number(avgConsumption))) {
-      setToastMessage("אנא הזן ערך מספרי לצריכה הממוצעת");
+      showTemporaryToast("אנא הזן ערך מספרי לצריכה הממוצעת");
       return false;
     }
     return true;
   };
 
-const handleSave = async () => {
-  resetToast();
-  if (!validate()) {
-    setShowToast(true);
-    setTimeout(() => resetToast(), 2500);
-    return;
-  }
+  const saveVehicleToStorage = async (vehicleToSave: Vehicle) => {
+    try {
+      const stored = await AsyncStorage.getItem("vehicles");
+      const existing: Vehicle[] = stored ? JSON.parse(stored) : [];
+      existing.push(vehicleToSave);
+      await AsyncStorage.setItem("vehicles", JSON.stringify(existing));
+      router.back();
+    } catch (error) {
+      console.error("Error saving vehicle:", error);
+      showTemporaryToast("שגיאה בשמירה");
+    }
+  };
 
-  try {
+  const handleSaveBtnClick = () => {
+    if (!validate()) return;
+
     const newVehicle: Vehicle = {
       id: Date.now().toString(),
-      plate: plate || "",
+      plate: plate.trim() || "",
       name: manufacturer.trim(),
       model: model.trim() || "",
       engine: engine.trim() || "",
@@ -123,57 +121,30 @@ const handleSave = async () => {
       year: year ? parseInt(year) : new Date().getFullYear(),
     };
 
-    // Store vehicle for after ad completion
     setPendingVehicle(newVehicle);
 
-    // On web, skip ad and save directly
+    // On Web, skip ad logic completely
     if (Platform.OS === 'web') {
-      try {
-        const stored = await AsyncStorage.getItem("vehicles");
-        const existing: Vehicle[] = stored ? JSON.parse(stored) : [];
-        existing.push(newVehicle);
-        await AsyncStorage.setItem("vehicles", JSON.stringify(existing));
-        router.back();
-      } catch (error) {
-        console.error("Error saving vehicle:", error);
-        setToastMessage("שגיאה בשמירה");
-        setShowToast(true);
-        setTimeout(() => resetToast(), 2500);
-      }
+      saveVehicleToStorage(newVehicle);
       return;
     }
 
+    // On Native, trigger the ad overlay
     setShowAd(true);
-  } catch (error) {
-    console.error("Error saving vehicle:", error);
-    setToastMessage("שגיאה בשמירה");
-    setShowToast(true);
-    setTimeout(() => resetToast(), 2500);
-  }
-};
+  };
 
-const handleAdComplete = async () => {
-  setShowAd(false);
-  if (!pendingVehicle) return;
+  const handleAdComplete = () => {
+    setShowAd(false);
+    if (pendingVehicle) {
+      saveVehicleToStorage(pendingVehicle);
+    }
+  };
 
-  try {
-    const stored = await AsyncStorage.getItem("vehicles");
-    const existing: Vehicle[] = stored ? JSON.parse(stored) : [];
-    existing.push(pendingVehicle);
-    await AsyncStorage.setItem("vehicles", JSON.stringify(existing));
-    router.back();
-  } catch (error) {
-    console.error("Error saving vehicle:", error);
-    setToastMessage("שגיאה בשמירה");
-    setShowToast(true);
-    setTimeout(() => resetToast(), 2500);
-  }
-};
-
-const handleAdError = (error: any) => {
-  console.error("Ad error:", error);
-  handleAdComplete(); // Continue anyway on error
-};
+  const handleAdError = (error: any) => {
+    console.error("Ad error:", error);
+    // You don't need to call handleAdComplete here because the Ad Component
+    // already calls onAdComplete when onAdError fires (Fail-safe mechanism).
+  };
 
   const avgPlaceholder = fuelType === "Electric" ? "לדוגמה: 0.15 (kWh/ק״מ)" : "לדוגמה: 16.5 (km/l)";
 
@@ -227,6 +198,7 @@ const handleAdError = (error: any) => {
                 onFocus={() => setFocusedField("manufacturer")}
                 onBlur={() => setFocusedField(null)}
                 returnKeyType="done"
+                textAlign="right"
               />
             </View>
 
@@ -327,6 +299,7 @@ const handleAdError = (error: any) => {
                 onChangeText={setAvgConsumption}
                 onFocus={() => setFocusedField("consumption")}
                 onBlur={() => setFocusedField(null)}
+                textAlign="right"
               />
             </View>
           </View>
@@ -354,6 +327,7 @@ const handleAdError = (error: any) => {
                 onChangeText={setPlate}
                 onFocus={() => setFocusedField("plate")}
                 onBlur={() => setFocusedField(null)}
+                textAlign="right"
               />
             </View>
 
@@ -371,6 +345,7 @@ const handleAdError = (error: any) => {
                 onChangeText={setModel}
                 onFocus={() => setFocusedField("model")}
                 onBlur={() => setFocusedField(null)}
+                textAlign="right"
               />
             </View>
 
@@ -388,6 +363,7 @@ const handleAdError = (error: any) => {
                 onChangeText={setEngine}
                 onFocus={() => setFocusedField("engine")}
                 onBlur={() => setFocusedField(null)}
+                textAlign="right"
               />
             </View>
 
@@ -408,6 +384,7 @@ const handleAdError = (error: any) => {
                 onChangeText={setYear}
                 onFocus={() => setFocusedField("year")}
                 onBlur={() => setFocusedField(null)}
+                textAlign="right"
               />
             </View>
           </View>
@@ -416,7 +393,7 @@ const handleAdError = (error: any) => {
         {/* Save Button */}
         <TouchableOpacity 
           style={styles.saveButton} 
-          onPress={handleSave}
+          onPress={handleSaveBtnClick}
           activeOpacity={0.9}
         >
           <View style={styles.saveButtonContent}>
@@ -428,7 +405,7 @@ const handleAdError = (error: any) => {
         {/* Toast */}
         {showToast && <Toast message={toastMessage || "אנא מלא את השדות הנדרשים"} />}
 
-        {/* Rewarded Ad */}
+        {/* Rewarded Interstitial Ad */}
         {showAd && (
           <VehicleRewardedAd
             onAdComplete={handleAdComplete}
@@ -440,6 +417,7 @@ const handleAdError = (error: any) => {
   );
 }
 
+// ... styles remain unchanged (השארתי את כל העיצוב בדיוק כמו במקור) ...
 const styles = StyleSheet.create({
   container: {
     flex: 1,

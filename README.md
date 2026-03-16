@@ -1,120 +1,120 @@
-# CheckFuel
+# CheckFuel ⛽
 
-CheckFuel is a comprehensive multi-platform fuel economy and cost calculator app built with Expo and React Native. It helps users track their vehicle fuel consumption, calculate trip costs, and make informed decisions about fuel efficiency.
+**CheckFuel** is a professional-grade, cross-platform fuel economy and trip cost calculator designed to help drivers better understand their vehicle’s efficiency and make smarter fueling decisions. It supports gasoline, diesel, and electric vehicles.
 
-## Features
+This project was built with React Native and Expo, targeting iOS, Android, and Web.
 
-### Vehicle Management
-- Add vehicles manually or by license plate lookup
-- Store vehicle details including make, model, year, engine type, and fuel type
-- Support for both gasoline and electric vehicles
-- Automatic fuel economy data integration from fueleconomy.gov
+---
 
-### Trip Tracking
-- Record trip details including distance, fuel consumed, and costs
-- Calculate consumption metrics and energy efficiency
-- Maintain trip history with detailed records
-- Support for multiple vehicles
+## ✨ Core Features
 
-### Fuel Cost Calculator
-- Multi-step calculator for accurate cost estimation
-- Real-time fuel price integration via mock server
-- Electricity cost calculation for EV users
-- Detailed breakdown of trip costs and consumption
+- **Vehicle Management**: Add vehicles manually or by license plate lookup. Supports both **gasoline** and **electric** powertrains.
+- **Trip Cost Calculator**: A multi-step process to get accurate trip cost estimates based on your vehicle's specs.
+- **Historical Data**: All trips are saved locally to your device, allowing you to track and compare efficiency over time.
+- **Real Fuel Pricing**: Integrates with a local Express server for mock fuel pricing data during development.
+- **Cross-Platform & RTL Support**: A single codebase for iOS, Android, and Web, with full Right-to-Left (RTL) support for Hebrew.
+- **Monetization**: Includes Google AdMob integration for rewarded ads.
 
-### Cross-Platform Support
-- Native iOS and Android apps
-- Web version for browser access
-- Consistent experience across all platforms
-- RTL support for Hebrew language
+---
 
-### Additional Features
-- Ad-supported monetization with AdMob integration
-- First-launch compliance modal with legal documents
-- Local data persistence with AsyncStorage
-- Themed UI components with dark/light mode support
-
-## Technology Stack
-
-- **Frontend:** Expo Router (v6), React Native, TypeScript
-- **State Management:** AsyncStorage for local persistence
-- **UI Framework:** Radix UI components, Tailwind CSS (web)
-- **APIs:** FuelEconomy.gov API, custom Express mock server
-- **Ads:** Google AdMob (platform-specific)
-- **Build:** Expo Application Services (EAS)
-
-## Getting Started
+## 🛠️ Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- Expo CLI
-- iOS Simulator (macOS) or Android Emulator
 
-### Installation
+- **Node.js 18+**
+- **Expo CLI** (`npm install -g expo-cli`)
+- (Optional) iOS Simulator (via Xcode) or Android Emulator (via Android Studio) for native testing.
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd checkfuel
+### Installation & Running the App
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd checkfuel
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+3.  **Run the application:**
+    ```bash
+    npm start        # Starts the Metro bundler and shows a QR code
+    npm run ios      # Run on iOS simulator (macOS only)
+    npm run android  # Run on Android emulator
+    npm run web      # Run the web version in your browser
+    ```
+
+### Running the Mock Server
+
+For development, the app uses a mock server for fuel prices.
+
+1.  **Navigate to the server directory:**
+    ```bash
+    cd server
+    ```
+
+2.  **Install server dependencies and run:**
+    ```bash
+    npm install
+    npm start
+    ```
+    The server will run at `http://localhost:3000`.
+
+---
+
+## 🧱 Tech Stack & Architecture
+
+- **Framework:** React Native / Expo
+- **Routing:** Expo Router v6 (file-based routing)
+- **Language:** TypeScript
+- **State & Storage:** React Context & `AsyncStorage` for local persistence.
+- **Styling:**
+    - **Web:** Radix UI & Tailwind CSS
+    - **Mobile:** Custom React Native `StyleSheet` components.
+- **APIs & Data Sources:**
+    - **Consumption Model:** The vehicle consumption estimation logic in `/lib/data/fuelConsumptionAdjustments.ts` uses a dynamic model to provide realistic, adjusted consumption figures. It is based on statistical data from sources like `fueleconomy.gov` and does not make live API calls.
+    - **Fuel Prices (Development):** A custom Express mock server (`/server`) is used to provide fuel price data during development.
+    - **Developer Scripts:** Scripts in `/tools` and `/scripts` use the `data.gov.il` API to fetch and process data for building internal databases, but this is not a runtime dependency for the app.
+- **Monetization:** `react-native-google-mobile-ads` for rewarded video ads.
+
+---
+
+## 📁 Project Structure
+
+The project follows a standard Expo Router layout:
+
+```
+.
+├── app/             # Screens & Expo Router file-based routes
+├── components/      # Reusable UI components (buttons, modals, etc.)
+├── constants/       # Theme, colors, and global constants
+├── api/             # Functions for interacting with external APIs
+├── server/          # Mock Express.js server for fuel prices
+├── types/           # TypeScript type definitions
+├── legal/           # Privacy Policy, ToS, and compliance docs
+└── GEMINI.md        # Context and guidelines for AI-assisted development
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+---
 
-3. Start the development server:
-```bash
-npm start
-```
+## 🤖 AI Contributor Guidelines
 
-4. For native development:
-```bash
-npm run ios    # iOS
-npm run android # Android
-```
+This project uses AI for development assistance. All contributors (human or AI) must follow the guidelines outlined in `GEMINI.md`. This file contains important information about the project's architecture, coding conventions, and technology stack. Please review it before making changes.
 
-5. For web development:
-```bash
-npm run web
-```
+---
 
-### Mock Fuel Price Server
+## 🤝 Contributing
 
-For local development with fuel price data:
+1.  Fork the repository.
+2.  Create a descriptive feature branch.
+3.  Make your changes. Ensure you follow the project's coding style and conventions.
+4.  Run the linter to check for issues: `npm run lint`.
+5.  Submit a pull request with a clear description of your changes.
 
-```bash
-cd server
-npm install
-npm start
-```
+---
 
-The server runs on `http://localhost:3000` and provides endpoints for fuel price data.
+## 📄 License
 
-## Project Structure
-
-```
-app/                 # Main application screens and routing
-components/          # Reusable UI components
-constants/           # Theme and configuration constants
-types/               # TypeScript type definitions
-api/                 # API integration functions
-server/              # Mock fuel price server
-legal/               # Legal documents and compliance files
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Compliance
-
-CheckFuel includes comprehensive legal compliance features including privacy policy, terms of service, and Google Play compliance checklists. All legal documents are available in both English and Hebrew.
+This project is licensed under the **MIT License**.

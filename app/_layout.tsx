@@ -3,14 +3,23 @@ import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar, Platform } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
-import mobileAds from 'react-native-google-mobile-ads'; // ייבוא של גוגל!
+import mobileAds, { RequestConfiguration } from 'react-native-google-mobile-ads';
 import { runAutoMigration } from '../lib/utils/evDataMigration';
 
 export default function RootLayout() {
   useEffect(() => {
-    // אתחול מערכת הפרסומות של גוגל (חובה!)
+    // 1. הגדרת סביבת בדיקות (Test Devices) לפני האתחול
+    // זה עוזר לגוגל להבין שמדובר בפיתוח ולתת עדיפות לפרסומות בדיקה
     mobileAds()
-      .initialize()
+      .setRequestConfiguration({
+        // רשימת מזהי מכשירים לבדיקה. 'EMULATOR' מכסה אימולטורים סטנדרטיים.
+        // אם תרצה בעתיד להוסיף את המזהה הספציפי של המכשיר שלך, תוכל להוסיף אותו למערך הזה.
+        testDeviceIdentifiers: ['EMULATOR'], 
+      })
+      .then(() => {
+        // 2. אתחול מערכת הפרסומות של גוגל רק אחרי שהגדרנו את הקונפיגורציה
+        return mobileAds().initialize();
+      })
       .then(adapterStatuses => {
         console.log('✅ Google Ads initialized successfully!', adapterStatuses);
       })
@@ -18,14 +27,14 @@ export default function RootLayout() {
         console.error('❌ Google Ads initialization failed:', error);
       });
 
-    // הגדרות עיצוב אנדרואיד (נשאר כמו שהיה לך)
+    // הגדרות עיצוב למכשירי אנדרואיד
     if (Platform.OS === 'android') {
       StatusBar.setTranslucent(true);
       StatusBar.setBackgroundColor('transparent');
       NavigationBar.setVisibilityAsync('visible');
     }
 
-    // הגירת נתונים (נשאר כמו שהיה לך)
+    // הגירת נתונים (הלוגיקה הפנימית שלך)
     runAutoMigration();
   }, []);
 

@@ -1,12 +1,23 @@
-// components/PlateDetectionRewardedAd.tsx
-
+//componets/PlateDetectionRewardedAd.tsx
+// קומפוננטה זו אחראית על הצגת פרסומת מסוג RewardedAd לפני זיהוי לוחית הרישוי.
 import React, { useEffect, useState } from 'react';
 import { Platform, ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+import { 
+  TestIds, 
+  RewardedAd, 
+  RewardedAdEventType, 
+  AdEventType 
+} from 'react-native-google-mobile-ads';
 
 interface PlateDetectionRewardedAdProps {
   onAdComplete?: () => void;
   onAdError?: (error: any) => void;
 }
+
+// הגדרת מזהה הפרסומת מחוץ לקומפוננטה (מונע יצירה מחדש בכל רינדור)
+const AD_UNIT_ID = __DEV__
+  ? TestIds.REWARDED 
+  : 'ca-app-pub-6395480022343350/7745503279';
 
 const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
   onAdComplete,
@@ -15,85 +26,70 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // דילוג על פרסומות בסביבת Web
     if (Platform.OS === 'web') {
       onAdComplete?.();
       return;
     }
-    loadAndShowAd();
-  }, []);
 
-  const loadAndShowAd = async () => {
+
+    // יצירת מופע הפרסומת
+    const rewardedAd = RewardedAd.createForAdRequest(AD_UNIT_ID, {
+      requestNonPersonalizedAdsOnly: true,
+    });
+
+    // הרשמה למאזינים
+    const unsubscribeLoaded = rewardedAd.addAdEventListener(
+      RewardedAdEventType.LOADED,
+      () => {
+        console.log('✅ Ad Loaded');
+        setIsLoading(false);
+        rewardedAd.show();
+      }
+    );
+
+    const unsubscribeError = rewardedAd.addAdEventListener(
+      AdEventType.ERROR,
+      (error) => {
+        console.log('❌ Ad Error:', error.message);
+        setIsLoading(false);
+        onAdError?.(error);
+        onAdComplete?.(); // ממשיכים הלאה כדי לא לתקוע את המשתמש
+      }
+    );
+
+    const unsubscribeClosed = rewardedAd.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        console.log('📴 Ad Closed');
+        onAdComplete?.();
+      }
+    );
+
+    const unsubscribeEarned = rewardedAd.addAdEventListener(
+      RewardedAdEventType.EARNED_REWARD,
+      (reward) => {
+        console.log('🎁 Reward Earned:', reward);
+      }
+    );
+
+    // טעינת הפרסומת
     try {
-      // Dynamic import to avoid loading on web
-      const admob = await import('react-native-google-mobile-ads') as any;
-      const { RewardedAd, AdEventType } = admob;
-
-      const AD_UNIT_ID = __DEV__
-        ? 'ca-app-pub-3940256099942544/5224354917' // Test ad unit
-        : 'ca-app-pub-6395480022343350/7745503279'; // Production rewarded ad
-
-      const rewardedAd = RewardedAd.createForAdRequest(AD_UNIT_ID, {
-        requestNonPersonalizedAdsOnly: false,
-      });
-
-      const unsubscribeLoaded = rewardedAd.addAdEventListener(
-        AdEventType.LOADED,
-        () => {
-          if (__DEV__) {
-            console.log('✅ Plate Detection Ad loaded');
-          }
-          setIsLoading(false);
-          rewardedAd.show();
-        }
-      );
-
-      const unsubscribeEarned = rewardedAd.addAdEventListener(
-        AdEventType.EARNED_REWARD,
-        (reward: any) => {
-          if (__DEV__) {
-            console.log('🎁 User earned plate detection reward:', reward);
-          }
-        }
-      );
-
-      const unsubscribeClosed = rewardedAd.addAdEventListener(
-        AdEventType.CLOSED,
-        () => {
-          if (__DEV__) {
-            console.log('📴 Plate Detection Ad closed');
-          }
-          onAdComplete?.();
-          unsubscribeLoaded();
-          unsubscribeEarned();
-          unsubscribeClosed();
-          unsubscribeError();
-        }
-      );
-
-      const unsubscribeError = rewardedAd.addAdEventListener(
-        AdEventType.ERROR,
-        (error: any) => {
-          console.error('❌ Plate Detection Ad error:', error);
-          onAdError?.(error);
-          onAdComplete?.(); // Continue anyway on error
-          unsubscribeLoaded();
-          unsubscribeEarned();
-          unsubscribeClosed();
-          unsubscribeError();
-        }
-      );
-
       rewardedAd.load();
-
     } catch (error) {
-      console.error('Failed to load ad module:', error);
-      onAdComplete?.(); // Continue anyway if ad module fails
+      console.error('Fatal error in ad loading:', error);
+      onAdComplete?.();
     }
-  };
 
-  // Show loading UI only while loading
-  // Return null when ad is showing (fullscreen ad covers everything)
-  // Component stays mounted to keep event listeners active
+    // פונקציית ניקוי - React תקרא לה אוטומטית כשהקומפוננטה יורדת מהמסך
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeError();
+      unsubscribeClosed();
+      unsubscribeEarned();
+    };
+  }, []); // מערך תלויות ריק מבטיח שזה ירוץ פעם אחת בטעינה
+
   if (!isLoading) return null;
 
   return (
@@ -101,8 +97,7 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
       <View style={styles.loadingCard}>
         <ActivityIndicator size="large" color="#009688" />
         <Text style={styles.loadingTitle}>טוען פרסומת...</Text>
-        <Text style={styles.loadingSubtext}>זה ייקח רק 15-30 שניות</Text>
-        <Text style={styles.loadingReward}>🎁 תקבל זיהוי אוטומטי מיידית!</Text>
+        <Text style={styles.loadingSubtext}>זה ייקח רגע...</Text>
       </View>
     </View>
   );
@@ -110,49 +105,16 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
 
 const styles = StyleSheet.create({
   loadingContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 9999,
+    justifyContent: 'center', alignItems: 'center', zIndex: 9999,
   },
   loadingCard: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 32,
-    alignItems: 'center',
-    maxWidth: 320,
-    marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 20,
+    backgroundColor: '#fff', borderRadius: 24, padding: 32,
+    alignItems: 'center', maxWidth: 320, marginHorizontal: 20, elevation: 20,
   },
-  loadingTitle: {
-    color: '#1f2937',
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 20,
-    textAlign: 'center',
-  },
-  loadingSubtext: {
-    color: '#6b7280',
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  loadingReward: {
-    color: '#009688',
-    fontSize: 15,
-    fontWeight: '600',
-    marginTop: 16,
-    textAlign: 'center',
-  },
+  loadingTitle: { color: '#1f2937', fontSize: 20, fontWeight: '700', marginTop: 20 },
+  loadingSubtext: { color: '#6b7280', fontSize: 14, marginTop: 8, textAlign: 'center' },
 });
 
 export default PlateDetectionRewardedAd;

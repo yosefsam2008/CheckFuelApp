@@ -49,15 +49,14 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
 
   const loadAndShowAd = async () => {
     try {
-      const admob = await import('react-native-google-mobile-ads') as any;
-      const { RewardedAd, RewardedAdEventType } = admob;
+      const googleMobileAds = await import('react-native-google-mobile-ads');
 
-      const ad = RewardedAd.createForAdRequest(AD_UNIT_ID, {
+      const ad = googleMobileAds.RewardedAd.createForAdRequest(AD_UNIT_ID, {
         requestNonPersonalizedAdsOnly: true,
       });
 
       const unsubLoaded = ad.addAdEventListener(
-        RewardedAdEventType.LOADED,
+        googleMobileAds.RewardedAdEventType.LOADED,
         () => {
           if (__DEV__) console.log('✅ Rewarded Ad loaded');
           ad.show();
@@ -65,7 +64,7 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
       );
 
       const unsubEarned = ad.addAdEventListener(
-        RewardedAdEventType.EARNED_REWARD,
+        googleMobileAds.RewardedAdEventType.EARNED_REWARD,
         (reward: any) => {
           if (__DEV__) console.log('🎁 Reward earned:', reward);
           rewardEarnedRef.current = true;
@@ -74,7 +73,7 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
       );
 
       const unsubClosed = ad.addAdEventListener(
-        RewardedAdEventType.CLOSED,
+        googleMobileAds.AdEventType.CLOSED,
         () => {
           if (__DEV__) console.log('📴 Rewarded Ad closed');
           if (!rewardEarnedRef.current && mountedRef.current) {
@@ -85,19 +84,7 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
         }
       );
 
-      const unsubError = ad.addAdEventListener(
-        RewardedAdEventType.ERROR,
-        (error: any) => {
-          console.error('❌ Rewarded Ad error:', error);
-          if (mountedRef.current) {
-            onAdError?.(error);
-            onAdComplete?.();
-          }
-          cleanup();
-        }
-      );
-
-      unsubscribersRef.current = [unsubLoaded, unsubEarned, unsubClosed, unsubError];
+      unsubscribersRef.current = [unsubLoaded, unsubEarned, unsubClosed];
 
       ad.load();
 

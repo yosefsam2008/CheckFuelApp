@@ -2,7 +2,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import 'expo-router/entry';
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -14,7 +14,9 @@ import {
   Platform,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   translateBrandToEnglish,
   calculateICEConsumptionEnhanced,
@@ -38,6 +40,7 @@ const AdBanner = ({ style }: { style?: any }) => {
   
   return <AdBannerComponent style={style} />;
 };
+
 const VEHICLE_APIS = [
   { type: "car", id: "053cea08-09bc-40ec-8f7a-156f0677aff3" },
   { type: "motorcycle", id: "bf9df4e2-d90d-4c0a-a400-19e15af8e95f" },
@@ -685,12 +688,31 @@ function calculateSmartEngineCC(params: {
 // ==================== END DYNAMIC CC ESTIMATION ====================
 
 export default function AddVehicleByPlate() {
+  const insets = useSafeAreaInsets();
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
   const [plate, setPlate] = useState("");
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [focusAnim] = useState(new Animated.Value(0));
   const [pulseAnim] = useState(new Animated.Value(1));
   const router = useRouter();
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const handleFocus = () => {
     Animated.spring(focusAnim, {
@@ -710,176 +732,107 @@ export default function AddVehicleByPlate() {
     }).start();
   };
 
-React.useEffect(() => {
-  if (loading) {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  } else {
-    pulseAnim.setValue(1);
-  }
-}, [loading, pulseAnim]);
-
-const handleAddVehicleByPlate = async () => {
-  const plateTrimmed = plate.trim();
-  if (!plateTrimmed) {
-    setToastMessage("❌ אנא הזן מספר רכב");
-    return;
-  }
-
-  // ✅ בדיקת כפילות לפני החיפוש
-  try {
-    const existing = await AsyncStorage.getItem("vehicles");
-    const vehicles: Vehicle[] = existing ? JSON.parse(existing) : [];
-    
-    const isDuplicate = vehicles.some(
-      (v) => v.plate.toUpperCase() === plateTrimmed.toUpperCase()
-    );
-    
-    if (isDuplicate) {
-      setToastMessage("⚠️ רכב עם לוחית רישוי זו כבר קיים במערכת");
-      return;
+  React.useEffect(() => {
+    if (loading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
     }
-  } catch (error) {
-    console.error("Error checking duplicates:", error);
-  }
+  }, [loading, pulseAnim]);
 
-  setLoading(true);
-
-  if (__DEV__) {
-    console.log('\n╔════════════════════════════════════════════════════════╗');
-  }
-  if (__DEV__) {
-    console.log('║  🚗 ADD VEHICLE BY LICENSE PLATE - PROCESS STARTED     ║');
-  }
-  if (__DEV__) {
-    console.log('╚════════════════════════════════════════════════════════╝');
-  }
-  if (__DEV__) {
-    console.log(`🔍 Searching for plate: ${plateTrimmed}`);
-  }
-
-  try {
-    const found = await fetchRecordByPlate(plateTrimmed);
-    if (!found) {
-      if (__DEV__) {
-        console.log('❌ No data found in any API');
-      }
-      setToastMessage("❌ לא נמצאו נתונים עבור מספר זה באף מאגר");
+  const handleAddVehicleByPlate = async () => {
+    const plateTrimmed = plate.trim();
+    if (!plateTrimmed) {
+      setToastMessage("❌ אנא הזן מספר רכב");
       return;
     }
 
+    // ✅ בדיקת כפילות לפני החיפוש
+    try {
+      const existing = await AsyncStorage.getItem("vehicles");
+      const vehicles: Vehicle[] = existing ? JSON.parse(existing) : [];
+      
+      const isDuplicate = vehicles.some(
+        (v) => v.plate.toUpperCase() === plateTrimmed.toUpperCase()
+      );
+      
+      if (isDuplicate) {
+        setToastMessage("⚠️ רכב עם לוחית רישוי זו כבר קיים במערכת");
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking duplicates:", error);
+    }
 
-      if (__DEV__) {
-        console.log(`\n✅ Found: ${found.record.tozeret_nm || found.record.tozeret} ${found.record.degem_nm || found.record.kinuy_mishari}`);
-      }
-      if (__DEV__) {
-        console.log(`   Type: ${found.type} | Engine: ${found.record.degem_manoa} | Year: ${found.record.shnat_yitzur}`);
-      }
-      if (found.degem_nm) {
+    setLoading(true);
+
+    if (__DEV__) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+    }
+    if (__DEV__) {
+      console.log('║  🚗 ADD VEHICLE BY LICENSE PLATE - PROCESS STARTED     ║');
+    }
+    if (__DEV__) {
+      console.log('╚════════════════════════════════════════════════════════╝');
+    }
+    if (__DEV__) {
+      console.log(`🔍 Searching for plate: ${plateTrimmed}`);
+    }
+
+    try {
+      const found = await fetchRecordByPlate(plateTrimmed);
+      if (!found) {
         if (__DEV__) {
-          console.log(`   Model Code (degem_nm): ${found.degem_nm}`);
+          console.log('❌ No data found in any API');
         }
+        setToastMessage("❌ לא נמצאו נתונים עבור מספר זה באף מאגר");
+        return;
       }
 
-      const parsed = await parseRelevantFields(found.record, found.degem_nm, found.type);
 
-      let kwhPerKm: number | undefined;
-      let avgConsumption: number | undefined = undefined;
-
-      // 1. משתנים בסיסיים - שולפים CC רק אם זה לא רכב חשמלי
-      let effectiveMishkalKolel = parsed.mishkal_kolel;
-      let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
-
-      // ============================================
-      // PHASE 2: FALLBACK API FOR MISSING DATA (לכל הרכבים!)
-      // ============================================
-      const needsFallbackWeight = !effectiveMishkalKolel;
-      const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
-
-      if (needsFallbackWeight || needsFallbackCC) {
         if (__DEV__) {
-          console.log('\n🔄 Missing data - trying fallback API...');
+          console.log(`\n✅ Found: ${found.record.tozeret_nm || found.record.tozeret} ${found.record.degem_nm || found.record.kinuy_mishari}`);
         }
-
-        const fallbackData = await fetchFallbackVehicleData({
-          brand: parsed.brand,
-          model: parsed.model,
-          year: parsed.year,
-          engineCode: found.record.degem_manoa,
-          plateNumber: plateTrimmed,
-          degem_nm: found.degem_nm,
-          isElectric: parsed.fuelType === "Electric",
-        });
-
-        if (fallbackData) {
-          if (needsFallbackWeight && fallbackData.mishkal_kolel) {
-            effectiveMishkalKolel = fallbackData.mishkal_kolel;
-            if (__DEV__) console.log(`   ✅ Weight from fallback: ${effectiveMishkalKolel}kg`);
-          }
-          if (needsFallbackCC && fallbackData.nefach_manoa) {
-            cc = fallbackData.nefach_manoa;
-            if (__DEV__) console.log(`   ✅ CC from fallback: ${cc}cc`);
+        if (__DEV__) {
+          console.log(`   Type: ${found.type} | Engine: ${found.record.degem_manoa} | Year: ${found.record.shnat_yitzur}`);
+        }
+        if (found.degem_nm) {
+          if (__DEV__) {
+            console.log(`   Model Code (degem_nm): ${found.degem_nm}`);
           }
         }
-      }
 
-      // ============================================
-      // PHASE 3: BRAND/MODEL WEIGHT ESTIMATION
-      // ============================================
-      if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-        const estimatedWeight = estimateVehicleWeight(parsed.brand, parsed.model, parsed.year);
-        if (estimatedWeight) {
-          effectiveMishkalKolel = estimatedWeight.gross;
-          if (__DEV__) console.log(`📊 Weight estimated from DB: ${effectiveMishkalKolel}kg (gross)`);
-        }
-      }
+        const parsed = await parseRelevantFields(found.record, found.degem_nm, found.type);
 
-      // ============================================
-      // PHASE 4: SPLIT BY FUEL TYPE FOR FINAL CALCULATION
-      // ============================================
-      if (parsed.fuelType === "Electric") {
-        if (__DEV__) console.log('⚡ Electric vehicle calculation...');
-        
-        const evData = await calculateEVConsumptionAdvanced({
-          brand: parsed.brand,
-          model: parsed.model,
-          year: parsed.year || new Date().getFullYear(),
-          vehicleType: found.type,
-          mishkal_kolel: effectiveMishkalKolel,
-        });
-        kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
-        
-      } else {
-        if (__DEV__) console.log('⛽ ICE vehicle calculation - Fuel:', parsed.fuelType);
+        let kwhPerKm: number | undefined;
+        let avgConsumption: number | undefined = undefined;
 
-        // ============================================
-        // PHASE 1: GET ENGINE CC FROM PRIMARY API
-        // ============================================
-        let cc = await extractEngineCC(found.record, found.type);
+        // 1. משתנים בסיסיים - שולפים CC רק אם זה לא רכב חשמלי
         let effectiveMishkalKolel = parsed.mishkal_kolel;
+        let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
 
         // ============================================
-        // PHASE 2: FALLBACK API FOR MISSING DATA
+        // PHASE 2: FALLBACK API FOR MISSING DATA (לכל הרכבים!)
         // ============================================
-        const needsFallback = !cc || !effectiveMishkalKolel;
+        const needsFallbackWeight = !effectiveMishkalKolel;
+        const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
 
-        if (needsFallback) {
+        if (needsFallbackWeight || needsFallbackCC) {
           if (__DEV__) {
             console.log('\n🔄 Missing data - trying fallback API...');
-            console.log(`   Need CC: ${!cc ? 'YES' : 'NO'}`);
-            console.log(`   Need Weight: ${!effectiveMishkalKolel ? 'YES' : 'NO'}`);
           }
 
           const fallbackData = await fetchFallbackVehicleData({
@@ -889,26 +842,17 @@ const handleAddVehicleByPlate = async () => {
             engineCode: found.record.degem_manoa,
             plateNumber: plateTrimmed,
             degem_nm: found.degem_nm,
-            isElectric: false,
+            isElectric: parsed.fuelType === "Electric",
           });
 
           if (fallbackData) {
-            if (!cc && fallbackData.nefach_manoa) {
-              cc = fallbackData.nefach_manoa;
-              if (__DEV__) {
-                console.log(`   ✅ CC from fallback: ${cc}cc`);
-              }
-            }
-
-            if (!effectiveMishkalKolel && fallbackData.mishkal_kolel) {
+            if (needsFallbackWeight && fallbackData.mishkal_kolel) {
               effectiveMishkalKolel = fallbackData.mishkal_kolel;
-              if (__DEV__) {
-                console.log(`   ✅ Weight from fallback: ${effectiveMishkalKolel}kg`);
-              }
+              if (__DEV__) console.log(`   ✅ Weight from fallback: ${effectiveMishkalKolel}kg`);
             }
-          } else {
-            if (__DEV__) {
-              console.log('   ⚠️  Fallback API found no data');
+            if (needsFallbackCC && fallbackData.nefach_manoa) {
+              cc = fallbackData.nefach_manoa;
+              if (__DEV__) console.log(`   ✅ CC from fallback: ${cc}cc`);
             }
           }
         }
@@ -917,91 +861,169 @@ const handleAddVehicleByPlate = async () => {
         // PHASE 3: BRAND/MODEL WEIGHT ESTIMATION
         // ============================================
         if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-          const estimatedWeight = estimateVehicleWeight(
-            parsed.brand,
-            parsed.model,
-            parsed.year
-          );
-
+          const estimatedWeight = estimateVehicleWeight(parsed.brand, parsed.model, parsed.year);
           if (estimatedWeight) {
             effectiveMishkalKolel = estimatedWeight.gross;
-            const brandName = translateBrandToEnglish(parsed.brand);
-            if (__DEV__) {
-              console.log(`📊 ${brandName} weight estimated: ${effectiveMishkalKolel}kg (gross)`);
-            }
+            if (__DEV__) console.log(`📊 Weight estimated from DB: ${effectiveMishkalKolel}kg (gross)`);
           }
         }
 
         // ============================================
-        // PHASE 4: ADVANCED PHYSICS CALCULATION
+        // PHASE 4: SPLIT BY FUEL TYPE FOR FINAL CALCULATION
         // ============================================
+        if (parsed.fuelType === "Electric") {
+          if (__DEV__) console.log('⚡ Electric vehicle calculation...');
+          
+          const evData = await calculateEVConsumptionAdvanced({
+            brand: parsed.brand,
+            model: parsed.model,
+            year: parsed.year || new Date().getFullYear(),
+            vehicleType: found.type,
+            mishkal_kolel: effectiveMishkalKolel,
+          });
+          kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
+          
+        } else {
+          if (__DEV__) console.log('⛽ ICE vehicle calculation - Fuel:', parsed.fuelType);
 
-        // 🔥 זיהוי רכב היברידי משופר (לוכד גם היברידיות סמויות)
-        const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
-        const engineStr = found.record.degem_manoa ? String(found.record.degem_manoa).toUpperCase() : '';
+          // ============================================
+          // PHASE 1: GET ENGINE CC FROM PRIMARY API
+          // ============================================
+          let cc = await extractEngineCC(found.record, found.type);
+          let effectiveMishkalKolel = parsed.mishkal_kolel;
 
-        // 1. זיהוי רגיל לפי שם מפורש
-        const isExplicitHybrid = modelStr.includes('HYBRID') || modelStr.includes('HEV') || modelStr.includes('PHEV') || modelStr.includes('HSD');
+          // ============================================
+          // PHASE 2: FALLBACK API FOR MISSING DATA
+          // ============================================
+          const needsFallback = !cc || !effectiveMishkalKolel;
 
-        // 2. זיהוי לפי דגמים שהם תמיד היברידיים בישראל
-        const isKnownHybridModel = ['IONIQ', 'NIRO', 'PRIUS', 'COROLLA CROSS', 'C-HR', 'YARIS CROSS'].some(m => modelStr.includes(m));
+          if (needsFallback) {
+            if (__DEV__) {
+              console.log('\n🔄 Missing data - trying fallback API...');
+              console.log(`   Need CC: ${!cc ? 'YES' : 'NO'}`);
+              console.log(`   Need Weight: ${!effectiveMishkalKolel ? 'YES' : 'NO'}`);
+            }
 
-        // 3. זיהוי לפי קודי מנוע קלאסיים של מערכות היברידיות (2ZR של טויוטה, G4LE של יונדאי/קיה)
-        const isKnownHybridEngine = ['2ZR', 'G4LE'].includes(engineStr);
+            const fallbackData = await fetchFallbackVehicleData({
+              brand: parsed.brand,
+              model: parsed.model,
+              year: parsed.year,
+              engineCode: found.record.degem_manoa,
+              plateNumber: plateTrimmed,
+              degem_nm: found.degem_nm,
+              isElectric: false,
+            });
 
-        // אם אחד מהתנאים מתקיים - הרכב היברידי
-        const isHybridCar = isExplicitHybrid || isKnownHybridModel || isKnownHybridEngine;
+            if (fallbackData) {
+              if (!cc && fallbackData.nefach_manoa) {
+                cc = fallbackData.nefach_manoa;
+                if (__DEV__) {
+                  console.log(`   ✅ CC from fallback: ${cc}cc`);
+                }
+              }
 
-        if (__DEV__) {
-          console.log('\n🔧 ICE Calculation Input:');
-          console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
-          console.log(`   engineCC: ${cc || 'N/A'}cc`);
-          console.log(`   year: ${parsed.year || 'N/A'}`);
-          console.log(`   fuelType: ${parsed.fuelType}`);
-          console.log(`   isHybrid: ${isHybridCar ? 'YES 🔋' : 'NO'}`);
+              if (!effectiveMishkalKolel && fallbackData.mishkal_kolel) {
+                effectiveMishkalKolel = fallbackData.mishkal_kolel;
+                if (__DEV__) {
+                  console.log(`   ✅ Weight from fallback: ${effectiveMishkalKolel}kg`);
+                }
+              }
+            } else {
+              if (__DEV__) {
+                console.log('   ⚠️  Fallback API found no data');
+              }
+            }
+          }
+
+          // ============================================
+          // PHASE 3: BRAND/MODEL WEIGHT ESTIMATION
+          // ============================================
+          if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
+            const estimatedWeight = estimateVehicleWeight(
+              parsed.brand,
+              parsed.model,
+              parsed.year
+            );
+
+            if (estimatedWeight) {
+              effectiveMishkalKolel = estimatedWeight.gross;
+              const brandName = translateBrandToEnglish(parsed.brand);
+              if (__DEV__) {
+                console.log(`📊 ${brandName} weight estimated: ${effectiveMishkalKolel}kg (gross)`);
+              }
+            }
+          }
+
+          // ============================================
+          // PHASE 4: ADVANCED PHYSICS CALCULATION
+          // ============================================
+
+          // 🔥 זיהוי רכב היברידי משופר (לוכד גם היברידיות סמויות)
+          const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
+          const engineStr = found.record.degem_manoa ? String(found.record.degem_manoa).toUpperCase() : '';
+
+          // 1. זיהוי רגיל לפי שם מפורש
+          const isExplicitHybrid = modelStr.includes('HYBRID') || modelStr.includes('HEV') || modelStr.includes('PHEV') || modelStr.includes('HSD');
+
+          // 2. זיהוי לפי דגמים שהם תמיד היברידיים בישראל
+          const isKnownHybridModel = ['IONIQ', 'NIRO', 'PRIUS', 'COROLLA CROSS', 'C-HR', 'YARIS CROSS'].some(m => modelStr.includes(m));
+
+          // 3. זיהוי לפי קודי מנוע קלאסיים של מערכות היברידיות (2ZR של טויוטה, G4LE של יונדאי/קיה)
+          const isKnownHybridEngine = ['2ZR', 'G4LE'].includes(engineStr);
+
+          // אם אחד מהתנאים מתקיים - הרכב היברידי
+          const isHybridCar = isExplicitHybrid || isKnownHybridModel || isKnownHybridEngine;
+
+          if (__DEV__) {
+            console.log('\n🔧 ICE Calculation Input:');
+            console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
+            console.log(`   engineCC: ${cc || 'N/A'}cc`);
+            console.log(`   year: ${parsed.year || 'N/A'}`);
+            console.log(`   fuelType: ${parsed.fuelType}`);
+            console.log(`   isHybrid: ${isHybridCar ? 'YES 🔋' : 'NO'}`);
+          }
+
+          avgConsumption = calculateICEConsumptionEnhanced({
+            mishkal_kolel: effectiveMishkalKolel,
+            engineCC: cc,
+            year: parsed.year,
+            fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
+            vehicleType: found.type,
+            isHybrid: isHybridCar, // <-- מעבירים את הנתון לפונקציית הפיזיקה
+          });
+
+          if (__DEV__) {
+            console.log(`\n✅ ICE Result: ${avgConsumption} km/L`);
+          }
         }
 
-        avgConsumption = calculateICEConsumptionEnhanced({
-          mishkal_kolel: effectiveMishkalKolel,
-          engineCC: cc,
-          year: parsed.year,
-          fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
-          vehicleType: found.type,
-          isHybrid: isHybridCar, // <-- מעבירים את הנתון לפונקציית הפיזיקה
-        });
+        const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");
+        const newVehicle: Vehicle = {
+          id: String(found.record._id ?? Date.now()),
+          plate: String(found.record.mispar_rechev ?? plateTrimmed).toUpperCase(),
+          name: vehicleName,
+          model: parsed.model || "לא ידוע",
+          engine: String(found.record.degem_manoa ?? found.record.engine_type ?? "לא ידוע"),
+          type: found.type,
+          avgConsumption: parsed.fuelType === "Electric" ? kwhPerKm : avgConsumption,
+          fueltype: parsed.fuelType,
+          year: parsed.year ?? new Date().getFullYear(),
+          mishkal_kolel: parsed.mishkal_kolel,
+          // misgeret removed - unreliable field
+        };
 
         if (__DEV__) {
-          console.log(`\n✅ ICE Result: ${avgConsumption} km/L`);
+          console.log(`\n✅ ${newVehicle.name} ${newVehicle.model} (${newVehicle.plate})
+          ${newVehicle.avgConsumption} ${parsed.fuelType === "Electric" ? 'kWh/km' : 'km/L'} | ${newVehicle.year} | ${newVehicle.fueltype}`);
         }
-      }
 
-      const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");
-      const newVehicle: Vehicle = {
-        id: String(found.record._id ?? Date.now()),
-        plate: String(found.record.mispar_rechev ?? plateTrimmed).toUpperCase(),
-        name: vehicleName,
-        model: parsed.model || "לא ידוע",
-        engine: String(found.record.degem_manoa ?? found.record.engine_type ?? "לא ידוע"),
-        type: found.type,
-        avgConsumption: parsed.fuelType === "Electric" ? kwhPerKm : avgConsumption,
-        fueltype: parsed.fuelType,
-        year: parsed.year ?? new Date().getFullYear(),
-        mishkal_kolel: parsed.mishkal_kolel,
-        // misgeret removed - unreliable field
-      };
+        await saveVehicle(newVehicle);
+        if (__DEV__) {
+          console.log('Saved!\n');
+        }
 
-      if (__DEV__) {
-        console.log(`\n✅ ${newVehicle.name} ${newVehicle.model} (${newVehicle.plate})
-        ${newVehicle.avgConsumption} ${parsed.fuelType === "Electric" ? 'kWh/km' : 'km/L'} | ${newVehicle.year} | ${newVehicle.fueltype}`);
-      }
-
-      await saveVehicle(newVehicle);
-      if (__DEV__) {
-        console.log('Saved!\n');
-      }
-
-      setToastMessage(`✅ ${newVehicle.name} (${newVehicle.plate}) נוסף בהצלחה — סוג דלק: ${newVehicle.fueltype} — דגם: ${newVehicle.model}`);
-      setTimeout(() => router.back(), 1400);
+        setToastMessage(`✅ ${newVehicle.name} (${newVehicle.plate}) נוסף בהצלחה — סוג דלק: ${newVehicle.fueltype} — דגם: ${newVehicle.model}`);
+        setTimeout(() => router.back(), 1400);
 
     } catch (error) {
       console.error('\n❌ ERROR in AddVehicleByPlate:', error);
@@ -1025,119 +1047,129 @@ const handleAddVehicleByPlate = async () => {
   });
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
-      {/* Banner Ad at the top */}
-      <AdBanner style={styles.topBanner} />
-
-      {/* Back Button - Fixed Position */}
-      <TouchableOpacity 
-        style={styles.backBtn} 
-        onPress={() => router.back()}
-        activeOpacity={0.7}
+    <View style={styles.mainContainer}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <View style={styles.backBtnInner}>
-          <Text style={styles.backBtnText}>←</Text>
-        </View>
-      </TouchableOpacity>
+        {/* Back Button - Fixed Position */}
+        <TouchableOpacity 
+          style={styles.backBtn} 
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <View style={styles.backBtnInner}>
+            <Text style={styles.backBtnText}>←</Text>
+          </View>
+        </TouchableOpacity>
 
-      {/* Scrollable Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.contentWrapper}>
-          {/* Header Section */}
-          <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <View style={styles.iconCircle}>
-                <Text style={styles.iconText}>🚗</Text>
+        {/* Scrollable Content */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.contentWrapper}>
+            {/* Header Section */}
+            <View style={styles.header}>
+              <View style={styles.iconContainer}>
+                <View style={styles.iconCircle}>
+                  <Text style={styles.iconText}>🚗</Text>
+                </View>
+              </View>
+              <Text style={styles.title}>זיהוי אוטומטי של רכב</Text>
+              <Text style={styles.subtitle}>הזן מספר רישוי לאיתור מיידי ממאגרי הממשלה</Text>
+            </View>
+
+            {/* Toast */}
+            {toastMessage && <Toast message={toastMessage} onHide={() => setToastMessage(null)} />}
+
+            {/* Main Content Card */}
+            <View style={styles.card}>
+              {/* License Plate Input */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>מספר רישוי</Text>
+                <Animated.View
+                  style={[
+                    styles.inputWrapper,
+                    {
+                      borderColor,
+                      shadowOpacity,
+                    },
+                  ]}
+                >
+                  <View style={styles.plateFrame}>
+                    <View style={styles.plateInner}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="12-345-67"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="numeric"
+                        value={plate}
+                        onChangeText={setPlate}
+                        autoCapitalize="characters"
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        editable={!loading}
+                      />
+                    </View>
+                  </View>
+                </Animated.View>
+                <Text style={styles.inputHint}>תתבצע חיפוש אוטומטי במאגרי רכב, אופנוע ומשאית</Text>
+              </View>
+
+              {/* Search Button */}
+              <TouchableOpacity
+                style={[styles.searchBtn, loading && styles.searchBtnDisabled]}
+                onPress={handleAddVehicleByPlate}
+                disabled={loading || !plate.trim()}
+                activeOpacity={0.85}
+              >
+                {loading ? (
+                  <Animated.View style={[styles.searchBtnContent, { transform: [{ scale: pulseAnim }] }]}>
+                    <ActivityIndicator color="#fff" size="small" />
+                    <Text style={styles.searchBtnText}>מאתר רכב...</Text>
+                  </Animated.View>
+                ) : (
+                  <View style={styles.searchBtnContent}>
+                    <Text style={styles.searchBtnIcon}>✨</Text>
+                    <Text style={styles.searchBtnText}>חפש והוסף אוטומטית</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Features List */}
+              <View style={styles.featuresContainer}>
+                <FeatureItem icon="🔍" text="זיהוי מיידי מבסיס נתונים ממשלתי" />
+                <FeatureItem icon="⚡" text="ניתוח אוטומטי של סוג דלק וצריכה" />
+                <FeatureItem icon="📊" text="חישוב חכם של יעילות הרכב" />
               </View>
             </View>
-            <Text style={styles.title}>זיהוי אוטומטי של רכב</Text>
-            <Text style={styles.subtitle}>הזן מספר רישוי לאיתור מיידי ממאגרי הממשלה</Text>
-          </View>
 
-          {/* Toast */}
-          {toastMessage && <Toast message={toastMessage} onHide={() => setToastMessage(null)} />}
-
-          {/* Main Content Card */}
-          <View style={styles.card}>
-            {/* License Plate Input */}
-            <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>מספר רישוי</Text>
-              <Animated.View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    borderColor,
-                    shadowOpacity,
-                  },
-                ]}
-              >
-                <View style={styles.plateFrame}>
-                  <View style={styles.plateInner}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="12-345-67"
-                      placeholderTextColor="#9ca3af"
-                      keyboardType="numeric"
-                      value={plate}
-                      onChangeText={setPlate}
-                      autoCapitalize="characters"
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                      editable={!loading}
-                    />
-                  </View>
-                </View>
-              </Animated.View>
-              <Text style={styles.inputHint}>תתבצע חיפוש אוטומטי במאגרי רכב, אופנוע ומשאית</Text>
+            {/* Trust Badge */}
+            <View style={styles.trustBadge}>
+              <Text style={styles.trustBadgeText}>🔒 נתונים מאומתים ממשרד התחבורה</Text>
             </View>
 
-            {/* Search Button */}
-            <TouchableOpacity
-              style={[styles.searchBtn, loading && styles.searchBtnDisabled]}
-              onPress={handleAddVehicleByPlate}
-              disabled={loading || !plate.trim()}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <Animated.View style={[styles.searchBtnContent, { transform: [{ scale: pulseAnim }] }]}>
-                  <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.searchBtnText}>מאתר רכב...</Text>
-                </Animated.View>
-              ) : (
-                <View style={styles.searchBtnContent}>
-                  <Text style={styles.searchBtnIcon}>✨</Text>
-                  <Text style={styles.searchBtnText}>חפש והוסף אוטומטית</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {/* Features List */}
-            <View style={styles.featuresContainer}>
-              <FeatureItem icon="🔍" text="זיהוי מיידי מבסיס נתונים ממשלתי" />
-              <FeatureItem icon="⚡" text="ניתוח אוטומטי של סוג דלק וצריכה" />
-              <FeatureItem icon="📊" text="חישוב חכם של יעילות הרכב" />
-            </View>
+            {/* Bottom Spacer */}
+            <View style={{ height: 40 }} />
           </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-          {/* Trust Badge */}
-          <View style={styles.trustBadge}>
-            <Text style={styles.trustBadgeText}>🔒 נתונים מאומתים ממשרד התחבורה</Text>
-          </View>
-
-          {/* Bottom Spacer */}
-          <View style={{ height: 40 }} />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {/* Banner Ad at the bottom (Hidden when keyboard is open) */}
+      <View style={[
+        styles.adContainer, 
+        { 
+          paddingBottom: Math.max(insets.bottom + 10, 16),
+          display: isKeyboardVisible ? 'none' : 'flex'
+        }
+      ]}>
+        <AdBanner style={styles.bottomBanner} />
+      </View>
+    </View>
   );
 }
 
@@ -1152,18 +1184,9 @@ function FeatureItem({ icon, text }: { icon: string; text: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
     flex: 1,
     backgroundColor: '#f0f9ff',
-  },
-  topBanner: {
-    ...Platform.select({
-      web: {
-        maxWidth: MAX_WIDTH,
-        alignSelf: 'center',
-        width: '100%',
-      },
-    }),
   },
   scrollView: {
     flex: 1,
@@ -1371,5 +1394,22 @@ const styles = StyleSheet.create({
     color: '#00695c',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  adContainer: {
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  bottomBanner: {
+    ...Platform.select({
+      web: {
+        maxWidth: MAX_WIDTH,
+        alignSelf: 'center',
+        width: '100%',
+      },
+    }),
   },
 });

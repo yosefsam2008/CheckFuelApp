@@ -4,41 +4,36 @@
  * Legal Compliance Screen Component
  * ============================================================================
  * A complete, production-ready React Native component for legal disclosures.
- * 
- * Features:
+ * * Features:
  * - Privacy Policy (Hebrew + English)
  * - Terms of Service (Hebrew + English)
  * - About & Attributions
  * - First-launch acceptance flow
  * - Professional design with teal theme
- * - Full Hebrew RTL support
+ * - Full Hebrew RTL support (Integrated with I18nManager)
  * - No external dependencies (React Native core only)
  * - AsyncStorage for acceptance tracking
- * 
- * Installation: 
- *   1. Copy this file to app/LegalScreen.tsx
- *   2. Import in your app's initialization
- *   3. Show on first launch, then on demand from settings
- * 
  * ============================================================================
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  I18nManager
 } from 'react-native';
 
 interface LegalScreenProps {
   onAccept?: () => void;
   onClose?: () => void;
-  requireAcceptance?: boolean; // If true, show accept/decline buttons
+  requireAcceptance?: boolean;
   showCloseButton?: boolean;
 }
 
@@ -388,14 +383,35 @@ export default function LegalScreen({
   requireAcceptance = false,
   showCloseButton = true,
 }: LegalScreenProps) {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('privacy');
   const [isHebrewMode, setIsHebrewMode] = useState(true);
   const [hasAccepted, setHasAccepted] = useState(false);
   const [showAcceptCheckbox, setShowAcceptCheckbox] = useState(requireAcceptance);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+
+  // --- לוגיקת הכיווניות החכמה ---
+  // בודק אם האפליקציה נמצאת במצב RTL כללי (I18nManager)
+  const isGlobalRTL = I18nManager.isRTL;
+
+  // מחשב את כיוון ה-Flex המתאים:
+  // אם אנחנו צריכים עברית (RTL), והאפליקציה כבר ב-RTL, משתמשים ב-row.
+  // אם לא, הופכים ל-row-reverse. (ולהפך עבור אנגלית)
+  const dynamicFlexRow = isHebrewMode
+    ? (isGlobalRTL ? 'row' : 'row-reverse')
+    : (isGlobalRTL ? 'row-reverse' : 'row');
+
+  // מחשב יישור לצד ימין או שמאל:
+  // צד ימין במסך RTL הוא flex-start. צד ימין במסך LTR הוא flex-end.
+  const dynamicAlignItems = isHebrewMode
+    ? (isGlobalRTL ? 'flex-start' : 'flex-end')
+    : (isGlobalRTL ? 'flex-end' : 'flex-start');
+
+  const dynamicTextAlign = isHebrewMode ? 'right' : 'left';
+  const dynamicWritingDirection = isHebrewMode ? 'rtl' : 'ltr';
 
   useEffect(() => {
-    // Check if user has accepted before
     if (requireAcceptance) {
       AsyncStorage.getItem('legal_acceptance').then((value) => {
         if (value === 'true') {
@@ -405,7 +421,6 @@ export default function LegalScreen({
       });
     }
 
-    // Fade in animation
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,
@@ -436,75 +451,62 @@ export default function LegalScreen({
 
   const renderContent = () => {
     let content = '';
-
-    if (activeTab === 'privacy') {
-      content = isHebrewMode ? PRIVACY_POLICY_HE : PRIVACY_POLICY_EN;
-    } else if (activeTab === 'terms') {
-      content = isHebrewMode ? TERMS_OF_SERVICE_HE : TERMS_OF_SERVICE_EN;
-    } else {
-      content = isHebrewMode ? ABOUT_CONTENT_HE : ABOUT_CONTENT_EN;
-    }
-
+    if (activeTab === 'privacy') content = isHebrewMode ? PRIVACY_POLICY_HE : PRIVACY_POLICY_EN;
+    else if (activeTab === 'terms') content = isHebrewMode ? TERMS_OF_SERVICE_HE : TERMS_OF_SERVICE_EN;
+    else content = isHebrewMode ? ABOUT_CONTENT_HE : ABOUT_CONTENT_EN;
     return content;
   };
 
   const getTabLabel = (tab: TabType): string => {
     if (isHebrewMode) {
       switch (tab) {
-        case 'privacy':
-          return 'פרטיות';
-        case 'terms':
-          return 'תנאים';
-        case 'about':
-          return 'אודות';
+        case 'privacy': return 'פרטיות';
+        case 'terms': return 'תנאים';
+        case 'about': return 'אודות';
       }
     } else {
       switch (tab) {
-        case 'privacy':
-          return 'Privacy';
-        case 'terms':
-          return 'Terms';
-        case 'about':
-          return 'About';
+        case 'privacy': return 'Privacy';
+        case 'terms': return 'Terms';
+        case 'about': return 'About';
       }
     }
   };
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+   <Animated.View 
+  style={[
+    styles.container, 
+    { 
+      opacity: fadeAnim,
+      
+      // כופה על כל המסך הזה להתנהג מימין לשמאל או משמאל לימין לפי השפה
+      direction: isHebrewMode ? 'ltr' : 'rtl' 
+    }
+  ]}
+>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
+        <View style={[styles.headerContent, { flexDirection: dynamicFlexRow }]}>
           <Text style={styles.headerTitle}>
             {isHebrewMode ? '⚖️ תנאים משפטיים' : '⚖️ Legal'}
           </Text>
           {showCloseButton && (
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-            >
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Tab Navigation */}
-        <View style={[styles.tabContainer, isHebrewMode && { flexDirection: 'row-reverse' }]}>
+        <View style={[styles.tabContainer, { flexDirection: dynamicFlexRow }]}>
           {(['privacy', 'terms', 'about'] as TabType[]).map((tab) => (
             <TouchableOpacity
               key={tab}
-              style={[
-                styles.tab,
-                activeTab === tab && styles.tabActive,
-              ]}
+              style={[styles.tab, activeTab === tab && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text
-                style={[
-                  styles.tabLabel,
-                  activeTab === tab && styles.tabLabelActive,
-                ]}
-              >
+              <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
                 {getTabLabel(tab)}
               </Text>
             </TouchableOpacity>
@@ -527,56 +529,50 @@ export default function LegalScreen({
         style={styles.contentScroll}
         contentContainerStyle={[
           styles.contentContainer,
-          isHebrewMode && { alignItems: 'flex-end' },
+          { alignItems: dynamicAlignItems },
         ]}
       >
         <Text
-          style={[
-            styles.contentText,
-            isHebrewMode && { textAlign: 'right' },
-          ]}
-        >
-          {renderContent()}
-        </Text>
+  style={[
+    styles.contentText,
+    { 
+      textAlign: isHebrewMode ? 'right' : 'right', 
+      writingDirection: isHebrewMode ? 'rtl' : 'ltr' 
+    },
+  ]}
+>
+  {renderContent()}
+</Text>
       </ScrollView>
 
       {/* Footer with Accept Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
         {showAcceptCheckbox && (
           <TouchableOpacity
-            style={[styles.checkboxContainer, isHebrewMode && { flexDirection: 'row-reverse' }]}
+            style={[styles.checkboxContainer, { flexDirection: dynamicFlexRow }]}
             onPress={() => setHasAccepted(!hasAccepted)}
           >
-            <View
-              style={[
-                styles.checkbox,
-                hasAccepted && styles.checkboxChecked,
-              ]}
-            >
-              {hasAccepted && (
-                <Text style={styles.checkboxCheck}>✓</Text>
-              )}
+            <View style={[styles.checkbox, hasAccepted && styles.checkboxChecked]}>
+              {hasAccepted && <Text style={styles.checkboxCheck}>✓</Text>}
             </View>
             <Text
               style={[
                 styles.checkboxLabel,
-                isHebrewMode && { textAlign: 'right',writingDirection: 'rtl', },
+                { 
+                  textAlign: dynamicTextAlign, 
+                  writingDirection: dynamicWritingDirection 
+                },
               ]}
             >
-              {isHebrewMode
-                ? 'אני מסכים לתנאים'
-                : 'I agree to the terms'}
+              {isHebrewMode ? 'אני מסכים לתנאים' : 'I agree to the terms'}
             </Text>
           </TouchableOpacity>
         )}
 
-        <View style={[styles.buttonContainer, isHebrewMode && { flexDirection: 'row-reverse' }]}>
+        <View style={[styles.buttonContainer, { flexDirection: dynamicFlexRow }]}>
           {showAcceptCheckbox && (
             <TouchableOpacity
-              style={[
-                styles.button,
-                styles.secondaryButton,
-              ]}
+              style={[styles.button, styles.secondaryButton]}
               onPress={onClose}
             >
               <Text style={styles.secondaryButtonText}>
@@ -623,7 +619,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   headerContent: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
@@ -647,7 +642,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabContainer: {
-    flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
   },
@@ -707,7 +701,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   checkboxContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
     gap: 10,
@@ -737,7 +730,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   buttonContainer: {
-    flexDirection: 'row',
     gap: 10,
   },
   button: {

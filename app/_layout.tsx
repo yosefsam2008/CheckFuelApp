@@ -5,8 +5,13 @@ import { StatusBar, Platform } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import mobileAds, { RequestConfiguration } from 'react-native-google-mobile-ads';
 import { runAutoMigration } from '../lib/utils/evDataMigration';
+import { I18nManager } from 'react-native';
 
 export default function RootLayout() {
+
+I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
+
   useEffect(() => {
     // 1. הגדרת סביבת בדיקות (Test Devices) לפני האתחול
     // זה עוזר לגוגל להבין שמדובר בפיתוח ולתת עדיפות לפרסומות בדיקה

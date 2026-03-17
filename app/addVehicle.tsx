@@ -16,7 +16,8 @@ import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
 
 // Conditional import for ads
-const VehicleRewardedAd = Platform.OS === 'web' ? () => null : require('../components/VehicleRewardedAd').default;
+const VehicleRewardedAd = Platform.OS === "web" ? () => null : require("../components/VehicleRewardedAd").default;
+const AdBanner = Platform.OS === "web" ? () => null : require("../components/BannerAd").default;
 
 const manufacturers = [
   "Toyota", "Kia", "Hyundai", "Mazda", "Honda", "Nissan",
@@ -124,7 +125,7 @@ export default function AddVehicle() {
     setPendingVehicle(newVehicle);
 
     // On Web, skip ad logic completely
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       saveVehicleToStorage(newVehicle);
       return;
     }
@@ -169,6 +170,13 @@ export default function AddVehicle() {
             <Text style={styles.subtitle}>מלא את הפרטים להוספת הרכב שלך</Text>
           </View>
         </View>
+
+        {/* Banner Ad Section*/}
+        {Platform.OS !== "web" ? (
+          <View style={styles.bannerWrapper}>
+            <AdBanner />
+          </View>
+        ) : null}
 
         {/* Form Container */}
         <View style={styles.formContainer}>
@@ -401,7 +409,7 @@ export default function AddVehicle() {
             <Text style={styles.saveButtonText}>שמור רכב</Text>
           </View>
         </TouchableOpacity>
-
+                
         {/* Toast */}
         {showToast && <Toast message={toastMessage || "אנא מלא את השדות הנדרשים"} />}
 
@@ -417,7 +425,6 @@ export default function AddVehicle() {
   );
 }
 
-// ... styles remain unchanged (השארתי את כל העיצוב בדיוק כמו במקור) ...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -428,26 +435,26 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 28,
+    marginBottom: 20,
     alignItems: "center",
     position: "relative",
   },
   backBtnTop: {
-  position: "absolute",
-  right: 0,
-  top: 0,
-  width: 44,
-  height: 44,
-  borderRadius: 22,
-  backgroundColor: "#fff",
-  justifyContent: "center",
-  alignItems: "center",
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  elevation: 3,
-},
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   backBtnTopText: {
     fontSize: 24,
     color: "#333",
@@ -687,5 +694,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     letterSpacing: 0.5,
+  },
+  bannerWrapper: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 12, // רווח נעים מעל ומתחת לפרסומת
+    backgroundColor: "transparent", // מבטיח שאין רקע לבן שחורג
   },
 });

@@ -423,17 +423,17 @@ export default function Dashboard() {
           {!isLoading && recentTrips.length > 0 && (
             <>
               <View style={styles.recentHeader}>
-                <TouchableOpacity
-                  onPress={() => router.push('./history')}
-                  accessibilityRole="button"
-                  accessibilityLabel="הצג את כל הנסיעות"
-                >
-                  <Text style={styles.viewAllLink}>{ChevronBack} הצג הכל</Text>
-                </TouchableOpacity>
-                <View style={styles.sectionTitleWrapper}>
-                  <Text style={styles.sectionTitleSmall}>נסיעות אחרונות</Text>
-                </View>
-              </View>
+  <TouchableOpacity
+    onPress={() => router.push('./history')}
+    accessibilityRole="button"
+    accessibilityLabel="הצג את כל הנסיעות"
+  >
+    <Text style={styles.viewAllLink}>{ChevronBack} הצג הכל</Text>
+  </TouchableOpacity>
+  
+  {/* הכותרת עומדת עכשיו בפני עצמה ומתיישרת באופן טבעי מול הכפתור */}
+  <Text style={styles.sectionTitleSmall}>נסיעות אחרונות</Text>
+</View>
               {recentTrips.map((trip) => (
                 // Stable string id avoids full unmount/remount on list updates
                 <RecentTripCard key={trip.id} trip={trip} />
@@ -487,13 +487,14 @@ const styles = StyleSheet.create({
   content: { padding: 20, marginTop: -20, paddingTop: 36 },
 
   // Section title wrapper — full-width View carries the accent border; Text inside aligns right
-  sectionTitleWrapper: {
-    marginBottom: 20,
-    marginTop: 10,
-    // מבטיח שהטקסט בתוך ה-View הזה ייצמד לימין של המסך בטלפון
-    alignItems: 'flex-end', 
-    width: '100%',
-  },
+ sectionTitleWrapper: {
+    marginBottom: 20,
+    marginTop: 10,
+    width: '100%',
+    // מתאים את היישור לצד ימין בצורה חכמה:
+    // אם המכשיר ב-RTL, צד ימין הוא flex-start. אחרת, צד ימין הוא flex-end.
+    alignItems: I18nManager.isRTL ? 'flex-start' : 'flex-end', 
+  },
 
   sectionTitleLarge: {
     ...Typography.h2,
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
   },
 
-  bannerAdContainer: { marginVertical: 16, borderRadius: 12, overflow: 'hidden', ...sharedShadow },
+  bannerAdContainer: { marginVertical: 16, borderRadius: 12 },
   loadingContainer: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
 
   // Stats layout

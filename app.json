@@ -1,4 +1,3 @@
-// app.json
 {
   "expo": {
     "name": "CheckFuel",
@@ -15,7 +14,7 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#e3ecea"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,
@@ -33,7 +32,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
-        "backgroundColor": "#e3ecea"
+        "backgroundColor": "#FFFFFF"
       },
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
@@ -54,7 +53,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 250,
           "resizeMode": "contain",
-          "backgroundColor": "#e3ecea"
+          "backgroundColor": "#FFFFFF"
         }
       ],
       [

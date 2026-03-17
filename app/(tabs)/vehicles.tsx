@@ -773,6 +773,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#009688",
     letterSpacing: 0.5,
+    writingDirection: "rtl",
   },
   subtitle: {
     fontSize: 15,
@@ -780,6 +781,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
     fontWeight: "500",
+    writingDirection: "rtl",
   },
   listContent: {
     paddingHorizontal: 20,
@@ -842,16 +844,21 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 4,
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   vehicleModel: {
     fontSize: 15,
     color: "#666",
     marginBottom: 8,
     fontWeight: "500",
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   consumptionRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-end", // מיישר את בועת הצריכה לימין
   },
   consumptionBadge: {
     flexDirection: "row",
@@ -866,6 +873,7 @@ const styles = StyleSheet.create({
     color: "#009688",
     fontWeight: "600",
     marginRight: 6,
+    writingDirection: "rtl",
   },
   consumptionValue: {
     fontSize: 14,
@@ -896,19 +904,21 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     marginBottom: 12,
     textAlign: "center",
+    writingDirection: "rtl",
   },
   emptyText: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
     lineHeight: 24,
+    writingDirection: "rtl",
   },
   bottomButtons: {
     position: "absolute",
     bottom: 20,
     left: 20,
     right: 20,
-    flexDirection: "row",
+    flexDirection: "row", // הוחזר ל-row
     gap: 12,
   },
   addBtn: {
@@ -957,17 +967,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 4,
+    writingDirection: "rtl",
   },
   addBtnTextSecondary: {
     color: "#fff",
     fontSize: 15,
     fontWeight: "700",
     textAlign: "center",
+    writingDirection: "rtl",
   },
   addBtnSubtext: {
     color: "rgba(255,255,255,0.8)",
     fontSize: 12,
     fontWeight: "500",
+    writingDirection: "rtl",
   },
   modalOverlay: {
     flex: 1,
@@ -988,6 +1001,7 @@ const styles = StyleSheet.create({
     shadowRadius: 30,
     elevation: 24,
     maxHeight: "85%",
+    direction: "rtl", // חובה כדי שהמודל יעבוד מימין לשמאל תמיד
   },
   modalHeader: {
     alignItems: "center",
@@ -1046,13 +1060,14 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     textAlign: "center",
     letterSpacing: -0.3,
+    writingDirection: "rtl",
   },
   detailsContainer: {
     backgroundColor: "#fff",
     gap: 6,
   },
   detailRow: {
-    flexDirection: "row-reverse",
+    flexDirection: "row", // תוקן מ-row-reverse
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 16,
@@ -1087,15 +1102,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
     fontWeight: "600",
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   detailValue: {
     fontSize: 15,
     color: "#1f2937",
     fontWeight: "700",
-    textAlign: "right",
+    textAlign: "left", // הערך ייצמד לשמאל השורה
     flex: 1,
     paddingLeft: 10,
     lineHeight: 22,
+    writingDirection: "rtl",
   },
   editContainer: {
     gap: 14,
@@ -1109,6 +1127,7 @@ const styles = StyleSheet.create({
     color: "#374151",
     marginRight: 4,
     textAlign: "right",
+    writingDirection: "rtl",
   },
   input: {
     borderWidth: 2,
@@ -1121,6 +1140,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     fontWeight: "500",
     textAlign: "right",
+    writingDirection: "rtl", // זה מה שימנע מהנקודות לקפוץ לצד השני
     minHeight: 46,
   },
   fuelSelector: {
@@ -1156,7 +1176,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   modalActions: {
-    flexDirection: "row-reverse",
+    flexDirection: "row", // תוקן מ-row-reverse
     gap: 10,
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -1238,6 +1258,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     textAlign: "center",
+    writingDirection: "rtl",
   },
 
   // Plate Detection Modal
@@ -1260,6 +1281,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 30,
     elevation: 24,
+    direction: "rtl",
   },
   plateModalIcon: {
     fontSize: 56,
@@ -1271,6 +1293,7 @@ const styles = StyleSheet.create({
     color: "#1f2937",
     textAlign: "center",
     marginBottom: 12,
+    writingDirection: "rtl",
   },
   plateModalDescription: {
     fontSize: 16,
@@ -1278,6 +1301,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 28,
+    writingDirection: "rtl",
   },
   plateBenefits: {
     flexDirection: "row",
@@ -1298,9 +1322,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#374151",
     textAlign: "center",
+    writingDirection: "rtl",
   },
   plateModalActions: {
-    flexDirection: "row-reverse",
+    flexDirection: "row", // תוקן מ-row-reverse
     gap: 12,
     width: "100%",
   },
@@ -1319,7 +1344,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderRadius: 8,
     fontWeight: "700",
-    flexDirection: "row-reverse",
     textAlign: "center",
     writingDirection: "rtl",
   },
@@ -1344,7 +1368,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderRadius: 8,
     fontWeight: "700",
-    flexDirection: "row-reverse",
     textAlign: "center",
     writingDirection: "rtl",
   },
@@ -1369,6 +1392,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 30,
     elevation: 24,
+    direction: "rtl",
   },
   deleteModalIcon: {
     fontSize: 56,
@@ -1380,6 +1404,7 @@ const styles = StyleSheet.create({
     color: "#1f2937",
     textAlign: "center",
     marginBottom: 12,
+    writingDirection: "rtl",
   },
   deleteModalDescription: {
     fontSize: 16,
@@ -1387,13 +1412,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 28,
+    writingDirection: "rtl",
   },
   deleteModalVehicleName: {
     fontWeight: "700",
     color: "#f44336",
   },
   deleteModalActions: {
-    flexDirection: "row-reverse",
+    flexDirection: "row", // תוקן מ-row-reverse
     gap: 12,
     width: "100%",
   },

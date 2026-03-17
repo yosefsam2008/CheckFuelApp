@@ -1,4 +1,4 @@
-// UserGuideScreen.tsx - Comprehensive User Guide with Tab Navigation
+// app/UserGuideScreen.tsx - Comprehensive User Guide with Tab Navigation
 import React, { useState } from 'react';
 import {
   View,
@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface UserGuideScreenProps {
   onClose: () => void;
@@ -107,6 +107,7 @@ const Screenshot: React.FC<{ label: string; height?: number }> = ({ label, heigh
 );
 
 export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
+  const insets = useSafeAreaInsets(); // מביא את השוליים הבטוחים של המכשיר
   const [activeTab, setActiveTab] = useState<TabType>('basics');
 
   const tabs = [
@@ -346,22 +347,17 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'basics':
-        return renderBasicsContent();
-      case 'vehicles':
-        return renderVehiclesContent();
-      case 'calculations':
-        return renderCalculationsContent();
-      case 'history':
-        return renderHistoryContent();
-      default:
-        return renderBasicsContent();
+      case 'basics': return renderBasicsContent();
+      case 'vehicles': return renderVehiclesContent();
+      case 'calculations': return renderCalculationsContent();
+      case 'history': return renderHistoryContent();
+      default: return renderBasicsContent();
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    // כופה כיווניות RTL על כל המסך, ומרחיק את התוכן התחתון מהפס של האנדרואיד
+    <View style={[styles.container, { direction: 'ltr', paddingBottom: insets.bottom }]}>      {/* Header */}
       <LinearGradient colors={[Colors.primary, Colors.primaryLight]} style={styles.header}>
         <Text style={styles.headerTitle}>מדריך שימוש</Text>
         <Text style={styles.headerSubtitle}>מדריך מהיר ויעיל לשימוש באפליקציה</Text>
@@ -413,16 +409,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
+    writingDirection: 'rtl',
   },
   headerSubtitle: {
     fontSize: 14,
     color: Colors.textLight,
     fontWeight: '500',
+    writingDirection: 'rtl',
   },
   closeButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 40,
-    left: 20,
+    left: 20, // באפליקציה עברית נהוג להשאיר את ה-X בצד שמאל
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -477,7 +475,6 @@ const styles = StyleSheet.create({
   tabContent: {
     flex: 1,
     padding: 16,
-    
   },
   section: {
     backgroundColor: Colors.card,
@@ -503,10 +500,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: Colors.card,
+    gap: 12, // מחליף את ה-marginLeft שהיה באייקון למרווח חכם יותר שמותאם ל-RTL
   },
   sectionIcon: {
     fontSize: 24,
-    marginLeft: 12,
   },
   sectionTitle: {
     flex: 1,
@@ -514,6 +511,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textDark,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   expandIcon: {
     fontSize: 12,
@@ -530,6 +528,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: Colors.textDark,
     textAlign: 'right',
+    writingDirection: 'rtl',
     marginBottom: 8,
   },
   boldText: {
@@ -555,6 +554,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.textDark,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   stepItem: {
     flexDirection: 'row',
@@ -581,6 +581,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.textDark,
     textAlign: 'right',
+    writingDirection: 'rtl',
     paddingTop: 4,
   },
   screenshot: {
@@ -598,6 +599,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
     textAlign: 'center',
+    writingDirection: 'rtl',
   },
   featureList: {
     gap: 12,
@@ -622,12 +624,14 @@ const styles = StyleSheet.create({
     color: Colors.textDark,
     marginBottom: 4,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   featureDesc: {
     fontSize: 13,
     color: Colors.textGray,
     lineHeight: 18,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   resultItem: {
     flexDirection: 'row',
@@ -650,12 +654,14 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginBottom: 4,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   resultDesc: {
     fontSize: 13,
     color: Colors.textGray,
     lineHeight: 20,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   exampleBox: {
     backgroundColor: '#fff3e0',
@@ -670,6 +676,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.textDark,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   statExample: {
     flexDirection: 'row',
@@ -685,5 +692,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textDark,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
 });

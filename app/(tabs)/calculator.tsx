@@ -717,8 +717,7 @@ const loadProgress = useCallback(async () => {
   // ============================================
   // CALCULATION
   // ============================================
-  const handleCalculate = () => {
-  // 1. Validate distance
+const handleCalculate = async () => {
   const d = parseFloat(distance);
   if (isNaN(d) || d <= 0 || d > 5000) {
     setToastMessage({ text: LEGAL_UI_STRINGS.errors.invalidDistance, type: "error" });
@@ -770,9 +769,9 @@ const loadProgress = useCallback(async () => {
         climate: 'hot',
         tripType,
         vehicleCondition: 'good',
-        useAC: acUsage === 'always' || acUsage === 'sometimes',
+        useAC: acUsage !== 'rarely', 
         acUsageLevel: acUsage,
-        shortTrips: tripType === 'city',
+        shortTrips: false,  
       }
     );
 
@@ -823,15 +822,27 @@ const loadProgress = useCallback(async () => {
 
     setResult(calculation);
 
-    // Show video ad before results (only on mobile, not on web)
     if (Platform.OS !== 'web') {
-      setShowVideoAd(true);
+      try {
+        // שולפים את המונה הנוכחי, מעלים ב-1 ושומרים
+        const currentCountStr = await AsyncStorage.getItem("calculationCount");
+        const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
+        const nextCount = currentCount + 1;
+        await AsyncStorage.setItem("calculationCount", nextCount.toString());
+
+        // מציגים וידאו רק כל חישוב שלישי (אפשר לשנות את ה-3 לכל מספר אחר)
+        if (nextCount % 3 === 0) {
+          setShowVideoAd(true);
+        } else {
+          // מדלגים על הפרסומת
+          handleAdComplete(); 
+        }
+      } catch (error) {
+        // במקרה של שגיאה בשמירה, נדלג על הפרסומת כדי לא לתקוע את המשתמש
+        handleAdComplete();
+      }
     } else {
-      // On web, skip the ad and go directly to results
-      setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 1000);
-      AsyncStorage.removeItem("calculatorProgress");
-      next();
+      handleAdComplete(); // ב-web תמיד מדלגים
     }
   };
 
@@ -898,7 +909,7 @@ const saveCalculationToHistory = async () => {
 📊 עלות לק״מ: ₪${result.costPerKm.toFixed(2)}
 ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelConsumed.toFixed(2)} kWh` : `⛽ צריכת דלק: ${result.fuelConsumed.toFixed(2)} ליטרים`}
 
-חושב באמצעות מחשבון עלות נסיעה 🧮`;
+חושב באמצעות המחשבון החכם CheckFuel!🧮`;
 
     try {
       await Share.share({ message });
@@ -1596,7 +1607,7 @@ const handleReset = async () => {
         const fuelGaugePercent = (result.fuelConsumed / tankCapacity) * 100;
         const fuelGaugePercentClamped = Math.min(100, Math.max(0, fuelGaugePercent));
 
-        return (
+       return (
           <ScrollView 
             showsVerticalScrollIndicator={false} 
             style={styles.resultsScroll}
@@ -1609,16 +1620,13 @@ const handleReset = async () => {
               </View>
             )}
 
-            {/* Banner Ad at top of results */}
-            <BannerAd style={styles.topBannerAd} />
-            {/* Disclaimer Banner */}
-            <View style={styles.disclaimerBanner}>
+           
               <Text style={styles.disclaimerIcon}>⚠️</Text>
               <View style={styles.disclaimerContent}>
                 <Text style={styles.disclaimerTitle}>{LEGAL_UI_STRINGS.calculator.disclaimer}</Text>
                 <Text style={styles.disclaimerText}>{LEGAL_UI_STRINGS.calculator.disclaimerFull}</Text>
               </View>
-            </View>
+            
 
             {/* Main cost card */}
             <GlassCard style={styles.mainResultCard}>
@@ -1656,6 +1664,34 @@ const handleReset = async () => {
                 )}
               </View>
             </GlassCard>
+
+            {/* ✅ Action buttons - הועברו לכאן! מיד אחרי התוצאה הראשית ✅ */}
+            <View style={[styles.resultsActions, { marginBottom: 16 }]}>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={shareResults}
+              >
+                <Text style={styles.shareButtonText}>📤 שתף תוצאות</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.newCalculationButton}
+                onPress={handleReset}
+              >
+                <Text style={styles.newCalculationButtonText}>
+                  🔄 שמור והתחל חישוב חדש
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.viewVehiclesButton}
+                onPress={() => router.push("/vehicles")}
+              >
+                <Text style={styles.viewVehiclesButtonText}>
+                  הצג את כל הרכבים
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Metrics Grid */}
             <View style={styles.metricsGrid}>
@@ -1850,37 +1886,6 @@ const handleReset = async () => {
               </GlassCard>
             )}
 
-            {/* Action buttons */}
-            <View style={styles.resultsActions}>
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={shareResults}
-              >
-                <Text style={styles.shareButtonText}>📤 שתף תוצאות</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.newCalculationButton}
-                onPress={handleReset}
-              >
-                <Text style={styles.newCalculationButtonText}>
-                  🔄 שמור והתחל חישוב חדש
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.viewVehiclesButton}
-                onPress={() => router.push("/vehicles")}
-              >
-                <Text style={styles.viewVehiclesButtonText}>
-                  הצג את כל הרכבים
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-             {/* Bottom Banner Ad */}
-           <BannerAd style={styles.bottomBannerAd} />
-
             {/* Attribution Footer */}
             <View style={styles.attributionFooter}>
               <Text style={styles.attributionText}>
@@ -1902,28 +1907,26 @@ const handleReset = async () => {
   // VIDEO AD LOADING SCREEN
   // ============================================
   
-  if (showVideoAd) {
+if (showVideoAd) {
     return (
       <View style={styles.adLoadingContainer}>
         <View style={styles.adLoadingContent}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.adLoadingText}>🎬 טוען פרסומת...</Text>
+          <Text style={styles.adLoadingText}>🎬 מכינים תוצאות...</Text>
           <Text style={styles.adLoadingSubtext}>
             זה יקח רק כמה שניות
           </Text>
           <Text style={styles.adLoadingNote}>
-            הפרסומת תעזור לנו לשמור על האפליקציה חינמית 💚
-          </Text>
+            צפייה בפרסומת קצרה תעזור לנו לשמור על האפליקציה חינמית 💚
+          </Text>        
         </View>
+        
         <VideoAd
           onAdComplete={handleAdComplete}
           onAdError={(error: any) => {
-  if (__DEV__) {
-    console.log('Ad error:', error);
-  }
-  handleAdComplete();
-}}
-
+            if (__DEV__) { console.log('Ad error:', error); }
+            handleAdComplete();
+          }}
         />
       </View>
     );
@@ -1934,19 +1937,12 @@ const handleReset = async () => {
   // MAIN RENDER
   // ============================================
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      {/* Header with gradient */}
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🧮 מחשבון עלות נסיעה</Text>
       </View>
 
-      {/* Banner Ad below header - only if video ad wasn't shown */}
-      {Platform.OS !== 'web' && !showVideoAd && step < STEPS.length - 1 && <BannerAd />}
-
-      {/* Step indicator */}
+      {/* Step indicator עבר למעלה להיות צמוד להדר */}
       {step < STEPS.length - 1 && (
         <StepIndicator
           currentStep={step}
@@ -1955,7 +1951,6 @@ const handleReset = async () => {
         />
       )}
 
-      {/* Scrollable content */}
       <ScrollView 
         style={{ flex: 1 }}
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16 }}
@@ -1964,6 +1959,13 @@ const handleReset = async () => {
       >
         {renderStep()}
       </ScrollView>
+
+      {/* הבאנר עבר לכאן - לתחתית המסך מעל המקלדת */}
+      {Platform.OS !== 'web' && !showVideoAd && step < STEPS.length - 1 && (
+        <View style={{ paddingBottom: Platform.OS === 'ios' ? 6 : 3, paddingTop: 1, alignItems: 'center' }}>
+          <BannerAd />
+        </View>
+      )}
 
       {/* Toast notification */}
       {toastMessage && (
@@ -1976,7 +1978,6 @@ const handleReset = async () => {
     </KeyboardAvoidingView>
   );
 }
-
 // ============================================
 // STYLES
 // ============================================
@@ -1985,6 +1986,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    direction: "rtl", 
   },
   content: {
     flex: 1,
@@ -2013,6 +2015,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textOnPrimary,
     textAlign: "center",
+    writingDirection: "rtl",
   },
 
   // Banner Ad Styles
@@ -2065,12 +2068,14 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginTop: 16,
     textAlign: 'center',
+    writingDirection: "rtl",
   },
   adLoadingSubtext: {
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: 8,
     textAlign: 'center',
+    writingDirection: "rtl",
   },
   adLoadingNote: {
     fontSize: 13,
@@ -2078,6 +2083,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
     fontWeight: '500',
+    writingDirection: "rtl",
   },
 
   // Step Indicator
@@ -2086,7 +2092,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   stepDotsRow: {
-    flexDirection: "row-reverse",
+    flexDirection: "row", 
     justifyContent: "space-between",
     marginBottom: 12,
   },
@@ -2130,6 +2136,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textTertiary,
     fontWeight: "500",
+    writingDirection: "rtl",
   },
   stepLabelActive: {
     color: COLORS.primary,
@@ -2170,13 +2177,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textPrimary,
     marginBottom: 8,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   questionSubtitle: {
     fontSize: 16,
     color: COLORS.textSecondary,
     marginBottom: 20,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
 
   // Presets
@@ -2187,17 +2196,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginBottom: 10,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   presetsRow: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
   },
 
   // Quick Chip
   quickChip: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -2205,6 +2215,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     borderWidth: 2,
     borderColor: COLORS.cardBorder,
+    gap: 6,
   },
   quickChipActive: {
     backgroundColor: COLORS.primaryLight,
@@ -2212,12 +2223,12 @@ const styles = StyleSheet.create({
   },
   quickChipIcon: {
     fontSize: 14,
-    marginLeft: 6,
   },
   quickChipText: {
     fontSize: 14,
     fontWeight: "600",
     color: COLORS.textSecondary,
+    writingDirection: "rtl",
   },
   quickChipTextActive: {
     color: COLORS.primary,
@@ -2225,7 +2236,7 @@ const styles = StyleSheet.create({
 
   // Input
   inputContainer: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.background,
     borderRadius: 16,
@@ -2233,6 +2244,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.cardBorder,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    gap: 8,
   },
   inputContainerError: {
     borderColor: COLORS.error,
@@ -2240,7 +2252,6 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     fontSize: 20,
-    marginLeft: 12,
   },
   input: {
     flex: 1,
@@ -2248,59 +2259,62 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.textPrimary,
     paddingVertical: 14,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   inputSuffix: {
     fontSize: 16,
     color: COLORS.textSecondary,
     fontWeight: "500",
-    marginRight: 8,
+    writingDirection: "rtl",
   },
 
   // Error
   errorContainer: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     marginTop: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: "#FEE2E2",
     borderRadius: 10,
+    gap: 8,
   },
   errorIcon: {
     fontSize: 14,
-    marginLeft: 8,
   },
   errorText: {
     fontSize: 14,
     color: COLORS.error,
     fontWeight: "500",
+    writingDirection: "rtl",
   },
 
   // Tip
   tipContainer: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     marginTop: 16,
     padding: 12,
     backgroundColor: "#FEF9E7",
     borderRadius: 12,
+    gap: 10,
   },
   tipIcon: {
     fontSize: 16,
-    marginLeft: 10,
   },
   tipText: {
     flex: 1,
     fontSize: 14,
     color: "#92400E",
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     lineHeight: 20,
+    writingDirection: "rtl",
   },
 
   // Action Buttons
   actionButtons: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     gap: 12,
     marginTop: 24,
   },
@@ -2317,6 +2331,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+    gap: 8,
   },
   primaryButtonDisabled: {
     backgroundColor: COLORS.textTertiary,
@@ -2326,18 +2341,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textOnPrimary,
+    writingDirection: "rtl",
   },
   buttonArrow: {
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textOnPrimary,
-    marginLeft: 8,
   },
   buttonArrowBack: {
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textSecondary,
-    marginRight: 8,
   },
   secondaryButton: {
     flex: 1,
@@ -2349,11 +2363,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderColor: COLORS.cardBorder,
+    gap: 8,
   },
   secondaryButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: COLORS.textSecondary,
+    writingDirection: "rtl",
   },
   calculateButton: {
     flex: 1.5,
@@ -2372,6 +2388,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textOnPrimary,
+    writingDirection: "rtl",
   },
 
   // Loading
@@ -2383,6 +2400,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: COLORS.textSecondary,
+    writingDirection: "rtl",
   },
 
   // Empty state
@@ -2398,6 +2416,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.textSecondary,
     marginBottom: 20,
+    writingDirection: "rtl",
   },
   addVehicleButton: {
     backgroundColor: COLORS.primaryLight,
@@ -2411,6 +2430,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.primary,
+    writingDirection: "rtl",
   },
 
   // Vehicle Selector
@@ -2427,12 +2447,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
   selectedVehicle: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
   selectedVehicleIcon: {
     fontSize: 28,
-    marginLeft: 12,
   },
   selectedVehicleInfo: {
     flex: 1,
@@ -2441,51 +2461,55 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   selectedVehicleModel: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
   selectorArrow: {
     fontSize: 14,
     color: COLORS.textTertiary,
   },
   placeholderVehicle: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
   placeholderIcon: {
     fontSize: 24,
-    marginLeft: 12,
     opacity: 0.5,
   },
   placeholderText: {
     flex: 1,
     fontSize: 18,
     color: COLORS.textTertiary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
 
   // Consumption Preview
   consumptionPreview: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.accentLight,
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
+    gap: 10,
   },
   consumptionPreviewIcon: {
     fontSize: 18,
-    marginLeft: 10,
   },
   consumptionPreviewText: {
     fontSize: 14,
     color: COLORS.accent,
     fontWeight: "500",
+    writingDirection: "rtl",
   },
 
   // Modal
@@ -2505,6 +2529,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
     paddingHorizontal: 20,
     maxHeight: "80%",
+    direction: "rtl", 
   },
   modalHandle: {
     width: 40,
@@ -2520,17 +2545,19 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 16,
+    writingDirection: "rtl",
   },
   vehicleList: {
     paddingBottom: 16,
   },
   vehicleItem: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderRadius: 16,
     backgroundColor: COLORS.background,
     marginBottom: 10,
+    gap: 12,
   },
   vehicleItemActive: {
     backgroundColor: COLORS.primaryLight,
@@ -2539,7 +2566,6 @@ const styles = StyleSheet.create({
   },
   vehicleItemIcon: {
     fontSize: 24,
-    marginLeft: 12,
   },
   vehicleItemInfo: {
     flex: 1,
@@ -2548,13 +2574,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   vehicleItemDetails: {
     fontSize: 13,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
   vehicleItemCheck: {
     fontSize: 18,
@@ -2570,26 +2598,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.accent,
+    writingDirection: "rtl",
   },
 
   // Price Helper
   priceHelperButton: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     padding: 12,
     backgroundColor: COLORS.background,
     borderRadius: 12,
     marginBottom: 16,
+    gap: 8,
   },
   priceHelperIcon: {
     fontSize: 16,
-    marginLeft: 8,
   },
   priceHelperText: {
     flex: 1,
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   priceHelperArrow: {
     fontSize: 12,
@@ -2602,7 +2632,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   priceHelperRow: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 10,
@@ -2612,18 +2642,21 @@ const styles = StyleSheet.create({
   priceHelperLabel: {
     fontSize: 15,
     color: COLORS.textPrimary,
+    writingDirection: "rtl",
   },
   priceHelperValue: {
     fontSize: 16,
     fontWeight: "700",
     color: COLORS.primary,
     textDecorationLine: "underline",
+    writingDirection: "rtl",
   },
   priceHelperNote: {
     fontSize: 12,
     color: COLORS.textTertiary,
     textAlign: "center",
     marginTop: 12,
+    writingDirection: "rtl",
   },
 
   // Results
@@ -2636,6 +2669,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textPrimary,
     marginBottom: 20,
+    writingDirection: "rtl",
   },
   totalCostContainer: {
     alignItems: "center",
@@ -2645,11 +2679,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textSecondary,
     marginBottom: 4,
+    writingDirection: "rtl",
   },
   totalCostValue: {
     fontSize: 48,
     fontWeight: "800",
     color: COLORS.primary,
+    writingDirection: "rtl",
   },
 
   // Fuel Gauge
@@ -2691,6 +2727,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.textSecondary,
     marginTop: 6,
+    writingDirection: "rtl",
   },
 
   // Tank Usage Detail
@@ -2707,6 +2744,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: 6,
     textAlign: "center",
+    writingDirection: "rtl",
   },
   tankUsageValue: {
     fontSize: 16,
@@ -2714,6 +2752,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 4,
+    writingDirection: "rtl",
   },
   tankUsagePercentage: {
     fontSize: 20,
@@ -2721,6 +2760,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     textAlign: "center",
     marginTop: 2,
+    writingDirection: "rtl",
   },
   tankUsageWarning: {
     fontSize: 13,
@@ -2734,6 +2774,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.warning,
+    writingDirection: "rtl",
   },
 
   // Metrics Grid
@@ -2766,15 +2807,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginBottom: 4,
+    writingDirection: "rtl",
   },
   metricValue: {
     fontSize: 18,
     fontWeight: "700",
+    writingDirection: "rtl",
   },
   metricSubValue: {
     fontSize: 11,
     color: COLORS.textTertiary,
     marginTop: 2,
+    writingDirection: "rtl",
   },
 
   // Vehicle Info Card
@@ -2783,12 +2827,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   vehicleInfoRow: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
   vehicleInfoIcon: {
     fontSize: 28,
-    marginLeft: 12,
   },
   vehicleInfoContent: {
     flex: 1,
@@ -2797,13 +2841,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   vehicleInfoDetails: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
 
   // Section Title
@@ -2813,8 +2859,9 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginTop: 24,
     marginBottom: 12,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     paddingHorizontal: 4,
+    writingDirection: "rtl",
   },
 
   // Comparisons
@@ -2822,7 +2869,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   comparisonCard: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.card,
     borderRadius: 16,
@@ -2834,6 +2881,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
+    gap: 12,
   },
   comparisonCardSavings: {
     borderColor: COLORS.success,
@@ -2841,7 +2889,6 @@ const styles = StyleSheet.create({
   },
   comparisonIcon: {
     fontSize: 28,
-    marginLeft: 12,
   },
   comparisonContent: {
     flex: 1,
@@ -2850,19 +2897,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   comparisonSubtitle: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
   comparisonCost: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
   comparisonBadge: {
     paddingHorizontal: 12,
@@ -2878,6 +2928,7 @@ const styles = StyleSheet.create({
   comparisonBadgeText: {
     fontSize: 12,
     fontWeight: "600",
+    writingDirection: "rtl",
   },
   comparisonBadgeTextSavings: {
     color: "#065F46",
@@ -2888,7 +2939,7 @@ const styles = StyleSheet.create({
 
   // Bus Fare Disclaimer
   busFareDisclaimer: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: "#F0F9FF",
     borderWidth: 1,
@@ -2897,28 +2948,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginTop: 12,
+    gap: 8,
   },
   busDisclaimerIcon: {
     fontSize: 14,
-    marginLeft: 8,
   },
   busDisclaimerText: {
     flex: 1,
     fontSize: 11,
     color: "#075985",
     lineHeight: 16,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
 
   // Projection Card
   projectionCard: {
     marginTop: 16,
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
+    gap: 16,
   },
   projectionIcon: {
     fontSize: 32,
-    marginLeft: 16,
   },
   projectionContent: {
     flex: 1,
@@ -2927,34 +2979,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   projectionSubtitle: {
     fontSize: 13,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
   projectionValue: {
     fontSize: 22,
     fontWeight: "800",
     color: COLORS.accent,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 4,
+    writingDirection: "rtl",
   },
 
   // Environment Card
   environmentCard: {
     marginTop: 16,
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#ECFDF5",
     borderColor: COLORS.success,
     borderWidth: 1,
+    gap: 16,
   },
   environmentIcon: {
     fontSize: 32,
-    marginLeft: 16,
   },
   environmentContent: {
     flex: 1,
@@ -2963,20 +3018,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   environmentValue: {
     fontSize: 20,
     fontWeight: "700",
     color: COLORS.success,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
   environmentNote: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginTop: 2,
+    writingDirection: "rtl",
   },
 
   // Results Actions
@@ -2999,6 +3057,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textOnPrimary,
+    writingDirection: "rtl",
   },
   newCalculationButton: {
     backgroundColor: COLORS.primary,
@@ -3015,6 +3074,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textOnPrimary,
+    writingDirection: "rtl",
   },
   viewVehiclesButton: {
     backgroundColor: COLORS.backgroundSecondary,
@@ -3028,11 +3088,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.primary,
+    writingDirection: "rtl",
   },
 
   // Disclaimer Banner
   disclaimerBanner: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: "#FFF9E6",
     borderWidth: 1,
@@ -3041,10 +3102,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 16,
+    gap: 12,
   },
   disclaimerIcon: {
     fontSize: 20,
-    marginLeft: 12,
   },
   disclaimerContent: {
     flex: 1,
@@ -3054,13 +3115,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#92400E",
     marginBottom: 4,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   disclaimerText: {
     fontSize: 12,
     color: "#B45309",
     lineHeight: 16,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
 
   // Attribution Footer
@@ -3076,8 +3139,9 @@ const styles = StyleSheet.create({
   attributionText: {
     fontSize: 11,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     lineHeight: 16,
+    writingDirection: "rtl",
   },
 
   // Celebration
@@ -3100,7 +3164,7 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === "ios" ? 40 : 20,
     left: 20,
     right: 20,
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -3110,19 +3174,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,
+    gap: 12,
   },
   toastText: {
     flex: 1,
     fontSize: 15,
     fontWeight: "500",
     color: COLORS.textOnPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   toastClose: {
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textOnPrimary,
-    marginRight: 12,
     opacity: 0.8,
   },
 
@@ -3135,10 +3200,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textPrimary,
     marginBottom: 12,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
+    writingDirection: "rtl",
   },
   preferenceGrid: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
   },
@@ -3167,6 +3233,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 4,
+    writingDirection: "rtl",
   },
   preferenceCardTitleActive: {
     color: COLORS.primary,
@@ -3176,6 +3243,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 14,
+    writingDirection: "rtl",
   },
   preferenceCardCheck: {
     position: "absolute",
@@ -3194,24 +3262,26 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   savingsHeader: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     marginBottom: 12,
+    gap: 12,
   },
   savingsIcon: {
     fontSize: 28,
-    marginLeft: 12,
   },
   savingsTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: COLORS.textPrimary,
+    writingDirection: "rtl",
   },
   savingsSubtitle: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginBottom: 16,
+    writingDirection: "rtl",
   },
   savingsAmount: {
     alignItems: "center",
@@ -3225,12 +3295,14 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: "800",
     color: "#D97706",
+    writingDirection: "rtl",
   },
   savingsPercent: {
     fontSize: 16,
     fontWeight: "600",
     color: "#92400E",
     marginTop: 4,
+    writingDirection: "rtl",
   },
   savingsTips: {
     marginBottom: 16,
@@ -3239,25 +3311,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     marginBottom: 10,
+    writingDirection: "rtl",
   },
   savingsTip: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "flex-start",
     marginBottom: 10,
     paddingHorizontal: 8,
+    gap: 10,
   },
   savingsTipIcon: {
     fontSize: 18,
-    marginLeft: 10,
   },
   savingsTipText: {
     flex: 1,
     fontSize: 14,
     color: COLORS.textPrimary,
-    textAlign: "right",
+    textAlign: "left", // תוקן מ-right
     lineHeight: 20,
+    writingDirection: "rtl",
   },
   savingsMonthly: {
     backgroundColor: COLORS.backgroundSecondary,
@@ -3271,15 +3345,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     marginBottom: 6,
+    writingDirection: "rtl",
   },
   savingsMonthlyValue: {
     fontSize: 28,
     fontWeight: "800",
     color: COLORS.primary,
+    writingDirection: "rtl",
   },
   savingsMonthlyNote: {
     fontSize: 11,
     color: COLORS.textTertiary,
     marginTop: 4,
+    writingDirection: "rtl",
   },
 });

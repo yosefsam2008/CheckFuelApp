@@ -116,20 +116,23 @@ export function estimateAeroData(params: {
     frontalArea = 2.4;
   }
 
-  // ========================================
+// ========================================
   // WEIGHT-BASED ADJUSTMENTS (CARS ONLY)
   // ========================================
 
   if (vehicleType === 'car') {
-    if (weight < 1400) {
+    // נרמול משקל: סוללה שוקלת המון אבל לא מגדילה שטח פנים. נקזז 20%
+    const aeroWeight = weight * 0.8;
+
+    if (aeroWeight < 1400) {
       // Compact/Small EVs (e.g., Nissan Leaf, VW ID.3)
       Cd = 0.28;
       frontalArea = 2.2;
-    } else if (weight < 2050) {
-      // Mid-size EVs (e.g., Tesla Model 3, Hyundai Ioniq 5)
-      Cd = 0.28;
-      frontalArea = 2.55;
-    } else if (weight < 2400) {
+    } else if (aeroWeight < 1850) { // <-- הורדנו את הרף ל-1850
+      // Mid-size EVs/Sedans (e.g., Tesla Model 3, Hyundai Ioniq 6)
+      Cd = 0.27; // נתון טוב יותר לסדאן
+      frontalArea = 2.3; // שטח חזית מדויק יותר למשפחתית
+    } else if (aeroWeight < 2400) {
       // Large/SUV EVs (e.g., Tesla Model X, Audi e-tron)
       Cd = 0.30;
       frontalArea = 2.8;
@@ -285,11 +288,12 @@ export function calculateEVPhysics(params: {
   Cd: number;          // Drag coefficient
   frontalArea: number; // m²
   avgSpeed: number;    // km/h (default: 80)
+  year: number;        // <-- הוספנו את השנתון
 }): {
   kwhPer100Km: number;
   breakdown: EVPhysicsBreakdown;
 } {
-  const { weight, Cd, frontalArea, avgSpeed } = params;
+  const { weight, Cd, frontalArea, avgSpeed, year } = params;
 
   // ========================================
   // CONSTANTS
@@ -322,63 +326,50 @@ export function calculateEVPhysics(params: {
 // ========================================
   // 3. AUXILIARY POWER
   // ========================================
-  // HVAC: Adjusted for Israeli climate (significant AC usage)
-  // Electronics: 0.3 kW (computers, displays, lights)
-  // צריכת חשמל נוספת: מיזוג אוויר (ישראל) + אלקטרוניקה
-
-  const hvacPower = 1.2;       
+  // רכבים מ-2021 משתמשים במשאבות חום חסכוניות
+  const hvacPower = year >= 2021 ? 0.6 : 1.2;       
   const electronicsPower = 0.3; // kW
-  const totalAuxPower = hvacPower + electronicsPower; // kW (סה"כ 2.3kW)
+  const totalAuxPower = hvacPower + electronicsPower; // kW
 
-  // Time to travel 100km at avgSpeed
   const timeHours = 100 / avgSpeed; // hours
   const auxiliaryEnergyPer100Km = totalAuxPower * timeHours; // kWh
 
+ // ========================================
+  // 4. SYSTEM EFFICIENCY & KINETIC ENERGY
   // ========================================
-  // 4. SYSTEM EFFICIENCY
-  // ========================================
-  // Motor: 92% efficient (electric motors are very efficient)
-  // Inverter: 96% efficient (DC to AC conversion)
-  // Battery: 94% efficient (charge/discharge losses)
-  // Regenerative braking: saves 22% of energy
-  // יעילות מערכת כוללת
-
   const motorEfficiency = 0.92;
   const inverterEfficiency = 0.96;
   const batteryEfficiency = 0.94;
-  const regenSavings = 0.25; // 25% energy recovery
+  
+  // היעילות הפיזית נטו של המערכת לדחוף את הרכב קדימה (~83% יעילות)
+  const powertrainEfficiency = motorEfficiency * inverterEfficiency * batteryEfficiency;
 
-  const totalEfficiency =
-    motorEfficiency *
-    inverterEfficiency *
-    batteryEfficiency *
-    (1 - regenSavings);
+  // חישוב אנרגיית עצירות והאצות (נסיעה עירונית/מעורבת)
+  // פקטור של 4.5 מייצג כמות עצירות ממוצעת ב-100 ק"מ
+  const rawAccelerationEnergy = (weight / 1000) * 4.5; 
+  
+  // כאן נכנסת הבלימה הרגנרטיבית! היא מחזירה כ-60% מהאנרגיה הקינטית בבלימה
+  const regenEfficiency = 0.60; 
+  const netAccelerationEnergy = rawAccelerationEnergy * (1 - regenEfficiency);
 
   // ========================================
   // 5. TOTAL ENERGY CONSUMPTION
   // ========================================
 
-  const totalDriveEnergy = rollingEnergyPer100Km + dragEnergyPer100Km;
-  const totalEnergyBeforeAux = totalDriveEnergy / totalEfficiency;
-  const totalEnergy = totalEnergyBeforeAux + auxiliaryEnergyPer100Km;
+  // 1. אנרגיה הנדרשת להתגבר על כביש ואוויר (אין פה מיחזור, רק הפסדי מנוע)
+  const cruiseEnergyFromBattery = (rollingEnergyPer100Km + dragEnergyPer100Km) / powertrainEfficiency;
+  
+  // 2. סך הכל הצריכה: שיוט + האצות(אחרי רגנרציה) + מערכות עזר
+  const totalEnergy = cruiseEnergyFromBattery + netAccelerationEnergy + auxiliaryEnergyPer100Km;
 
   if (__DEV__) {
     console.log(`⚡ Physics Calculation (${weight}kg, Cd=${Cd}, ${avgSpeed}km/h)`);
-    if (__DEV__) {
-      console.log(`   Rolling: ${rollingEnergyPer100Km.toFixed(2)} kWh/100km`);
-    }
-    if (__DEV__) {
-      console.log(`   Aero: ${dragEnergyPer100Km.toFixed(2)} kWh/100km`);
-    }
-    if (__DEV__) {
-      console.log(`   Auxiliary: ${auxiliaryEnergyPer100Km.toFixed(2)} kWh/100km`);
-    }
-    if (__DEV__) {
-      console.log(`   Efficiency: ${(totalEfficiency * 100).toFixed(1)}%`);
-    }
-    if (__DEV__) {
-      console.log(`   Total: ${totalEnergy.toFixed(2)} kWh/100km`);
-    }
+    if (__DEV__) { console.log(`   Rolling: ${rollingEnergyPer100Km.toFixed(2)} kWh/100km`); }
+    if (__DEV__) { console.log(`   Aero: ${dragEnergyPer100Km.toFixed(2)} kWh/100km`); }
+    if (__DEV__) { console.log(`   Cruise (Battery): ${cruiseEnergyFromBattery.toFixed(2)} kWh/100km`); }
+    if (__DEV__) { console.log(`   Accel (Net): ${netAccelerationEnergy.toFixed(2)} kWh/100km`); }
+    if (__DEV__) { console.log(`   Auxiliary: ${auxiliaryEnergyPer100Km.toFixed(2)} kWh/100km`); }
+    if (__DEV__) { console.log(`   Total: ${totalEnergy.toFixed(2)} kWh/100km`); }
   }
 
   return {
@@ -387,7 +378,7 @@ export function calculateEVPhysics(params: {
       rolling: +rollingEnergyPer100Km.toFixed(2),
       aero: +dragEnergyPer100Km.toFixed(2),
       auxiliary: +auxiliaryEnergyPer100Km.toFixed(2),
-      efficiency: +totalEfficiency.toFixed(3)
+      efficiency: +powertrainEfficiency.toFixed(3)
     }
   };
 }
@@ -538,13 +529,14 @@ export async function calculateEVConsumptionAdvanced(params: {
     vehicleType: params.vehicleType
   });
 
-  // Step 3: Calculate physics-based consumption
+// Step 3: Calculate physics-based consumption
   const physicsResult = calculateEVPhysics({
     weight,
     Cd: aeroData.Cd,
     frontalArea: aeroData.frontalArea,
-    avgSpeed: 80 // Average mixed driving (city + highway)
-  });
+    avgSpeed: 80, // Average mixed driving (city + highway)
+    year: params.year // <-- העברת השנתון לחישוב מערכות עזר
+  }); 
 
   // Step 4: Apply battery degradation
   const withDegradation = applyBatteryDegradation(

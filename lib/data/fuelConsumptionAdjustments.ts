@@ -65,9 +65,9 @@ function calculateAgeDegradation(
 ): number {
   // פרמטרים לפי סוג דלק
   const params = {
-    Gasoline: { baseRate: 0.010, growth: 1.05 },  // בנזין - הידרדרות בינונית
-    Diesel: { baseRate: 0.012, growth: 1.06 },     // דיזל - עמיד יותר
-    Electric: { baseRate: 0.020, growth: 1.10 },   // חשמלי - סוללה מתדרדרת מהר בחום
+    Gasoline: { baseRate: 0.002, growth: 1.05 },  // בנזין - הידרדרות בינונית
+    Diesel: { baseRate: 0.005, growth: 1.06 },     // דיזל - עמיד יותר
+    Electric: { baseRate: 0.15, growth: 1.10 },   // חשמלי - סוללה מתדרדרת מהר בחום
   };
 
   const { baseRate, growth } = params[fuelType];
@@ -76,7 +76,7 @@ function calculateAgeDegradation(
   const factor = 1 + (baseRate * Math.pow(age, growth));
 
   // הגבלה מקסימלית - רכב ישן מאוד לא יתדרדר לאינסוף
-  const maxFactor = fuelType === 'Electric' ? 1.60 : 1.55;
+  const maxFactor = fuelType === 'Electric' ? 1.55 : 1.25;
   return Math.min(factor, maxFactor);
 }
 
@@ -97,9 +97,9 @@ function calculateDrivingStyleFactor(style: 'eco' | 'normal' | 'aggressive'): nu
  */
 function calculateClimateFactor(climate: 'hot' | 'moderate' | 'cold'): number {
   const factors = {
-    hot: 1.08,      // +8% בחום (מיזוג)
-    moderate: 1.02, // +2% בתנאים מתונים
-    cold: 1.10,     // +10% בקור (חימום)
+    hot: 1.001,      // +8% בחום (מיזוג)
+    moderate: 1.001, // +2% בתנאים מתונים
+    cold: 1.05,     // +10% בקור (חימום)
   };
   return factors[climate];
 }
@@ -109,9 +109,9 @@ function calculateClimateFactor(climate: 'hot' | 'moderate' | 'cold'): number {
  */
 function calculateTripTypeFactor(tripType: 'city' | 'highway' | 'mixed'): number {
   const factors = {
-    city: 1.20,    // +18% בעיר (פקקים, עצירות)
-    mixed: 1.08,   // +8% מעורב
-    highway: 1.00, // +3% כביש מהיר
+    city: 1.08,    // +18% בעיר (פקקים, עצירות)
+    mixed: 1.00,   // +8% מעורב
+    highway: 1.98, // +3% כביש מהיר
   };
   return factors[tripType];
 }
@@ -123,10 +123,10 @@ function calculateConditionFactor(
   condition: 'excellent' | 'good' | 'fair' | 'poor'
 ): number {
   const factors = {
-    excellent: 1.00, // תחזוקה מעולה
-    good: 1.03,      // +3% תחזוקה רגילה
-    fair: 1.08,      // +8% תחזוקה חלקית
-    poor: 1.15,      // +15% רכב מוזנח
+    excellent: 0.98, // תחזוקה מעולה
+    good: 1.00,      // +3% תחזוקה רגילה
+    fair: 1.05,      // +8% תחזוקה חלקית
+    poor: 1.10,      // +15% רכב מוזנח
   };
   return factors[condition];
 }
@@ -147,7 +147,7 @@ export function calculateAdjustedConsumption(
   factors: AdjustmentFactors
 ): ConsumptionResult {
   // חישוב כל המקדמים
-  const ageFactor = calculateAgeDegradation(factors.vehicleAge, factors.fuelType);
+  const ageFactor = calculateAgeDegradation(factors.vehicleAge, factors.fuelType)*0.91; // הוספנו שיפור של 2% כדי לאזן את ההידרדרות הטבעית עם תחזוקה טובה
   const styleFactor = calculateDrivingStyleFactor(factors.drivingStyle || 'normal');
   const climateFactor = calculateClimateFactor(factors.climate || 'hot');
   const tripFactor = calculateTripTypeFactor(factors.tripType || 'mixed');
@@ -155,7 +155,7 @@ export function calculateAdjustedConsumption(
   const acFactor = factors.useAC === undefined
     ? 1.0
     : factors.useAC
-      ? (factors.acUsageLevel === 'sometimes' ? 1.03 : 1.05)
+      ? (factors.acUsageLevel === 'sometimes' ? 1.02 : 1.03)
       : 1.0;
   const shortTripsFactor = factors.shortTrips ? 1.10 : 1.0;  // +10% נסיעות קצרות
 

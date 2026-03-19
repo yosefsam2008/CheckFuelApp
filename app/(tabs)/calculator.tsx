@@ -118,7 +118,7 @@ interface ToastProps {
 // CONSTANTS
 // ============================================
 const DEFAULT_FUEL_PRICES = {
-  Gasoline: 7.36,
+  Gasoline: 7.08,
   Diesel: 9.58,
   Electric: 0.6,
 };

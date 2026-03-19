@@ -1419,7 +1419,7 @@ const styles = StyleSheet.create({
     color: "#f44336",
   },
   deleteModalActions: {
-    flexDirection: "row", // תוקן מ-row-reverse
+    flexDirection: "row",
     gap: 12,
     width: "100%",
   },

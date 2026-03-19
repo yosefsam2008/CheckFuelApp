@@ -124,7 +124,6 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
           CheckFuel עוזרת לך לחשב עלויות דלק ולנהל רכבים בקלות.
         </Text>
         <Text style={styles.contentText}>
-          • ניהול עד 10 רכבים{'\n'}
           • חישוב מדויק של עלות נסיעה{'\n'}
           • מעקב אחר הוצאות דלק{'\n'}
           • השוואה בין רכבים

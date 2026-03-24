@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
-const REWARDED_INTERSTITIAL_ID = 'ca-app-pub-6395480022343350/4460223754';
+const REWARDED_INTERSTITIAL_ID = 'ca-app-pub-6526080198496101/2899491732';
 
 interface VideoAdProps {
   onAdComplete?: () => void;
@@ -50,7 +50,7 @@ const VideoAd: React.FC<VideoAdProps> = ({
 
         const adUnitId = __DEV__
           ? TestIds.REWARDED_INTERSTITIAL
-          : REWARDED_INTERSTITIAL_ID;
+          : /*REWARDED_INTERSTITIAL_ID*/ TestIds.REWARDED_INTERSTITIAL;
 
         const ad = RewardedInterstitialAd.createForAdRequest(adUnitId, {
           requestNonPersonalizedAdsOnly: true,

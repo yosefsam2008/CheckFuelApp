@@ -126,7 +126,7 @@ const DEFAULT_FUEL_PRICES = {
 const DEFAULT_BATTERY_CAPACITY = 50;
 const ELECTRICITY_PRICE_PER_KWH = 0.6;
 const DEFAULT_FUEL_TANK_CAPACITY = 60; // Default fuel tank capacity in liters
-
+  
 // Quick distance presets
 const DISTANCE_PRESETS = [10, 50, 100, 200];
 
@@ -831,7 +831,7 @@ const handleCalculate = async () => {
         await AsyncStorage.setItem("calculationCount", nextCount.toString());
 
         // מציגים וידאו רק כל חישוב שלישי (אפשר לשנות את ה-3 לכל מספר אחר)
-        if (nextCount % 3 === 0) {
+        if (nextCount % 2 === 0) {
           setShowVideoAd(true);
         } else {
           // מדלגים על הפרסומת
@@ -1963,7 +1963,7 @@ if (showVideoAd) {
       {/* הבאנר עבר לכאן - לתחתית המסך מעל המקלדת */}
       {Platform.OS !== 'web' && !showVideoAd && step < STEPS.length - 1 && (
         <View style={{ paddingBottom: Platform.OS === 'ios' ? 6 : 3, paddingTop: 1, alignItems: 'center' }}>
-          <BannerAd />
+          <BannerAd key={`banner-step-${step}`} />
         </View>
       )}
 

@@ -17,7 +17,7 @@ interface PlateDetectionRewardedAdProps {
 // הגדרת מזהה הפרסומת מחוץ לקומפוננטה (מונע יצירה מחדש בכל רינדור)
 const AD_UNIT_ID = __DEV__
   ? TestIds.REWARDED 
-  : 'ca-app-pub-6395480022343350/7745503279';
+  : 'ca-app-pub-6526080198496101/8151818415 ';
 
 const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
   onAdComplete,

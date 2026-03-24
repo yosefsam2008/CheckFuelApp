@@ -19,10 +19,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.checkfuel.app",
-      "requireFullScreen": true,
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
-      }
+      "requireFullScreen": true
     },
     "android": {
       "package": "com.checkfuel.app",
@@ -33,9 +30,6 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#FFFFFF"
-      },
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-6395480022343350~7292610150"
       }
     },
     "web": {
@@ -59,8 +53,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-6395480022343350~7292610150",
-          "iosAppId": "ca-app-pub-6395480022343350~7292610150",
+          "androidAppId": "ca-app-pub-6526080198496101~4862609395",
+          "iosAppId": "ca-app-pub-6526080198496101~4862609395",
           "delayAppMeasurementInit": true
         }
       ]

@@ -6,7 +6,7 @@ import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'
 // בחירה אוטומטית בין מזהה הטסט למזהה האמיתי (Production)
 const AD_UNIT_ID = __DEV__ 
   ? TestIds.BANNER 
-  : 'ca-app-pub-6395480022343350/6667384343';
+  : 'ca-app-pub-6526080198496101/4914580281';
 
 export default function AdBanner() {
   // דילוג אלגנטי בסביבת Web למניעת קריסות

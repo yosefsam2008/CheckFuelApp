@@ -15,7 +15,7 @@ import {
 
 const AD_UNIT_ID = __DEV__
   ? TestIds.REWARDED_INTERSTITIAL 
-  : 'ca-app-pub-6395480022343350/4460223754';
+  : 'ca-app-pub-6526080198496101/2899491732';
 
 interface VehicleRewardedAdProps {
   onRewardEarned?: () => void;

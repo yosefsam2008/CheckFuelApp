@@ -328,14 +328,14 @@ export default function Dashboard() {
             <Text style={styles.heroSubtitle}>מחשבון חכם לניהול עלויות הדלק שלך</Text>
           </Animated.View>
         </LinearGradient>
-
+<View style={styles.bannerAdContainer}><BannerAd /></View>
         <View style={styles.content}>
           {/* h2 — larger section title with RTL-correct accent border */}
           <View style={styles.sectionTitleWrapper}>
             <Text style={styles.sectionTitleLarge}>📊 סיכום כולל</Text>
           </View>
 
-          <View style={styles.bannerAdContainer}><BannerAd /></View>
+          
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
@@ -488,8 +488,8 @@ const styles = StyleSheet.create({
 
   // Section title wrapper — full-width View carries the accent border; Text inside aligns right
  sectionTitleWrapper: {
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 25,
+    marginTop: 5,
     width: '100%',
     // מתאים את היישור לצד ימין בצורה חכמה:
     // אם המכשיר ב-RTL, צד ימין הוא flex-start. אחרת, צד ימין הוא flex-end.

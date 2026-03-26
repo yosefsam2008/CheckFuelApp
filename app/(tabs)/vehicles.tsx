@@ -24,6 +24,7 @@ const PlateDetectionRewardedAd =
   Platform.OS === "web"
     ? () => null
     : require("../../components/PlateDetectionRewardedAd").default;
+    const AdBanner = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 
 const IS_WEB = Platform.OS === "web";
 const MAX_WIDTH = 600;
@@ -392,6 +393,14 @@ export default function VehiclesScreen() {
               <Text style={styles.emptyIcon}>🚗</Text>
               <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noVehicles}</Text>
               <Text style={styles.emptyText}>{LEGAL_UI_STRINGS.empty.addFirst}</Text>
+              
+              {/* התוספת שלנו: פרסומת מלבנית גדולה */}
+              {Platform.OS !== 'web' && (
+                <View style={styles.emptyAdWrapper}>
+                  <Text style={styles.adTagSmall}>פרסומת</Text>
+                  <AdBanner size="MEDIUM_RECTANGLE" />
+                </View>
+              )}
             </View>
           }
         />
@@ -668,7 +677,7 @@ export default function VehiclesScreen() {
                   style={styles.plateContinueButton}
                   onPress={handleShowPlateAd}
                 >
-                  <Text style={styles.plateContinueButtonText}>המשך עם פרסומת ◀</Text>
+                  <Text style={styles.plateContinueButtonText}>פתח זיהוי אוטומטי ◀</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -891,8 +900,21 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
+    paddingVertical: 30, // הקטנו מ-80 כדי להשאיר מקום לפרסומת ולכפתורים למטה
     paddingHorizontal: 40,
+  },
+  // העיצובים החדשים לפרסומת:
+  emptyAdWrapper: {
+    marginTop: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 260,
+  },
+  adTagSmall: {
+    fontSize: 10,
+    color: "#999",
+    marginBottom: 4,
+    textAlign: "center",
   },
   emptyIcon: {
     fontSize: 72,

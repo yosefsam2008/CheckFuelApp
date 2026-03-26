@@ -301,15 +301,11 @@ const confirmClearAllHistory = () => {
     );
   };
 
-  // Native-looking ad card that blends with trip cards
-  const AdCardNative = () => (
-    <View style={[styles.tripCard, styles.adCard]}>
-      <View style={styles.adLabelContainer}>
-        <Text style={styles.adLabel}>ממומן</Text>
-      </View>
-      <View style={styles.adContent}>
-        <AdBanner />
-      </View>
+ // Policy-compliant Feed Banner Ad
+  const FeedBannerAd = () => (
+    <View style={styles.feedAdContainer}>
+      <Text style={styles.adTagSmall}>פרסומת</Text>
+      <AdBanner />
     </View>
   );
 
@@ -324,8 +320,7 @@ const confirmClearAllHistory = () => {
         </Text>
       </View>
 
-      {/* 🎯 פרסומת מתחת להדר */}
-      <AdBanner />
+    
       {/* Toast */}
       {toastMessage && (
         <Animated.View
@@ -348,35 +343,45 @@ const confirmClearAllHistory = () => {
         </Animated.View>
       )}
 
-      {history.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyCircle}>
-            <Text style={styles.emptyEmoji}>📋</Text>
+ {history.length === 0 ? (
+        <>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyCircle}>
+              <Text style={styles.emptyEmoji}>📋</Text>
+            </View>
+            <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noHistory}</Text>
+            <Text style={styles.emptyText}>
+              {LEGAL_UI_STRINGS.empty.addFirst}
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => router.push("/calculator")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emptyButtonText}>🧮 צור חישוב ראשון</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noHistory}</Text>
-          <Text style={styles.emptyText}>
-            {LEGAL_UI_STRINGS.empty.addFirst}
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => router.push("/calculator")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.emptyButtonText}>🧮 צור חישוב ראשון</Text>
-          </TouchableOpacity>
-        </View>
+
+          {/* פרסומת מלבן גדול - צמודה לתחתית באופן מוחלט */}
+          {Platform.OS !== 'web' && (
+            <View style={styles.emptyAdAbsolute}>
+              <Text style={styles.adTagSmall}>פרסומת</Text>
+              <AdBanner size="MEDIUM_RECTANGLE" />
+            </View>
+          )}
+        </>
       ) : (
         <>
           <FlatList
             data={history}
             keyExtractor={(item, index) => item.id || `item-${index}`}
             renderItem={({ item, index }) => {
-              // Show native ad after every 3rd trip (after indices 2, 5, 8, etc.)
+              // Show feed ad after every 3rd trip
               const showAdAfterThisItem = (index + 1) % 3 === 0 && index < history.length - 1;
               return (
                 <>
                   <TripCard item={item} index={index} />
-                  {showAdAfterThisItem && Platform.OS !== 'web' && <AdCardNative />}
+                  {showAdAfterThisItem && Platform.OS !== 'web' && <FeedBannerAd />}
                 </>
               );
             }}
@@ -384,7 +389,7 @@ const confirmClearAllHistory = () => {
             showsVerticalScrollIndicator={false}
           />
 
-          <TouchableOpacity
+<TouchableOpacity
             style={styles.clearAllButton}
             onPress={confirmClearAllHistory}
             activeOpacity={0.8}
@@ -393,6 +398,13 @@ const confirmClearAllHistory = () => {
             <Text style={styles.clearAllText}>🗑️ נקה הכל</Text>
           </TouchableOpacity>
         </>
+      )}
+
+      {/* 🚀 הבאנר החדש שצמוד תמיד לתחתית המסך */}
+      {Platform.OS !== 'web' && history.length > 0 && (
+        <View style={styles.stickyBottomAd}>
+          <AdBanner />
+        </View>
       )}
 
       {/* Trip Details Modal */}
@@ -641,7 +653,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f7fa",
   },
   header: {
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingTop: Platform.OS === "ios" ? 60 : 50,
     paddingBottom: 24,
     paddingHorizontal: 20,
     position: "relative",
@@ -674,11 +686,21 @@ const styles = StyleSheet.create({
   },
 
   // Empty State
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
+    emptyContainer: {
+    flex: 1, // תופס את כל המסך
+    justifyContent: "center", // ממרכז את האייקון והכפתור
     alignItems: "center",
     paddingHorizontal: 40,
+    paddingBottom: 220, // חשוב! משאיר מקום לבאנר למטה שלא יסתיר את הכפתור
+  },
+  emptyAdAbsolute: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 30 : 10, // גובה מעל הבר התחתון
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   emptyCircle: {
     width: 140,
@@ -693,6 +715,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 8,
+  },
+  emptyContentWrapper: {
+    flex: 1,
+    justifyContent: "center", // משאיר את הסמל והכפתור בדיוק באמצע השטח הפנוי
+    alignItems: "center",
   },
   emptyEmoji: {
     fontSize: 64,
@@ -857,7 +884,7 @@ const styles = StyleSheet.create({
 
   clearAllButton: {
     position: "absolute",
-    bottom: 32,
+    bottom: 95, // הרמנו את הכפתור כדי שלא יתנגש בפרסומת למטה
     left: 20,
     right: 20,
     height: 56,
@@ -871,6 +898,19 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     overflow: "hidden",
+  },
+  // עיצוב לבאנר שצמוד למטה
+  stickyBottomAd: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    alignItems: "center",
+    backgroundColor: "#fff", // רקע לבן יוצר אשליה שהוא חלק מסרגל הניווט
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+    paddingTop: 6,
+    paddingBottom: Platform.OS === "ios" ? 20 : 6, // מרווח בטיחותי לאייפונים החדשים
+    zIndex: 50,
   },
   clearAllGradient: {
     position: "absolute",
@@ -1158,33 +1198,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // Native Ad Card Styles
-  adCard: {
-    backgroundColor: "rgba(0, 191, 165, 0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(0, 191, 165, 0.2)",
-    borderStyle: "dashed",
-  },
-  adLabelContainer: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "rgba(0, 0, 0, 0.08)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    zIndex: 10,
-  },
-  adLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#666",
-    letterSpacing: 0.5,
-  },
-  adContent: {
-    flex: 1,
-    justifyContent: "center",
+// Feed Ad and Empty Ad Styles
+    emptyAdWrapper: {
     alignItems: "center",
-    paddingTop: 40,
+    justifyContent: "center",
+    minHeight: 260,
+    marginTop: 20, // מרווח קטן ליתר ביטחון במסכים קטנים
+  },
+  feedAdContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    paddingVertical: 8,
+    backgroundColor: "transparent",
+  },
+  adTagSmall: {
+    fontSize: 10,
+    color: "#999",
+    marginBottom: 4,
+    writingDirection: "rtl",
   },
 });

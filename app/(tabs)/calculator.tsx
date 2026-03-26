@@ -3329,7 +3329,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: COLORS.textPrimary,
-    textAlign: "left", // תוקן מ-right
+    textAlign: "left",
     lineHeight: 20,
     writingDirection: "rtl",
   },

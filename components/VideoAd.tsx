@@ -50,7 +50,7 @@ const VideoAd: React.FC<VideoAdProps> = ({
 
         const adUnitId = __DEV__
           ? TestIds.REWARDED_INTERSTITIAL
-          : /*REWARDED_INTERSTITIAL_ID*/ TestIds.REWARDED_INTERSTITIAL;
+          : REWARDED_INTERSTITIAL_ID;
 
         const ad = RewardedInterstitialAd.createForAdRequest(adUnitId, {
           requestNonPersonalizedAdsOnly: true,

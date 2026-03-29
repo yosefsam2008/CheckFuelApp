@@ -1,5 +1,11 @@
 // calculator.tsx - Travel Cost Calculator with Integrated Google Ads
 
+import { 
+  Share2, RefreshCw, Car, Bus, MapPin, 
+  Zap, Droplets, TrendingUp, CircleDollarSign, 
+  Info, AlertTriangle, ChevronRight, Leaf
+} from 'lucide-react-native';
+const PremiumUnlockAd = Platform.OS === 'web' ? () => null : require('../../components/PremiumUnlockAd').default;
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from "expo-router";
@@ -93,7 +99,7 @@ interface QuickChipProps {
 }
 
 interface ResultMetricCardProps {
-  icon: string;
+  iconNode: React.ReactNode; 
   label: string;
   value: string;
   subValue?: string;
@@ -101,7 +107,7 @@ interface ResultMetricCardProps {
 }
 
 interface ComparisonCardProps {
-  icon: string;
+  iconNode: React.ReactNode;
   title: string;
   cost: number;
   yourCost: number;
@@ -361,12 +367,13 @@ useEffect(() => {
 };
 
 // ============================================
-// RESULT METRIC CARD
+// RESULT METRIC CARD (Clean Grid Item)
 // ============================================
-const ResultMetricCard: React.FC<ResultMetricCardProps> = ({ icon, label, value, subValue, color = COLORS.textPrimary }) => (
-
+const ResultMetricCard: React.FC<ResultMetricCardProps> = ({ iconNode, label, value, subValue, color = COLORS.textPrimary }) => (
   <View style={styles.metricCard}>
-    <Text style={styles.metricIcon}>{icon}</Text>
+    <View style={styles.metricIconContainer}>
+      {iconNode}
+    </View>
     <Text style={styles.metricLabel}>{label}</Text>
     <Text style={[styles.metricValue, { color }]}>{value}</Text>
     {subValue && <Text style={styles.metricSubValue}>{subValue}</Text>}
@@ -374,16 +381,17 @@ const ResultMetricCard: React.FC<ResultMetricCardProps> = ({ icon, label, value,
 );
 
 // ============================================
-// COMPARISON CARD
+// COMPARISON CARD (Modern Clean Look)
 // ============================================
-const ComparisonCard: React.FC<ComparisonCardProps> = ({ icon, title, cost, yourCost, subtitle }) => {
-
+const ComparisonCard: React.FC<ComparisonCardProps> = ({ iconNode, title, cost, yourCost, subtitle }) => {
   const savings = cost - yourCost;
   const isCheaper = savings > 0;
-
+  
   return (
-    <View style={[styles.comparisonCard, isCheaper && styles.comparisonCardSavings]}>
-      <Text style={styles.comparisonIcon}>{icon}</Text>
+    <View style={styles.comparisonCard}>
+      <View style={[styles.comparisonIconWrapper, { backgroundColor: isCheaper ? COLORS.success + '20' : COLORS.textTertiary + '20' }]}>
+        {iconNode}
+      </View>
       <View style={styles.comparisonContent}>
         <Text style={styles.comparisonTitle}>{title}</Text>
         {subtitle && <Text style={styles.comparisonSubtitle}>{subtitle}</Text>}
@@ -391,13 +399,13 @@ const ComparisonCard: React.FC<ComparisonCardProps> = ({ icon, title, cost, your
       </View>
       <View style={[
         styles.comparisonBadge,
-        isCheaper ? styles.comparisonBadgeSavings : styles.comparisonBadgeLoss,
+        isCheaper ? styles.comparisonBadgeSavings : styles.comparisonBadgeNeutral,
       ]}>
         <Text style={[
           styles.comparisonBadgeText,
-          isCheaper ? styles.comparisonBadgeTextSavings : styles.comparisonBadgeTextLoss,
+          isCheaper ? styles.comparisonBadgeTextSavings : styles.comparisonBadgeTextNeutral,
         ]}>
-          {isCheaper ? `חיסכון ₪${savings.toFixed(0)}` : `יקר יותר ב-₪${Math.abs(savings).toFixed(0)}`}
+          {isCheaper ? `חיסכון ₪${savings.toFixed(0)}` : `ברכב יקר ב-₪${Math.abs(savings).toFixed(0)}`}
         </Text>
       </View>
     </View>
@@ -540,6 +548,8 @@ export default function CalculatorScreen() {
   const [showPriceHelper, setShowPriceHelper] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showVideoAd, setShowVideoAd] = useState(false);
+  const [isPremiumUnlocked, setIsPremiumUnlocked] = useState(false);
+  const [showUnlockAd, setShowUnlockAd] = useState(false);
 
   // Driving preferences
   const [drivingStyle, setDrivingStyle] = useState<'eco' | 'normal' | 'aggressive'>('normal');
@@ -859,6 +869,18 @@ const handleCalculate = async () => {
 
     next(); // Move to results
   };
+  // ============================================
+  // UNLOCK PREMIUM HANDLERS
+  // ============================================
+  const handleUnlockPremium = () => {
+    setShowUnlockAd(true);
+  };
+
+  const handleUnlockAdComplete = () => {
+    setShowUnlockAd(false);
+    setIsPremiumUnlocked(true);
+    setToastMessage({ text: "הנתונים המתקדמים נפתחו בהצלחה! 🔓", type: "success" });
+  };
 
   // ============================================
   // SAVE TO HISTORY
@@ -939,6 +961,32 @@ const handleReset = async () => {
   setTripType('mixed');
   setAcUsage('always');
   setShowCelebration(false);
+  // ============================================
+  // RESET
+  // ============================================
+  const handleReset = async () => {
+    try {
+      await saveCalculationToHistory();
+      await AsyncStorage.removeItem("calculatorProgress");
+    } catch (error) {
+      console.error("Failed to save/clear data:", error);
+    }
+
+    setStep(0);
+    setResult(null);
+    setDistance("");
+    setFuelPrice(DEFAULT_FUEL_PRICES.Gasoline.toString());
+    setElectricityPrice(ELECTRICITY_PRICE_PER_KWH.toString());
+    setVehicle(null);
+    setDrivingStyle('normal');
+    setTripType('mixed');
+    setAcUsage('always');
+    setShowCelebration(false);
+    
+    // ✨ נועל בחזרה את הנתונים לחישוב הבא ✨
+    setIsPremiumUnlocked(false); 
+  
+  };
 };
 
   // ============================================
@@ -1590,7 +1638,7 @@ const handleReset = async () => {
         );
 
       // ========================================
-      // STEP 4: RESULTS
+      // STEP 4: RESULTS (Premium UI)
       // ========================================
       case "results":
         if (!result || !vehicle) return null;
@@ -1598,302 +1646,205 @@ const handleReset = async () => {
         const taxiCost = getTaxiCost(result.distance);
         const busCostDetails = getBusCostDetails(result.distance);
         const busCost = busCostDetails.fare;
+        
+        // --- ✨ נתוני פרימיום חדשים ✨ ---
         const monthlyProjection = getMonthlyProjection(result.totalCost);
-        const co2Emissions = getCO2Emissions(result.fuelConsumed, vehicle.fueltype);
+        const yearlyProjection = monthlyProjection * 12;
         const isElectricVehicle = result.energyType === "electricity";
-
-        // Calculate fuel gauge percentage (for visual) - using actual tank capacity
+        const co2Emissions = getCO2Emissions(result.fuelConsumed, vehicle.fueltype);
+        // העלות האמיתית בישראל כוללת פחת, ירידת ערך, ביטוחים וטיפולים - מוערך בכ-85% תוספת לעלות האנרגיה
+        const trueCost = result.totalCost * 1.85; 
+        
         const tankCapacity = vehicle.tankCapacity || (isElectricVehicle ? DEFAULT_BATTERY_CAPACITY : DEFAULT_FUEL_TANK_CAPACITY);
         const fuelGaugePercent = (result.fuelConsumed / tankCapacity) * 100;
         const fuelGaugePercentClamped = Math.min(100, Math.max(0, fuelGaugePercent));
 
-       return (
-          <ScrollView 
+        return (
+          <ScrollView
             showsVerticalScrollIndicator={false} 
             style={styles.resultsScroll}
             contentContainerStyle={styles.resultsScrollContent}
           >
-            {/* Celebration overlay */}
             {showCelebration && (
               <View style={styles.celebrationOverlay}>
                 <Text style={styles.celebrationEmoji}>🎉</Text>
               </View>
             )}
 
-           
-              <Text style={styles.disclaimerIcon}>⚠️</Text>
-              <View style={styles.disclaimerContent}>
-                <Text style={styles.disclaimerTitle}>{LEGAL_UI_STRINGS.calculator.disclaimer}</Text>
-                <Text style={styles.disclaimerText}>{LEGAL_UI_STRINGS.calculator.disclaimerFull}</Text>
-              </View>
-            
-
-            {/* Main cost card */}
-            <GlassCard style={styles.mainResultCard}>
-              <Text style={styles.resultsTitle}>📊 התוצאות שלך</Text>
+            {/* Main Premium Dashboard Card */}
+            <View style={styles.premiumDashboardCard}>
               
-              <View style={styles.totalCostContainer}>
-                <Text style={styles.totalCostLabel}>עלות כוללת</Text>
+              {/* Header: Total Cost */}
+              <View style={styles.totalCostHeader}>
+                <Text style={styles.totalCostLabel}>עלות הנסיעה שלך</Text>
                 <AnimatedNumber
                   value={result.totalCost}
                   prefix="₪"
-                  style={styles.totalCostValue}
+                  style={styles.totalCostValueDark}
                   duration={1500}
                 />
               </View>
 
-              {/* Fuel Gauge Visualization */}
-              <FuelGauge
-                percentage={fuelGaugePercentClamped}
-                isElectric={isElectricVehicle}
-              />
-
-              {/* Tank Usage Detail */}
-              <View style={styles.tankUsageDetail}>
-                <Text style={styles.tankUsageLabel}>צריכה מהמיכל:</Text>
-                <Text style={styles.tankUsageValue}>
-                  {result.fuelConsumed.toFixed(1)} {isElectricVehicle ? "kWh" : "ליטר"} מתוך {tankCapacity.toFixed(0)} {isElectricVehicle ? "kWh" : "ליטר"}
-                </Text>
-                <Text style={styles.tankUsagePercentage}>
-                  ({fuelGaugePercent.toFixed(1)}% מהמיכל)
-                </Text>
-                {fuelGaugePercent > 100 && (
-                  <Text style={styles.tankUsageWarning}>
-                    ⚠️ הצריכה עולה על קיבולת המיכל - ייתכן שתצטרך תדלוק באמצע הדרך
-                  </Text>
-                )}
+              {/* Fuel Gauge */}
+              <View style={styles.dashboardGaugeSection}>
+                <FuelGauge
+                  percentage={fuelGaugePercentClamped}
+                  isElectric={isElectricVehicle}
+                />
               </View>
-            </GlassCard>
 
-            {/* ✅ Action buttons - הועברו לכאן! מיד אחרי התוצאה הראשית ✅ */}
-            <View style={[styles.resultsActions, { marginBottom: 16 }]}>
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={shareResults}
-              >
-                <Text style={styles.shareButtonText}>📤 שתף תוצאות</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.newCalculationButton}
-                onPress={handleReset}
-              >
-                <Text style={styles.newCalculationButtonText}>
-                  🔄 שמור והתחל חישוב חדש
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.viewVehiclesButton}
-                onPress={() => router.push("/vehicles")}
-              >
-                <Text style={styles.viewVehiclesButtonText}>
-                  הצג את כל הרכבים
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Metrics Grid */}
-            <View style={styles.metricsGrid}>
-              <ResultMetricCard
-                icon="📍"
-                label="מרחק"
-                value={`${result.distance} ק״מ`}
-              />
-              <ResultMetricCard
-                icon={isElectricVehicle ? "⚡" : "⛽"}
-                label={isElectricVehicle ? "חשמל" : "דלק"}
-                value={`${result.fuelConsumed.toFixed(2)} ${isElectricVehicle ? "kWh" : "ל"}`}
-              />
-              <ResultMetricCard
-                icon="📈"
-                label="יעילות"
-                value={`${result.consumption.toFixed(isElectricVehicle ? 4 : 1)} ${isElectricVehicle ? "kWh/ק״מ" : "km/l"}`}
-              />
-              <ResultMetricCard
-                icon="💵"
-                label="עלות לק״מ"
-                value={`₪${result.costPerKm.toFixed(2)}`}
-              />
-            </View>
-
-            {/* Vehicle info */}
-            <GlassCard style={styles.vehicleInfoCard}>
-              <View style={styles.vehicleInfoRow}>
-                <Text style={styles.vehicleInfoIcon}>
-                  {getVehicleIcon(vehicle.fueltype)}
-                </Text>
-                <View style={styles.vehicleInfoContent}>
-                  <Text style={styles.vehicleInfoName}>{vehicle.name}</Text>
-                  <Text style={styles.vehicleInfoDetails}>
-                    {vehicle.model} • {vehicle.fueltype}
-                  </Text>
-                </View>
+              {/* 4-Grid Dashboard Details */}
+              <View style={styles.dashboardGrid}>
+                <ResultMetricCard
+                  iconNode={<MapPin size={24} color={COLORS.accent} />}
+                  label="מרחק"
+                  value={`${result.distance} ק״מ`}
+                />
+                <ResultMetricCard
+                  iconNode={isElectricVehicle ? <Zap size={24} color={COLORS.electric} /> : <Droplets size={24} color={COLORS.fuel} />}
+                  label={isElectricVehicle ? "חשמל" : "דלק"}
+                  value={`${result.fuelConsumed.toFixed(2)} ${isElectricVehicle ? "kWh" : "ל'"}`}
+                />
+                <ResultMetricCard
+                  iconNode={<TrendingUp size={24} color={COLORS.primary} />}
+                  label="יעילות"
+                  value={`${result.consumption.toFixed(isElectricVehicle ? 2 : 1)} ${isElectricVehicle ? "kWh/km" : "km/l"}`}
+                />
+                <ResultMetricCard
+                  iconNode={<CircleDollarSign size={24} color={COLORS.textSecondary} />}
+                  label="עלות לק״מ"
+                  value={`₪${result.costPerKm.toFixed(2)}`}
+                />
               </View>
-            </GlassCard>
-
-            {/* Comparisons */}
-            <Text style={styles.sectionTitle}>📊 השוואות</Text>
-            <View style={styles.comparisonsContainer}>
-              <ComparisonCard
-                icon="🚕"
-                title="מונית"
-                cost={taxiCost}
-                yourCost={result.totalCost}
-              />
-              <ComparisonCard
-                icon="🚌"
-                title="אוטובוס"
-                subtitle={`טווח: ${busCostDetails.bracket}`}
-                cost={busCost}
-                yourCost={result.totalCost}
-              />
             </View>
 
-            {/* Bus fare disclaimer */}
-            <View style={styles.busFareDisclaimer}>
-              <Text style={styles.busDisclaimerIcon}>ℹ️</Text>
-              <Text style={styles.busDisclaimerText}>
-                מחיר האוטובוס מבוסס על תעריפי משרד התחבורה. לא כולל הנחות סטודנטים/קשישים, מנויים חודשיים, או כרטיסיות מרובות נסיעות.
-              </Text>
+            {/* Action Buttons Moved Up (Directly below main results) */}
+            <View style={[styles.bottomActionsContainer, { marginTop: 24, marginBottom: 16 }]}>
+              <TouchableOpacity style={styles.primaryActionButton} onPress={handleReset}>
+                <RefreshCw size={20} color="#FFF" />
+                <Text style={styles.primaryActionText}>שמור והתחל מחדש</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.secondaryActionsRow}>
+                <TouchableOpacity style={styles.secondaryActionButton} onPress={shareResults}>
+                  <Share2 size={18} color={COLORS.primary} />
+                  <Text style={styles.secondaryActionText}>שתף תוצאות</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.secondaryActionButton} onPress={() => router.push("/vehicles")}>
+                  <Car size={18} color={COLORS.primary} />
+                  <Text style={styles.secondaryActionText}>הרכבים שלי</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Optimized: Banner after comparison context */}
+            {/* Banner Ad separates the free tools from the premium content */}
             <BannerAd style={styles.midBannerAd} />
 
-            {/* Monthly projection */}
-            <GlassCard style={styles.projectionCard}>
-              <Text style={styles.projectionIcon}>📅</Text>
-              <View style={styles.projectionContent}>
-                <Text style={styles.projectionTitle}>תחזית חודשית</Text>
-                <Text style={styles.projectionSubtitle}>
-                  אם תעשה את הנסיעה הזו 20 פעמים בחודש:
-                </Text>
-                <Text style={styles.projectionValue}>
-                  ₪{monthlyProjection.toFixed(0)} לחודש
-                </Text>
-              </View>
-            </GlassCard>
+            {/* ======================================= */}
+            {/* 🔒 PREMIUM SECTION (Paywall/Blurred) 🔒 */}
+            {/* ======================================= */}
+            <View style={styles.premiumSectionContainer}>
+              <Text style={styles.sectionTitle}>תובנות מתקדמות (Premium)</Text>
 
-            {/* Potential Savings Card */}
-            {result.adjustmentBreakdown && result.baseConsumption && (
-              <GlassCard style={styles.savingsCard}>
-                <View style={styles.savingsHeader}>
-                  <Text style={styles.savingsIcon}>💰</Text>
-                  <Text style={styles.savingsTitle}>חיסכון פוטנציאלי</Text>
+              {/* The content that gets blurred */}
+              <View style={[styles.premiumContent, !isPremiumUnlocked && styles.premiumContentBlurred]}>
+                
+                {/* 1. Comparisons */}
+                <View style={styles.comparisonsContainer}>
+                  <ComparisonCard
+                    iconNode={<Car size={24} color={COLORS.textPrimary} />}
+                    title="מונית ספיישל"
+                    cost={taxiCost}
+                    yourCost={result.totalCost}
+                  />
+                  <ComparisonCard
+                    iconNode={<Bus size={24} color={COLORS.textPrimary} />}
+                    title="אוטובוס ציבורי"
+                    subtitle={`תעריף ארצי: ${busCostDetails.bracket}`}
+                    cost={busCost}
+                    yourCost={result.totalCost}
+                  />
                 </View>
 
-                <Text style={styles.savingsSubtitle}>
-                  אם תשנה הרגלי נהיגה, תוכל לחסוך:
-                </Text>
+                {/* 2. Carpool Splitter */}
+                <Text style={styles.premiumSectionSubTitle}>חלוקת תשלום (קארפול)</Text>
+                <View style={styles.carpoolContainer}>
+                  <View style={styles.carpoolBox}>
+                    <Text style={styles.carpoolIcon}>👤</Text>
+                    <Text style={styles.carpoolLabel}>נוסע יחיד</Text>
+                    <Text style={styles.carpoolValue}>₪{result.totalCost.toFixed(1)}</Text>
+                  </View>
+                  <View style={[styles.carpoolBox, styles.carpoolBoxHighlight]}>
+                    <Text style={styles.carpoolIcon}>👥</Text>
+                    <Text style={styles.carpoolLabel}>זוג (חצי)</Text>
+                    <Text style={[styles.carpoolValue, { color: COLORS.primaryDark }]}>₪{(result.totalCost / 2).toFixed(1)}</Text>
+                  </View>
+                  <View style={styles.carpoolBox}>
+                    <Text style={styles.carpoolIcon}>👨‍👩‍👧‍👦</Text>
+                    <Text style={styles.carpoolLabel}>4 נוסעים</Text>
+                    <Text style={styles.carpoolValue}>₪{(result.totalCost / 4).toFixed(1)}</Text>
+                  </View>
+                </View>
 
-                {(() => {
-                  // חישוב צריכה אופטימלית (eco mode, highway, rarely AC)
-                  const optimalResult = calculateAdjustedConsumption(
-                    result.baseConsumption,
-                    {
-                      vehicleAge: calculateVehicleAge(vehicle.year || new Date().getFullYear()),
-                      fuelType: vehicle.fueltype === "Electric" ? "Electric" : vehicle.fueltype === "Diesel" ? "Diesel" : "Gasoline",
-                      drivingStyle: 'eco',
-                      climate: 'hot',
-                      tripType: 'highway',
-                      vehicleCondition: 'good',
-                      useAC: false,
-                      shortTrips: false,
-                    }
-                  );
+                {/* 3. Deep Financial Insights */}
+                <Text style={styles.premiumSectionSubTitle}>תחזיות ובלאי רכב</Text>
+                <View style={styles.premiumGrid}>
+                  <View style={styles.premiumGridItem}>
+                    <Text style={styles.premiumGridIcon}>📅</Text>
+                    <Text style={styles.premiumGridTitle}>תחזית שנתית</Text>
+                    <Text style={styles.premiumGridValue}>₪{yearlyProjection.toFixed(0)}</Text>
+                    <Text style={styles.premiumGridSub}>לפי 20 נסיעות בחודש</Text>
+                  </View>
+                  <View style={styles.premiumGridItem}>
+                    <Text style={styles.premiumGridIcon}>🔧</Text>
+                    <Text style={styles.premiumGridTitle}>עלות חודשית</Text>
+                    <Text style={styles.premiumGridValue}>₪{trueCost.toFixed(0)}</Text>
+                    <Text style={styles.premiumGridSub}>כולל בלאי, פחת וטיפולים</Text>
+                  </View>
+                </View>
 
-                  let currentCost = result.totalCost;
-                  let optimalCost: number;
+                {/* 4. Environmental Impact */}
+                {!isElectricVehicle ? (
+                  <View style={styles.environmentCard}>
+                    <Text style={styles.environmentIcon}>🌍</Text>
+                    <View style={styles.environmentContent}>
+                      <Text style={styles.environmentTitle}>זיהום אוויר משוער</Text>
+                      <Text style={styles.environmentValue}>{co2Emissions.toFixed(1)} ק״ג CO₂</Text>
+                      <Text style={styles.environmentNote}>פליטת פחמן פוטנציאלית בנסיעה זו</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={[styles.environmentCard, { borderColor: COLORS.electric, backgroundColor: COLORS.accentLight }]}>
+                    <Text style={styles.environmentIcon}>⚡</Text>
+                    <View style={styles.environmentContent}>
+                      <Text style={styles.environmentTitle}>נסיעה ירוקה!</Text>
+                      <Text style={[styles.environmentValue, { color: COLORS.electric }]}>0 ק״ג CO₂</Text>
+                      <Text style={styles.environmentNote}>חסכת פליטת מזהמים לחלוטין</Text>
+                    </View>
+                  </View>
+                )}
 
-                  if (isElectricVehicle) {
-                    const optimalKwhPer100Km = optimalResult.adjustedConsumption;
-                    const optimalEnergyConsumed = (result.distance / 100) * optimalKwhPer100Km;
-                    const pricePerKwh = parseFloat(electricityPrice);
-                    optimalCost = optimalEnergyConsumed * pricePerKwh;
-                  } else {
-                    const optimalFuelConsumed = result.distance / optimalResult.adjustedConsumption;
-                    const p = parseFloat(fuelPrice);
-                    optimalCost = optimalFuelConsumed * p;
-                  }
+              </View>
 
-                  const potentialSavings = currentCost - optimalCost;
-                  const savingsPercent = (potentialSavings / currentCost) * 100;
-
-                  return (
-                    <>
-                      <View style={styles.savingsAmount}>
-                        <Text style={styles.savingsValue}>
-                          ₪{potentialSavings.toFixed(2)}
-                        </Text>
-                        <Text style={styles.savingsPercent}>
-                          ({savingsPercent.toFixed(0)}% חיסכון)
-                        </Text>
-                      </View>
-
-                      <View style={styles.savingsTips}>
-                        <Text style={styles.savingsTipsTitle}>💡 טיפים לחיסכון:</Text>
-
-                        {drivingStyle !== 'eco' && (
-                          <View style={styles.savingsTip}>
-                            <Text style={styles.savingsTipIcon}>🌱</Text>
-                            <Text style={styles.savingsTipText}>
-                              נהיגה חסכונית - האצה רכה וחיזוי תנועה
-                            </Text>
-                          </View>
-                        )}
-
-                        {tripType !== 'highway' && (
-                          <View style={styles.savingsTip}>
-                            <Text style={styles.savingsTipIcon}>🛣️</Text>
-                            <Text style={styles.savingsTipText}>
-                              העדף נסיעות בכבישים מהירים על פני עיר
-                            </Text>
-                          </View>
-                        )}
-
-                        {acUsage === 'always' && (
-                          <View style={styles.savingsTip}>
-                            <Text style={styles.savingsTipIcon}>🌤️</Text>
-                            <Text style={styles.savingsTipText}>
-                              השתמש במיזוג רק כשצריך
-                            </Text>
-                          </View>
-                        )}
-
-                        <View style={styles.savingsTip}>
-                          <Text style={styles.savingsTipIcon}>🔧</Text>
-                          <Text style={styles.savingsTipText}>
-                            תחזוקה קבועה ולחץ אוויר תקין בצמיגים
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.savingsMonthly}>
-                        <Text style={styles.savingsMonthlyLabel}>
-                          חיסכון חודשי פוטנציאלי:
-                        </Text>
-                        <Text style={styles.savingsMonthlyValue}>
-                          ₪{(potentialSavings * 20).toFixed(0)}
-                        </Text>
-                        <Text style={styles.savingsMonthlyNote}>
-                          (בהנחה של 20 נסיעות בחודש)
-                        </Text>
-                      </View>
-                    </>
-                  );
-                })()}
-              </GlassCard>
-            )}
-
-            {/* Attribution Footer */}
-            <View style={styles.attributionFooter}>
-              <Text style={styles.attributionText}>
-                {LEGAL_UI_STRINGS.attribution.footer}
-              </Text>
+              {/* The Lock Overlay */}
+              {!isPremiumUnlocked && (
+                <View style={styles.premiumOverlay}>
+                  <View style={styles.premiumLockCircle}>
+                    <Text style={styles.premiumLockIcon}>🔒</Text>
+                  </View>
+                  <Text style={styles.premiumOverlayTitle}>פתח את כל הנתונים</Text>
+                  <Text style={styles.premiumOverlayText}>
+                    גלה מידע מתקדם: מחשבון קארפול (חלוקת תשלום), חישוב בלאי לרכב, מדד מזהמים ותחזית שנתית.
+                  </Text>
+                  <TouchableOpacity style={styles.unlockPremiumButton} onPress={handleUnlockPremium}>
+                    <Text style={styles.unlockPremiumButtonText}>🎬 פתח בחינם (צפה בסרטון)</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
+            {/* ======================================= */}
 
-            {/* Bottom padding for scroll */}
             <View style={{ height: 40 }} />
           </ScrollView>
         );
@@ -1907,6 +1858,22 @@ const handleReset = async () => {
   // VIDEO AD LOADING SCREEN
   // ============================================
   
+  // ============================================
+  // UNLOCK PREMIUM AD SCREEN
+  // ============================================
+  if (showUnlockAd) {
+    return (
+      <PremiumUnlockAd
+        loadingTitle="פותח נתונים מתקדמים 🚀"
+        loadingSubtitle="מיד בסיום הסרטון התוצאות ייפתחו"
+        onAdComplete={handleUnlockAdComplete}
+        onAdError={(error: any) => {
+          if (__DEV__) { console.log('Unlock Ad error:', error); }
+          handleUnlockAdComplete(); // ממשיכים ופותחים את הנתונים גם אם יש שגיאה
+        }}
+      />
+    );
+  }
 if (showVideoAd) {
     return (
       <View style={styles.adLoadingContainer}>
@@ -2675,12 +2642,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-  totalCostLabel: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-    writingDirection: "rtl",
-  },
   totalCostValue: {
     fontSize: 48,
     fontWeight: "800",
@@ -2783,21 +2744,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 12,
     marginTop: 16,
-  },
-  metricCard: {
-    flex: 1,
-    minWidth: "45%",
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
   },
   metricIcon: {
     fontSize: 24,
@@ -3358,5 +3304,301 @@ const styles = StyleSheet.create({
     color: COLORS.textTertiary,
     marginTop: 4,
     writingDirection: "rtl",
+  },
+  // --- Premium Dashboard Card ---
+  premiumDashboardCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 24,
+    marginTop: 16,
+    paddingTop: 24,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+    overflow: 'hidden',
+  },
+  totalCostHeader: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  totalCostLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    writingDirection: 'rtl',
+  },
+  totalCostValueDark: {
+    fontSize: 56,
+    fontWeight: '800',
+    color: COLORS.textPrimary, // שחור/אפור כהה במקום ירוק
+    letterSpacing: -1,
+    writingDirection: 'rtl',
+  },
+  dashboardGaugeSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.cardBorder,
+  },
+  dashboardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#FAFAFC', 
+  },
+  metricCard: {
+    width: '50%',
+    padding: 16,
+    alignItems: 'center',
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  metricIconContainer: {
+    marginBottom: 8,
+    opacity: 0.9,
+  },
+  
+  // --- Modern Comparisons ---
+  comparisonIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12, 
+  },
+  comparisonBadgeNeutral: {
+    backgroundColor: COLORS.background,
+  },
+  comparisonBadgeTextNeutral: {
+    color: COLORS.textSecondary,
+  },
+  
+  // --- Clean Notice ---
+  cleanNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 12,
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  cleanNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    writingDirection: 'rtl',
+  },
+  
+  // --- Bottom Actions ---
+  bottomActionsContainer: {
+    marginTop: 32,
+    gap: 12,
+  },
+  primaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  primaryActionText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  secondaryActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primaryLight + '30', // רקע ירוק שקוף ועדין
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
+  },
+  secondaryActionText: {
+    color: COLORS.primaryDark,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // --- Premium Paywall Section ---
+  premiumSectionContainer: {
+    position: 'relative',
+    marginTop: 16,
+  },
+  premiumContent: {
+    // Content behaves normally when unlocked
+  },
+  premiumContentBlurred: {
+    opacity: 0.15, // Creates the unreadable "blur" effect
+  },
+  premiumOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(242, 242, 247, 0.4)', // רקע חלבי עדין
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    borderRadius: 24,
+    zIndex: 10,
+    marginTop: 45, // דוחף את זה טיפה מתחת לכותרת כדי שהיא תישאר קריאה
+  },
+  premiumLockCircle: {
+    width: 60,
+    height: 60,
+    backgroundColor: COLORS.card,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 16,
+  },
+  premiumLockIcon: {
+    fontSize: 28,
+  },
+  premiumOverlayTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+    writingDirection: 'rtl',
+  },
+  premiumOverlayText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    lineHeight: 20,
+    writingDirection: 'rtl',
+  },
+  unlockPremiumButton: {
+    backgroundColor: COLORS.textPrimary, // כפתור שחור למראה יוקרתי
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    shadowColor: COLORS.textPrimary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  unlockPremiumButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+    writingDirection: 'rtl',
+  },
+  // --- Premium Additional UI ---
+  premiumSectionSubTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: COLORS.textSecondary,
+    marginTop: 24,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    writingDirection: "rtl",
+  },
+  
+  // Carpool Component
+  carpoolContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  carpoolBox: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  carpoolBoxHighlight: {
+    borderColor: COLORS.primaryLight,
+    backgroundColor: '#F0FDF4', // ירוק עדין מאוד
+  },
+  carpoolIcon: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  carpoolLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    writingDirection: 'rtl',
+  },
+  carpoolValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+
+  // Premium Grid (Projections & True Cost)
+  premiumGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  premiumGridItem: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  premiumGridIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  premiumGridTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    writingDirection: 'rtl',
+  },
+  premiumGridValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    writingDirection: 'rtl',
+  },
+  premiumGridSub: {
+    fontSize: 10,
+    color: COLORS.textTertiary,
+    marginTop: 4,
+    writingDirection: 'rtl',
   },
 });

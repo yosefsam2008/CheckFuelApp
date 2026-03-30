@@ -3,8 +3,10 @@
 import { 
   Share2, RefreshCw, Car, Bus, MapPin, 
   Zap, Droplets, TrendingUp, CircleDollarSign, 
-  Info, AlertTriangle, ChevronRight, Leaf
+  Info, AlertTriangle, ChevronRight, Leaf,Lock
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 const PremiumUnlockAd = Platform.OS === 'web' ? () => null : require('../../components/PremiumUnlockAd').default;
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from '@react-navigation/native';
@@ -380,10 +382,19 @@ const ResultMetricCard: React.FC<ResultMetricCardProps> = ({ iconNode, label, va
   </View>
 );
 
+interface ComparisonCardProps {
+  iconNode: React.ReactNode;
+  title: string;
+  cost: number;
+  yourCost: number;
+  subtitle?: string;
+  isPremiumUnlocked: boolean; // Add this
+}
+
 // ============================================
 // COMPARISON CARD (Modern Clean Look)
 // ============================================
-const ComparisonCard: React.FC<ComparisonCardProps> = ({ iconNode, title, cost, yourCost, subtitle }) => {
+const ComparisonCard: React.FC<ComparisonCardProps> = ({ iconNode, title, cost, yourCost, subtitle, isPremiumUnlocked }) => {
   const savings = cost - yourCost;
   const isCheaper = savings > 0;
   
@@ -395,23 +406,26 @@ const ComparisonCard: React.FC<ComparisonCardProps> = ({ iconNode, title, cost, 
       <View style={styles.comparisonContent}>
         <Text style={styles.comparisonTitle}>{title}</Text>
         {subtitle && <Text style={styles.comparisonSubtitle}>{subtitle}</Text>}
-        <Text style={styles.comparisonCost}>₪{cost.toFixed(1)}</Text>
+        
+        <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.comparisonCost}>
+          ₪{cost.toFixed(1)}
+        </BlurredValue>
       </View>
       <View style={[
         styles.comparisonBadge,
         isCheaper ? styles.comparisonBadgeSavings : styles.comparisonBadgeNeutral,
       ]}>
-        <Text style={[
+        <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={[
           styles.comparisonBadgeText,
           isCheaper ? styles.comparisonBadgeTextSavings : styles.comparisonBadgeTextNeutral,
         ]}>
           {isCheaper ? `חיסכון ₪${savings.toFixed(0)}` : `ברכב יקר ב-₪${Math.abs(savings).toFixed(0)}`}
-        </Text>
+        </BlurredValue>
       </View>
     </View>
   );
-};
 
+};
 // ============================================
 // FUEL GAUGE COMPONENT (Visual)
 // ============================================
@@ -527,7 +541,66 @@ useEffect(() => {
     </Animated.View>
   );
 };
+// ============================================
+// BLURRED VALUE COMPONENT (Glassmorphic)
+// ============================================
+const BlurredValue: React.FC<{
+  isUnlocked: boolean;
+  children: React.ReactNode;
+  textStyle?: StyleProp<TextStyle>;
+}> = ({ isUnlocked, children, textStyle }) => {
+  if (isUnlocked) return <Text style={textStyle}>{children}</Text>;
 
+  return (
+    <View style={styles.blurredValueWrapper}>
+      {/* Invisible text defines the exact layout boundaries for the BlurView */}
+      <Text style={[textStyle, { opacity: 0 }]} numberOfLines={1}>
+        {children}
+      </Text>
+      
+      <BlurView intensity={30} tint="light" style={styles.blurOverlayLayer} />
+      
+      <View style={styles.blurLockCenter}>
+        <Lock size={14} color={COLORS.textSecondary} strokeWidth={2.5} />
+      </View>
+    </View>
+  );
+};
+
+// ============================================
+// ANIMATED PREMIUM UNLOCK BUTTON
+// ============================================
+const PulseUnlockCTA: React.FC<{ onPress: () => void }> = ({ onPress }) => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.04, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true })
+      ])
+    ).start();
+  }, [pulseAnim]);
+
+  return (
+    <View style={styles.paywallActionContainer}>
+      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        <TouchableOpacity style={styles.pulseButton} onPress={onPress} activeOpacity={0.85}>
+          <LinearGradient
+            colors={['#10B981', '#059669']} // Premium Emerald Gradient
+            style={styles.pulseButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.pulseButtonIcon}>💎</Text>
+            <Text style={styles.pulseButtonText}>פתיחת הנתונים המלאים</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+      <Text style={styles.pulseMicroCopy}>צפייה בסרטון קצר לפתיחת כל התובנות</Text>
+    </View>
+  );
+};
 // ============================================
 // MAIN CALCULATOR COMPONENT
 // ============================================
@@ -1742,108 +1815,119 @@ const handleReset = async () => {
             <BannerAd style={styles.midBannerAd} />
 
             {/* ======================================= */}
-            {/* 🔒 PREMIUM SECTION (Paywall/Blurred) 🔒 */}
-            {/* ======================================= */}
-            <View style={styles.premiumSectionContainer}>
-              <Text style={styles.sectionTitle}>תובנות מתקדמות (Premium)</Text>
+{/* 🔒 PREMIUM SECTION (Paywall/Blurred) 🔒 */}
+{/* ======================================= */}
+<View style={styles.premiumSectionContainer}>
+  <Text style={styles.sectionTitle}>תובנות מתקדמות (Premium)</Text>
 
-              {/* The content that gets blurred */}
-              <View style={[styles.premiumContent, !isPremiumUnlocked && styles.premiumContentBlurred]}>
-                
-                {/* 1. Comparisons */}
-                <View style={styles.comparisonsContainer}>
-                  <ComparisonCard
-                    iconNode={<Car size={24} color={COLORS.textPrimary} />}
-                    title="מונית ספיישל"
-                    cost={taxiCost}
-                    yourCost={result.totalCost}
-                  />
-                  <ComparisonCard
-                    iconNode={<Bus size={24} color={COLORS.textPrimary} />}
-                    title="אוטובוס ציבורי"
-                    subtitle={`תעריף ארצי: ${busCostDetails.bracket}`}
-                    cost={busCost}
-                    yourCost={result.totalCost}
-                  />
-                </View>
+  <View style={[styles.premiumContent, !isPremiumUnlocked && styles.premiumContentLocked]}>
+    
+    {/* 1. Comparisons */}
+    <View style={styles.comparisonsContainer}>
+      <ComparisonCard
+        iconNode={<Car size={24} color={COLORS.textPrimary} />}
+        title="מונית ספיישל"
+        cost={taxiCost}
+        yourCost={result.totalCost}
+        isPremiumUnlocked={isPremiumUnlocked}
+      />
+      <ComparisonCard
+        iconNode={<Bus size={24} color={COLORS.textPrimary} />}
+        title="אוטובוס ציבורי"
+        subtitle={`תעריף ארצי: ${busCostDetails.bracket}`}
+        cost={busCost}
+        yourCost={result.totalCost}
+        isPremiumUnlocked={isPremiumUnlocked}
+      />
+    </View>
 
-                {/* 2. Carpool Splitter */}
-                <Text style={styles.premiumSectionSubTitle}>חלוקת תשלום (קארפול)</Text>
-                <View style={styles.carpoolContainer}>
-                  <View style={styles.carpoolBox}>
-                    <Text style={styles.carpoolIcon}>👤</Text>
-                    <Text style={styles.carpoolLabel}>נוסע יחיד</Text>
-                    <Text style={styles.carpoolValue}>₪{result.totalCost.toFixed(1)}</Text>
-                  </View>
-                  <View style={[styles.carpoolBox, styles.carpoolBoxHighlight]}>
-                    <Text style={styles.carpoolIcon}>👥</Text>
-                    <Text style={styles.carpoolLabel}>זוג (חצי)</Text>
-                    <Text style={[styles.carpoolValue, { color: COLORS.primaryDark }]}>₪{(result.totalCost / 2).toFixed(1)}</Text>
-                  </View>
-                  <View style={styles.carpoolBox}>
-                    <Text style={styles.carpoolIcon}>👨‍👩‍👧‍👦</Text>
-                    <Text style={styles.carpoolLabel}>4 נוסעים</Text>
-                    <Text style={styles.carpoolValue}>₪{(result.totalCost / 4).toFixed(1)}</Text>
-                  </View>
-                </View>
+    {/* 2. Carpool Splitter */}
+    <Text style={styles.premiumSectionSubTitle}>חלוקת תשלום (קארפול)</Text>
+    <View style={styles.carpoolContainer}>
+      <View style={styles.carpoolBox}>
+        <Text style={styles.carpoolIcon}>👤</Text>
+        <Text style={styles.carpoolLabel}>נוסע יחיד</Text>
+        <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.carpoolValue}>
+          ₪{result.totalCost.toFixed(1)}
+        </BlurredValue>
+      </View>
+      <View style={[styles.carpoolBox, styles.carpoolBoxHighlight]}>
+        <Text style={styles.carpoolIcon}>👥</Text>
+        <Text style={styles.carpoolLabel}>זוג (חצי)</Text>
+        <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={[styles.carpoolValue, { color: COLORS.primaryDark }]}>
+          ₪{(result.totalCost / 2).toFixed(1)}
+        </BlurredValue>
+      </View>
+      <View style={styles.carpoolBox}>
+        <Text style={styles.carpoolIcon}>👨‍👩‍👧‍👦</Text>
+        <Text style={styles.carpoolLabel}>4 נוסעים</Text>
+        <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.carpoolValue}>
+          ₪{(result.totalCost / 4).toFixed(1)}
+        </BlurredValue>
+      </View>
+    </View>
 
-                {/* 3. Deep Financial Insights */}
-                <Text style={styles.premiumSectionSubTitle}>תחזיות ובלאי רכב</Text>
-                <View style={styles.premiumGrid}>
-                  <View style={styles.premiumGridItem}>
-                    <Text style={styles.premiumGridIcon}>📅</Text>
-                    <Text style={styles.premiumGridTitle}>תחזית שנתית</Text>
-                    <Text style={styles.premiumGridValue}>₪{yearlyProjection.toFixed(0)}</Text>
-                    <Text style={styles.premiumGridSub}>לפי 20 נסיעות בחודש</Text>
-                  </View>
-                  <View style={styles.premiumGridItem}>
-                    <Text style={styles.premiumGridIcon}>🔧</Text>
-                    <Text style={styles.premiumGridTitle}>עלות חודשית</Text>
-                    <Text style={styles.premiumGridValue}>₪{trueCost.toFixed(0)}</Text>
-                    <Text style={styles.premiumGridSub}>כולל בלאי, פחת וטיפולים</Text>
-                  </View>
-                </View>
+    {/* 3. Deep Financial Insights */}
+    <Text style={styles.premiumSectionSubTitle}>תחזיות ובלאי רכב</Text>
+    <View style={styles.premiumGrid}>
+      <View style={styles.premiumGridItem}>
+        <Text style={styles.premiumGridIcon}>📅</Text>
+        <Text style={styles.premiumGridTitle}>תחזית שנתית</Text>
+        <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.premiumGridValue}>
+          ₪{yearlyProjection.toFixed(0)}
+        </BlurredValue>
+        <Text style={styles.premiumGridSub}>לפי 20 נסיעות בחודש</Text>
+      </View>
+      <View style={styles.premiumGridItem}>
+        <Text style={styles.premiumGridIcon}>🔧</Text>
+        <Text style={styles.premiumGridTitle}>עלות חודשית</Text>
+        <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.premiumGridValue}>
+          ₪{trueCost.toFixed(0)}
+        </BlurredValue>
+        <Text style={styles.premiumGridSub}>כולל בלאי, פחת וטיפולים</Text>
+      </View>
+    </View>
 
-                {/* 4. Environmental Impact */}
-                {!isElectricVehicle ? (
-                  <View style={styles.environmentCard}>
-                    <Text style={styles.environmentIcon}>🌍</Text>
-                    <View style={styles.environmentContent}>
-                      <Text style={styles.environmentTitle}>זיהום אוויר משוער</Text>
-                      <Text style={styles.environmentValue}>{co2Emissions.toFixed(1)} ק״ג CO₂</Text>
-                      <Text style={styles.environmentNote}>פליטת פחמן פוטנציאלית בנסיעה זו</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={[styles.environmentCard, { borderColor: COLORS.electric, backgroundColor: COLORS.accentLight }]}>
-                    <Text style={styles.environmentIcon}>⚡</Text>
-                    <View style={styles.environmentContent}>
-                      <Text style={styles.environmentTitle}>נסיעה ירוקה!</Text>
-                      <Text style={[styles.environmentValue, { color: COLORS.electric }]}>0 ק״ג CO₂</Text>
-                      <Text style={styles.environmentNote}>חסכת פליטת מזהמים לחלוטין</Text>
-                    </View>
-                  </View>
-                )}
+    {/* 4. Environmental Impact */}
+    {!isElectricVehicle ? (
+      <View style={styles.environmentCard}>
+        <Text style={styles.environmentIcon}>🌍</Text>
+        <View style={styles.environmentContent}>
+          <Text style={styles.environmentTitle}>זיהום אוויר משוער</Text>
+          <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.environmentValue}>
+            {co2Emissions.toFixed(1)} ק״ג CO₂
+          </BlurredValue>
+          <Text style={styles.environmentNote}>פליטת פחמן פוטנציאלית בנסיעה זו</Text>
+        </View>
+      </View>
+    ) : (
+      <View style={[styles.environmentCard, { borderColor: COLORS.electric, backgroundColor: COLORS.accentLight }]}>
+        <Text style={styles.environmentIcon}>⚡</Text>
+        <View style={styles.environmentContent}>
+          <Text style={styles.environmentTitle}>נסיעה ירוקה!</Text>
+          <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={[styles.environmentValue, { color: COLORS.electric }]}>
+            0 ק״ג CO₂
+          </BlurredValue>
+          <Text style={styles.environmentNote}>חסכת פליטת מזהמים לחלוטין</Text>
+        </View>
+      </View>
+    )}
 
-              </View>
+  </View>
 
-              {/* The Lock Overlay */}
-              {!isPremiumUnlocked && (
-                <View style={styles.premiumOverlay}>
-                  <View style={styles.premiumLockCircle}>
-                    <Text style={styles.premiumLockIcon}>🔒</Text>
-                  </View>
-                  <Text style={styles.premiumOverlayTitle}>פתח את כל הנתונים</Text>
-                  <Text style={styles.premiumOverlayText}>
-                    גלה מידע מתקדם: מחשבון קארפול (חלוקת תשלום), חישוב בלאי לרכב, מדד מזהמים ותחזית שנתית.
-                  </Text>
-                  <TouchableOpacity style={styles.unlockPremiumButton} onPress={handleUnlockPremium}>
-                    <Text style={styles.unlockPremiumButtonText}>🎬 פתח בחינם (צפה בסרטון)</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-            {/* ======================================= */}
+  {/* 🔒 THE STICKY FADE-OUT CTA OVERLAY 🔒 */}
+  {!isPremiumUnlocked && (
+    <View style={styles.paywallFadeContainer}>
+      <LinearGradient
+        colors={['rgba(242, 242, 247, 0)', 'rgba(242, 242, 247, 0.8)', 'rgba(242, 242, 247, 1)']}
+        style={styles.paywallGradient}
+        pointerEvents="none"
+      />
+      <PulseUnlockCTA onPress={handleUnlockPremium} />
+    </View>
+  )}
+</View>
+{/* ======================================= */}
 
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -3599,6 +3683,80 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textTertiary,
     marginTop: 4,
+    writingDirection: 'rtl',
+  },
+  blurredValueWrapper: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  blurOverlayLayer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  blurLockCenter: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // --- Premium Paywall Section Updates ---
+  premiumContentLocked: {
+    paddingBottom: 80, 
+  },
+  
+  // --- Sticky Fade-out Overlay ---
+  paywallFadeContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: -16, 
+    right: -16, 
+    height: 180,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  paywallGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  paywallActionContainer: {
+    paddingBottom: 24,
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  // --- Pulse Unlock Button ---
+  pulseButton: {
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+    borderRadius: 24,
+    marginBottom: 8,
+  },
+  pulseButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 24,
+    gap: 8,
+  },
+  pulseButtonIcon: {
+    fontSize: 18,
+  },
+  pulseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    writingDirection: 'rtl',
+  },
+  pulseMicroCopy: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
     writingDirection: 'rtl',
   },
 });

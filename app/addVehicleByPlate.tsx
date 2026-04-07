@@ -48,17 +48,25 @@ const VEHICLE_APIS = [
 ] as const;
 
 type VehicleType = typeof VEHICLE_APIS[number]["type"];
-type FuelType = "Electric" | "Gasoline" | "Diesel" | "Unknown";
-
+type FuelType = "Electric" | "Gasoline" | "Diesel" | "PHEV" | "Unknown";
 const MAX_WIDTH = 480;
 
 function detectFuelTypeCanonical(record: any): FuelType {
   const raw = (record?.sug_delek_nm || "").toString().trim().toLowerCase();
   if (!raw) return "Unknown";
 
-  const tokens = raw.split(/[\s,\/\-()]+/).filter(Boolean);
+  // ⚡ PHEV MUST be checked BEFORE EV — "חשמל\בנזין" contains "חשמל"
+  // which would otherwise be caught by the EV branch
+  if ((raw.includes('חשמל') && raw.includes('בנזין')) ||
+       raw.includes('phev') ||
+       raw.includes('plug-in') ||
+       raw.includes('פלאג')) {
+        console.log('---------------------- Detected PHEV fuel type based on:', raw);
+    return "PHEV";
+  }
 
-  const evKeywords = ["חשמל","אלקטרי","ev","electric","battery","פלאג-אין","plug-in","phev","bev"];
+  const tokens = raw.split(/[\s,\/\-()]+/).filter(Boolean);
+  const evKeywords = ["חשמל","אלקטרי","ev","electric","battery","bev"];
   const dieselKeywords = ["דיזל","diesel","dsl"];
   const gasKeywords = ["בנזין","gasoline","petrol","gas","כ״א","כחול לבן"];
 
@@ -871,8 +879,11 @@ export default function AddVehicleByPlate() {
         // ============================================
         // PHASE 4: SPLIT BY FUEL TYPE FOR FINAL CALCULATION
         // ============================================
-        if (parsed.fuelType === "Electric") {
-          if (__DEV__) console.log('⚡ Electric vehicle calculation...');
+        const isElectricOrPhev = parsed.fuelType === "Electric" || parsed.fuelType === "PHEV";
+const isPhev = parsed.fuelType === "PHEV";
+
+        if (isElectricOrPhev) {
+          if (__DEV__) console.log(`⚡ ${isPhev ? 'PHEV' : 'Electric'} vehicle calculation...`);
           
           const evData = await calculateEVConsumptionAdvanced({
             brand: parsed.brand,
@@ -880,8 +891,9 @@ export default function AddVehicleByPlate() {
             year: parsed.year || new Date().getFullYear(),
             vehicleType: found.type,
             mishkal_kolel: effectiveMishkalKolel,
+            isPhev,                    // 👈 NEW FLAG
           });
-          kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
+  kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
           
         } else {
           if (__DEV__) console.log('⛽ ICE vehicle calculation - Fuel:', parsed.fuelType);
@@ -1005,11 +1017,11 @@ export default function AddVehicleByPlate() {
           model: parsed.model || "לא ידוע",
           engine: String(found.record.degem_manoa ?? found.record.engine_type ?? "לא ידוע"),
           type: found.type,
-          avgConsumption: parsed.fuelType === "Electric" ? kwhPerKm : avgConsumption,
-          fueltype: parsed.fuelType,
+          avgConsumption: (parsed.fuelType === "Electric" || parsed.fuelType === "PHEV") ? kwhPerKm : avgConsumption,
+          
+          fueltype: parsed.fuelType, 
           year: parsed.year ?? new Date().getFullYear(),
           mishkal_kolel: parsed.mishkal_kolel,
-          // misgeret removed - unreliable field
         };
 
         if (__DEV__) {

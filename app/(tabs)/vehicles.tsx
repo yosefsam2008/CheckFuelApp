@@ -1,4 +1,5 @@
 // app/VehiclesScreen.tsx
+import '../../lib/data/consumptionTester';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -29,20 +30,21 @@ const PlateDetectionRewardedAd =
 const IS_WEB = Platform.OS === "web";
 const MAX_WIDTH = 600;
 
-type FuelType = "Gasoline" | "Diesel" | "Electric";
+// סינכרון מלא עם הטיפוסים ב-Vehicle Interface
+type FuelType = "Electric" | "Gasoline" | "Diesel" | "PHEV" | "Unknown";
 
-// Unified configuration for fuel types for cleaner lookups
+// הוספת PHEV ו-Unknown לקונפיגורציה
 const FUEL_CONFIG: Record<FuelType, { label: string; emoji: string; color: string }> = {
   Electric: { label: "חשמלי ⚡", emoji: "⚡", color: "#4CAF50" },
+  PHEV: { label: "פלאג-אין 🔌", emoji: "🔌", color: "#8BC34A" }, // ירוק בהיר להבדיל מחשמלי מלא
   Gasoline: { label: "בנזין ⛽", emoji: "⛽", color: "#FF9800" },
   Diesel: { label: "דיזל ⛽", emoji: "⛽", color: "#607D8B" },
+  Unknown: { label: "לא ידוע ❓", emoji: "❓", color: "#9E9E9E" },
 };
 
-// Default fallback configuration
-const DEFAULT_FUEL = { label: "לא ידוע", emoji: "⚡", color: "#009688" };
-
+// כבר אין צורך ב-DEFAULT_FUEL נפרד, נשתמש ב-Unknown מהקונפיגורציה
 const getFuelData = (fuelType: string | undefined) => {
-  return FUEL_CONFIG[fuelType as FuelType] || DEFAULT_FUEL;
+  return FUEL_CONFIG[(fuelType as FuelType)] || FUEL_CONFIG.Unknown;
 };
 
 // Detail Row Component
@@ -153,10 +155,9 @@ export default function VehiclesScreen() {
     setModel(item.model);
     setEngine(item.engine);
     setAvgConsumption(item.avgConsumption ? String(item.avgConsumption) : "");
-    const safeFuelType = item.fueltype || ""; // מונע מצב של undefined
+    const safeFuelType = item.fueltype || "Unknown";
     const isValidFuel = Object.keys(FUEL_CONFIG).includes(safeFuelType);
-    setFuelType(isValidFuel ? (safeFuelType as FuelType) : "Gasoline");
-    
+  setFuelType(isValidFuel ? (safeFuelType as FuelType) : "Unknown");    
     setManufactureYear(item.year ? String(item.year) : "");
     setEditMode(false);
     setShowModal(true);
@@ -371,12 +372,12 @@ export default function VehiclesScreen() {
                       <View style={styles.consumptionBadge}>
                         <Text style={styles.consumptionLabel}>צריכה:</Text>
                         <Text style={styles.consumptionValue}>
-                          {item.avgConsumption
-                            ? item.fueltype === "Electric"
-                              ? `${item.avgConsumption.toFixed(4)} kWh/ק״מ`
-                              : `${item.avgConsumption.toFixed(1)} km/l`
-                            : "לא ידוע"}
-                        </Text>
+                        {item.avgConsumption
+                          ? (item.fueltype === "Electric" || item.fueltype === "PHEV")
+                            ? `${item.avgConsumption.toFixed(4)} kWh/ק״מ`
+                            : `${item.avgConsumption.toFixed(1)} km/l`
+                          : "לא ידוע"}
+                      </Text>
                       </View>
                     </View>
                   </View>
@@ -483,9 +484,9 @@ export default function VehiclesScreen() {
                     label="צריכה ממוצעת"
                     value={
                       selected.avgConsumption
-                        ? selected.fueltype === "Electric"
-                          ? `${selected.avgConsumption.toFixed(4)} kWh/ק״מ`
-                          : `${selected.avgConsumption.toFixed(2)} km/l`
+                        ? (selected.fueltype === "Electric" || selected.fueltype === "PHEV")
+                        ? `${selected.avgConsumption.toFixed(4)} kWh/ק״מ`
+                        : `${selected.avgConsumption.toFixed(2)} km/l`
                         : "לא ידוע"
                     }
                     isLast
@@ -544,17 +545,19 @@ export default function VehiclesScreen() {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>צריכה ממוצעת</Text>
                     <TextInput
-                      style={styles.input}
-                      value={avgConsumption}
-                      onChangeText={setAvgConsumption}
-                      placeholder={
-                        fuelType === "Electric" ? "לדוגמה: 0.15 kWh/ק״מ" : "לדוגמה: 15.5 km/l"
-                      }
-                      keyboardType="numeric"
-                      returnKeyType="done"
-                      placeholderTextColor="#999"
-                      textAlign="right"
-                    />
+                    style={styles.input}
+                    value={avgConsumption}
+                    onChangeText={setAvgConsumption}
+                    placeholder={
+                      (fuelType === "Electric" || fuelType === "PHEV")
+                        ? "לדוגמה: 0.15 kWh/ק״מ"
+                        : "לדוגמה: 15.5 km/l"
+                    }
+                    keyboardType="numeric"
+                    returnKeyType="done"
+                    placeholderTextColor="#999"
+                    textAlign="right"
+                  />
                   </View>
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>סוג דלק</Text>
@@ -1167,10 +1170,14 @@ const styles = StyleSheet.create({
   },
   fuelSelector: {
     flexDirection: "row",
+    flexWrap: "wrap", 
+    justifyContent: "flex-start", // 👈 מסדר אותם יפה מימין לשמאל
     gap: 8,
   },
   fuelBtn: {
-    flex: 1,
+    flexGrow: 1, // 👈 מאפשר להם לגדול ולמלא את השורה
+    flexBasis: "30%", // 👈 כל כפתור לוקח בערך שליש מהשורה
+    minWidth: 50, // 👈 🎯 שומר שהכפתור יהיה מספיק רחב למילה "פלאג-אין"
     paddingVertical: 14,
     paddingHorizontal: 6,
     borderRadius: 12,

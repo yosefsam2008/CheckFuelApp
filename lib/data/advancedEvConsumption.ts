@@ -88,8 +88,9 @@ export function estimateAeroData(params: {
   weight: number;
   year: number;
   vehicleType: 'car' | 'motorcycle' | 'truck';
+  isPhev?: boolean;
 }): AeroData {
-  const { brand, model, weight, year, vehicleType } = params;
+  const { brand, model, weight, year, vehicleType, isPhev } = params;
 
   // Normalize inputs for pattern matching
   const normalizedBrand = brand.toLowerCase().trim();
@@ -99,6 +100,19 @@ export function estimateAeroData(params: {
   let frontalArea: number;
   let confidence = 0.70; // Base confidence for estimation
 
+  // ✅ זיהוי SUV חכם - משפיע על ערכי הבסיס והחסמים
+  const isSUV = vehicleType === 'car' && (
+    normalizedModel.includes('suv') ||
+    normalizedModel.includes('cross') ||
+    normalizedModel.includes('zs') ||
+    normalizedModel.includes('atto') ||
+    normalizedModel.includes('countryman') || 
+    normalizedModel.includes('tiggo') ||
+    normalizedModel.includes('cayenne') ||
+    (normalizedModel.includes(' x') || normalizedModel.endsWith(' x'))
+  );
+
+    
   // ========================================
   // BASE VALUES BY VEHICLE TYPE
   // ========================================
@@ -107,63 +121,80 @@ export function estimateAeroData(params: {
     Cd = 0.60;
     frontalArea = 0.6;
   } else if (vehicleType === 'truck') {
-    // Trucks: boxy shape, poor aerodynamics
     Cd = 0.35;
     frontalArea = 3.2;
+  } else if (isSUV) {
+    // 🚙 SUV Base - רכבים גבוהים ורחבים יותר
+    Cd = 0.30;
+    frontalArea = 2.6; 
+    confidence += 0.10;
   } else {
-    // Cars: base values for average modern EV
+    // 🚗 Sedan/Hatchback Base
     Cd = 0.28;
     frontalArea = 2.4;
   }
 
-// ========================================
+
+  const isCompact = normalizedModel.includes('a250') || normalizedModel.includes('a-class') || normalizedModel.includes('mini');
+
+if (isCompact) {
+  Cd -= 0.02; // רכב קטן חותך את האוויר טוב יותר
+  frontalArea -= 0.25; // שטח פנים קטן משמעותית מסדאן ממוצעת
+}
+
+// החמרת SUV עבור Cayenne
+if (normalizedModel.includes('cayenne')) {
+  frontalArea = 2.8; // SUV ענק
+}
+
+  const isCompactSleek = 
+    normalizedModel.includes('a250') || 
+    normalizedModel.includes('a-class') || 
+    (normalizedModel.includes('p7') && !isSUV);
+
+  if (isCompactSleek) {
+    Cd -= 0.02; // בונוס גרר נמוך
+    frontalArea -= 0.15; // שטח פנים קטן
+  }
+    
+  // ========================================
   // WEIGHT-BASED ADJUSTMENTS (CARS ONLY)
   // ========================================
 
-  if (vehicleType === 'car') {
-    // נרמול משקל: סוללה שוקלת המון אבל לא מגדילה שטח פנים. נקזז 20%
+  
+  if (vehicleType === 'car' && !isSUV) {
+    // נרמול משקל לרכבים רגילים בלבד (ב-SUV הבסיס כבר גבוה)
     const aeroWeight = weight * 0.8;
 
     if (aeroWeight < 1400) {
-      // Compact/Small EVs (e.g., Nissan Leaf, VW ID.3)
       Cd = 0.28;
       frontalArea = 2.2;
-    } else if (aeroWeight < 1850) { // <-- הורדנו את הרף ל-1850
-      // Mid-size EVs/Sedans (e.g., Tesla Model 3, Hyundai Ioniq 6)
-      Cd = 0.27; // נתון טוב יותר לסדאן
-      frontalArea = 2.3; // שטח חזית מדויק יותר למשפחתית
-    } else if (aeroWeight < 2400) {
-      // Large/SUV EVs (e.g., Tesla Model X, Audi e-tron)
-      Cd = 0.30;
-      frontalArea = 2.8;
-    } else {
-      // Heavy SUVs/Trucks (e.g., Rivian R1S, BMW iX)
-      Cd = 0.32;
-      frontalArea = 3.0;
+    } else if (aeroWeight < 1850) {
+      Cd = 0.27; 
+      frontalArea = 2.3;
     }
   }
 
   // ========================================
   // YEAR-BASED IMPROVEMENT
   // ========================================
-  // Modern EVs have better aerodynamics due to design evolution
 
   if (year >= 2020) {
-    Cd -= 0.02; // Modern EV design (2020+)
+    Cd -= 0.02;
     confidence += 0.05;
   } else if (year >= 2015) {
-    Cd -= 0.01; // Gradual improvement (2015-2019)
+    Cd -= 0.01;
   } else if (year < 2012) {
-    Cd += 0.02; // Early EVs had less optimized aero
+    Cd += 0.02;
     confidence -= 0.05;
   }
 
   // ========================================
-  // BRAND REPUTATION (AERODYNAMIC LEADERSHIP)
+  // BRAND REPUTATION
   // ========================================
 
   if (normalizedBrand.includes('tesla')) {
-    Cd -= 0.03; // Tesla known for excellent aerodynamics
+    Cd -= 0.03;
     confidence += 0.10;
   } else if (
     normalizedBrand.includes('mercedes') ||
@@ -171,29 +202,21 @@ export function estimateAeroData(params: {
     normalizedBrand.includes('audi') ||
     normalizedBrand.includes('porsche')
   ) {
-    Cd -= 0.02; // German premium brands focus on aero
+    Cd -= 0.02;
     confidence += 0.05;
   } else if (
     normalizedBrand.includes('hyundai') ||
     normalizedBrand.includes('kia') ||
     normalizedBrand.includes('genesis')
   ) {
-    Cd -= 0.01; // Korean brands have modern EV designs
+    Cd -= 0.01;
     confidence += 0.03;
-  } else if (
-    normalizedBrand.includes('mg') ||
-    normalizedBrand.includes('byd') ||
-    normalizedBrand.includes('nio')
-  ) {
-    Cd += 0.01; // Chinese brands catching up
-    confidence -= 0.03;
   }
 
   // ========================================
   // MODEL NAME HINTS
   // ========================================
 
-  // Sport/Coupe models - sleek design
   if (
     normalizedModel.includes('sport') ||
     normalizedModel.includes('coupe') ||
@@ -201,21 +224,14 @@ export function estimateAeroData(params: {
   ) {
     Cd -= 0.02;
     frontalArea -= 0.1;
-    confidence += 0.05;
   }
 
-  // SUV/Crossover - boxy shape
-  if (
-    normalizedModel.includes('suv') ||
-    normalizedModel.includes('crossover') ||
-    normalizedModel.includes('x') && vehicleType === 'car' // BMW iX, Tesla Model X
-  ) {
-    Cd += 0.03;
-    frontalArea += 0.3;
-    confidence += 0.03; // SUVs are easier to identify
+  // SUV logic moved to Base Values, but we keep a small hint for "Crossover" specific names
+  if (normalizedModel.includes('crossover')) {
+    Cd += 0.01;
+    frontalArea += 0.1;
   }
 
-  // Compact models - smaller frontal area
   if (
     normalizedModel.includes('compact') ||
     normalizedModel.includes('mini') ||
@@ -223,12 +239,6 @@ export function estimateAeroData(params: {
   ) {
     Cd -= 0.01;
     frontalArea -= 0.2;
-    confidence += 0.05;
-  }
-
-  // Sedan models - average aerodynamics
-  if (normalizedModel.includes('sedan')) {
-    confidence += 0.03;
   }
 
   // ========================================
@@ -236,26 +246,28 @@ export function estimateAeroData(params: {
   // ========================================
 
   if (vehicleType === 'car') {
-    Cd = Math.max(0.24, Math.min(0.35, Cd));
-    frontalArea = Math.max(2.0, Math.min(3.0, frontalArea));
+    // 🛡️ חסמים מחמירים יותר ל-SUV כדי למנוע תוצאות אופטימיות מדי
+    const minCd = isSUV ? 0.28 : 0.24;
+    const minArea = isSUV ? 2.45 : 2.0;
+    
+    Cd = Math.max(minCd, Math.min(0.38, Cd));
+    frontalArea = Math.max(minArea, Math.min(3.2, frontalArea));
   } else if (vehicleType === 'truck') {
     Cd = Math.max(0.28, Math.min(0.40, Cd));
     frontalArea = Math.max(2.8, Math.min(3.5, frontalArea));
-  } else if (vehicleType === 'motorcycle') {
-    Cd = Math.max(0.50, Math.min(0.70, Cd));
-    frontalArea = Math.max(0.5, Math.min(0.8, frontalArea));
   }
 
-  confidence = Math.max(0.50, Math.min(0.95, confidence));
+  // PHEV Penalty
+  if (isPhev) {
+    Cd += 0.02;
+    confidence -= 0.03;
+  }
 
   if (__DEV__) {
     console.log(`📐 Aero Estimation: ${brand} ${model} (${year}, ${weight}kg)`);
-    if (__DEV__) {
-      console.log(`   Cd: ${Cd.toFixed(3)}, Area: ${frontalArea.toFixed(2)} m²`);
-    }
-    if (__DEV__) {
-      console.log(`   Confidence: ${(confidence * 100).toFixed(0)}%`);
-    }
+    console.log(`   SUV Detected: ${isSUV ? 'YES' : 'NO'}`);
+    console.log(`   Cd: ${Cd.toFixed(3)}, Area: ${frontalArea.toFixed(2)} m²`);
+    console.log(`   Confidence: ${(confidence * 100).toFixed(0)}%`);
   }
 
   return {
@@ -288,88 +300,80 @@ export function calculateEVPhysics(params: {
   Cd: number;          // Drag coefficient
   frontalArea: number; // m²
   avgSpeed: number;    // km/h (default: 80)
-  year: number;        // <-- הוספנו את השנתון
+  year: number;      
+  isPhev?: boolean;   
 }): {
   kwhPer100Km: number;
   breakdown: EVPhysicsBreakdown;
 } {
-  const { weight, Cd, frontalArea, avgSpeed, year } = params;
+  const { weight, Cd, frontalArea, avgSpeed, year, isPhev = false } = params;
 
   // ========================================
   // CONSTANTS
   // ========================================
   const g = 9.81;              // m/s² - gravitational acceleration
   const rho = 1.225;           // kg/m³ - air density at sea level
-  const Crr = 0.008;           // Rolling resistance coefficient (EV low-resistance tires)
+  const Crr = 0.008;           // Rolling resistance coefficient
   const velocityMS = avgSpeed / 3.6; // Convert km/h to m/s
 
   // ========================================
-  // 1. ROLLING RESISTANCE ENERGY
+  // 1. ROLLING RESISTANCE ENERGY (MJ -> kWh/100km)
   // ========================================
-  // Energy = Force × Distance
-  // Force = Crr × mass × gravity
-  // תנגודת גלגול = מקדם חיכוך × משקל × כוח משיכה
-
-  const rollingForce = Crr * weight * g; // Newtons
-  const rollingEnergyPer100Km = (rollingForce * 100000) / 3600000; // kWh/100km
-  // Conversion: 100km = 100,000m, 1 Wh = 3600 J
+  const rollingForce = Crr * weight * g; 
+  const rollingEnergyPer100Km = (rollingForce * 100000) / 3600000; 
 
   // ========================================
-  // 2. AERODYNAMIC DRAG ENERGY
+  // 2. AERODYNAMIC DRAG ENERGY (MJ -> kWh/100km)
   // ========================================
-  // Force = 0.5 × ρ × Cd × A × v²
-  // התנגדות אוויר = צפיפות × מקדם גרר × שטח חזיתי × מהירות בריבוע
+  const dragForce = 0.5 * rho * Cd * frontalArea * Math.pow(velocityMS, 2); 
+  const dragEnergyPer100Km = (dragForce * 100000) / 3600000; 
 
-  const dragForce = 0.5 * rho * Cd * frontalArea * Math.pow(velocityMS, 2); // Newtons
-  const dragEnergyPer100Km = (dragForce * 100000) / 3600000; // kWh/100km
-
-// ========================================
-  // 3. AUXILIARY POWER
   // ========================================
-  // רכבים מ-2021 משתמשים במשאבות חום חסכוניות
-  const hvacPower = year >= 2021 ? 0.6 : 1.2;       
-  const electronicsPower = 0.3; // kW
-  const totalAuxPower = hvacPower + electronicsPower; // kW
+  // 3. AUXILIARY POWER (מערכות עזר)
+  // ========================================
+  // כיוונון עדין: 1.0kW ל-PHEV הוא נתון ממוצע ריאלי יותר למזגן ואלקטרוניקה
 
-  const timeHours = 100 / avgSpeed; // hours
-  const auxiliaryEnergyPer100Km = totalAuxPower * timeHours; // kWh
+  
+  const hvacPower = isPhev ? 1.05 : (year >= 2021 ? 0.6 : 1.2);
+  const electronicsPower = 0.3; 
+  const totalAuxPower = hvacPower + electronicsPower; 
 
- // ========================================
+  const timeHours = 100 / avgSpeed; 
+  const auxiliaryEnergyPer100Km = totalAuxPower * timeHours; 
+
+  // ========================================
   // 4. SYSTEM EFFICIENCY & KINETIC ENERGY
   // ========================================
-  const motorEfficiency = 0.92;
+  // שיפור נצילות PHEV לערכים אופטימיים יותר (רכבי יוקרה/מודרניים)
+  const motorEfficiency = isPhev ? 0.92 : 0.92;
   const inverterEfficiency = 0.96;
-  const batteryEfficiency = 0.94;
+  const batteryEfficiency = isPhev ? 0.93 : 0.94;
   
-  // היעילות הפיזית נטו של המערכת לדחוף את הרכב קדימה (~83% יעילות)
   const powertrainEfficiency = motorEfficiency * inverterEfficiency * batteryEfficiency;
 
-  // חישוב אנרגיית עצירות והאצות (נסיעה עירונית/מעורבת)
-  // פקטור של 4.5 מייצג כמות עצירות ממוצעת ב-100 ק"מ
+  // אנרגיית האצה - פקטור 4.5 מייצג נסיעה מעורבת
   const rawAccelerationEnergy = (weight / 1000) * 4.5; 
   
-  // כאן נכנסת הבלימה הרגנרטיבית! היא מחזירה כ-60% מהאנרגיה הקינטית בבלימה
-  const regenEfficiency = 0.60; 
+  // שיפור רגנרציה ל-PHEV (העלאה מ-0.40 ל-0.45 להחזר אנרגיה טוב יותר)
+  const regenEfficiency = isPhev ? 0.45 : 0.60;
   const netAccelerationEnergy = rawAccelerationEnergy * (1 - regenEfficiency);
 
-  // ========================================
-  // 5. TOTAL ENERGY CONSUMPTION
-  // ========================================
+  // הפחתת קנס תמסורת מכנית מ-8% ל-4% (ריאלי יותר לתיבות הילוכים מודרניות)
+  const drivetrainPenalty = isPhev ? 1.04 : 1.0; 
 
-  // 1. אנרגיה הנדרשת להתגבר על כביש ואוויר (אין פה מיחזור, רק הפסדי מנוע)
-  const cruiseEnergyFromBattery = (rollingEnergyPer100Km + dragEnergyPer100Km) / powertrainEfficiency;
-  
-  // 2. סך הכל הצריכה: שיוט + האצות(אחרי רגנרציה) + מערכות עזר
+  const cruiseEnergyFromBattery =
+    ((rollingEnergyPer100Km + dragEnergyPer100Km) / powertrainEfficiency) * drivetrainPenalty;
+
   const totalEnergy = cruiseEnergyFromBattery + netAccelerationEnergy + auxiliaryEnergyPer100Km;
 
   if (__DEV__) {
     console.log(`⚡ Physics Calculation (${weight}kg, Cd=${Cd}, ${avgSpeed}km/h)`);
-    if (__DEV__) { console.log(`   Rolling: ${rollingEnergyPer100Km.toFixed(2)} kWh/100km`); }
-    if (__DEV__) { console.log(`   Aero: ${dragEnergyPer100Km.toFixed(2)} kWh/100km`); }
-    if (__DEV__) { console.log(`   Cruise (Battery): ${cruiseEnergyFromBattery.toFixed(2)} kWh/100km`); }
-    if (__DEV__) { console.log(`   Accel (Net): ${netAccelerationEnergy.toFixed(2)} kWh/100km`); }
-    if (__DEV__) { console.log(`   Auxiliary: ${auxiliaryEnergyPer100Km.toFixed(2)} kWh/100km`); }
-    if (__DEV__) { console.log(`   Total: ${totalEnergy.toFixed(2)} kWh/100km`); }
+    console.log(`   Is PHEV: ${isPhev ? 'YES' : 'NO'}`);
+    console.log(`   Rolling: ${rollingEnergyPer100Km.toFixed(2)} kWh/100km`);
+    console.log(`   Aero: ${dragEnergyPer100Km.toFixed(2)} kWh/100km`);
+    console.log(`   Accel (Net): ${netAccelerationEnergy.toFixed(2)} kWh/100km`);
+    console.log(`   Auxiliary: ${auxiliaryEnergyPer100Km.toFixed(2)} kWh/100km`);
+    console.log(`   Total: ${totalEnergy.toFixed(2)} kWh/100km`);
   }
 
   return {
@@ -404,15 +408,14 @@ export function calculateEVPhysics(params: {
  */
 export function applyBatteryDegradation(
   baseConsumption: number,
-  year: number
+  year: number,
+  degradationMultiplier: number = 1.0
 ): number {
   const currentYear = new Date().getFullYear();
   const vehicleAge = Math.max(0, currentYear - year);
 
   let totalDegradation = 0;
-
-// בלאי סוללה משפיע בעיקר על הקיבולת הכוללת (טווח) ופחות על צריכת המנוע (kWh/km)
-  // לכן הקנס הופחת משמעותית כדי למנוע הטיה בצריכה.
+  
   
   // Years 0-3: 0.2% per year
   const phase1Years = Math.min(vehicleAge, 3);
@@ -425,7 +428,8 @@ export function applyBatteryDegradation(
   }
 
   // Cap at 4% total degradation for efficiency (NOT capacity)
-  totalDegradation = Math.min(totalDegradation, 0.04);
+  totalDegradation *= degradationMultiplier;
+  totalDegradation = Math.min(totalDegradation, 0.06);
   
 
   const adjustedConsumption = baseConsumption * (1 + totalDegradation);
@@ -467,8 +471,8 @@ export async function calculateEVConsumptionAdvanced(params: {
   year: number;
   vehicleType: 'car' | 'motorcycle' | 'truck';
   mishkal_kolel?: number;
-  // misgeret removed - unreliable in Israeli API
-  combE?: number; // EPA data (kWh/100 miles) - rare bonus
+  combE?: number;
+  isPhev?: boolean; 
 }): Promise<EVConsumptionResult> {
 
   // ========================================
@@ -494,7 +498,11 @@ export async function calculateEVConsumptionAdvanced(params: {
   // ========================================
 
   // Step 1: Get or estimate weight
-  let weight = getEffectiveWeight(params.mishkal_kolel, true); 
+    let weight = getEffectiveWeight(params.mishkal_kolel, true);
+  if (weight && params.isPhev) {
+    weight = Math.round(weight * 1.10); // 13% mass penalty for dual powertrain
+    if (__DEV__) console.log(`🔌 PHEV weight penalty applied: ${weight}kg`);
+  }  
 
   if (!weight) {
     // Try to estimate from brand/model
@@ -526,7 +534,8 @@ export async function calculateEVConsumptionAdvanced(params: {
     model: params.model,
     weight,
     year: params.year,
-    vehicleType: params.vehicleType
+    vehicleType: params.vehicleType,
+     isPhev: params.isPhev,
   });
 
 // Step 3: Calculate physics-based consumption
@@ -535,17 +544,22 @@ export async function calculateEVConsumptionAdvanced(params: {
     Cd: aeroData.Cd,
     frontalArea: aeroData.frontalArea,
     avgSpeed: 80, // Average mixed driving (city + highway)
-    year: params.year // <-- העברת השנתון לחישוב מערכות עזר
+    year: params.year,
+    isPhev: params.isPhev,
   }); 
 
   // Step 4: Apply battery degradation
+  const degradationMultiplier = params.isPhev ? 1.3 : 1.0;
   const withDegradation = applyBatteryDegradation(
     physicsResult.kwhPer100Km,
-    params.year
+    params.year,
+    degradationMultiplier   // 👈 NEW param (see below)
   );
 
   // Step 5: Bounds validation (realistic EV range)
-  const finalValue = Math.max(12, Math.min(40, withDegradation));
+   const minBound = params.isPhev ? 14 : 12;
+   const maxBound = params.isPhev ? 45 : 40;
+   const finalValue = Math.max(minBound, Math.min(maxBound, withDegradation));
 
   // Calculate overall confidence
   // Based on: aerodynamic confidence (75%) + weight data quality (25%)

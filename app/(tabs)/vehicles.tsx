@@ -1,5 +1,4 @@
 // app/VehiclesScreen.tsx
-import '../../lib/data/consumptionTester';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";

@@ -88,16 +88,12 @@ const fetchWithTimeout = async (
 export interface FallbackVehicleData {
 
   mishkal_kolel?: number;   // Gross weight (kg)
-
   nefach_manoa?: number;    // Engine CC
-
   shnat_yitzur?: number;    // Year
-
   tozeret_nm?: string;      // Brand name
-
   degem_nm?: string;        // Model name
-
   sug_delek_nm?: string;    // Fuel type
+  is_hybrid?: boolean; 
 
 }
 
@@ -124,13 +120,13 @@ type VehicleType = 'motorcycle' | 'car' | 'truck';
 // Fallback APIs for missing vehicle data
 
 // Weight API - כלי רכב שירדו מהכביש ובסטטוס ביטול סופי
-
 const WEIGHT_API_RESOURCE_ID = '851ecab1-0622-4dbe-a6c7-f950cf82abf9';
 
 // Engine CC API - כלי רכב ביבוא אישי
-
 const ENGINE_CC_API_RESOURCE_ID = '03adc637-b6fe-402b-9937-7c3d3afc9140';
 
+// WLTP API - נתוני צריכת דלק רשמיים לפי תקן WLTP (to know if this is SUV or HIBRID)
+const WLTP_API_RESOURCE_ID = '142afde2-6228-49f9-8a29-9b6c3a0cbe40';
 const DATA_GOV_IL_BASE = 'https://data.gov.il/api/3/action/datastore_search';
 
 
@@ -154,7 +150,7 @@ const THERMAL_EFFICIENCY_BASE = {
   gasoline: {
     baseYear: 2026,           // Base year
     baseEfficiency: 0.215,     // Average efficiency for modern gasoline engines (~19% combined)
-    degradationPerYear: 0.0025, // Loss of 0.25% efficiency per year
+    degradationPerYear: 0.0015, // Loss of 0.25% efficiency per year
     minEfficiency: 0.14,      // Minimum efficiency floor
   },
   diesel: {
@@ -212,45 +208,28 @@ const CONSUMPTION_BOUNDS: Record<VehicleType, { min: number; max: number }> = {
  */
 
 function getEngineDisplacementFactor(cc: number): number {
-
-// קטגוריה 1: מיקרו (עד 1.0L) - יעילים מאוד
-
+  // קטגוריה 1-5: מנועים קטנים ובינוניים (יעילים)
   if (cc <= 1050) return 1.09; 
-
-
-  // קטגוריה 2: סופר-מיני (עד 1.2L) - [תוקן!] יישור לקו העקומה
-
   if (cc <= 1250) return 1.08; 
-
-
-  // קטגוריה 3: אזור ה"סוויט ספוט" (1.33L-1.5L) מנועי טורבו מודרניים
-
   if (cc <= 1550) return 1.08; 
-
-
-  // קטגוריה 4: משפחתיות סטנדרטיות (1.6L-1.8L) - יעילות טובה (מעט יותר חיכוך מ-1.4L)
-
   if (cc <= 1850) return 1.07; 
-
-  // קטגוריה 5: מנועי 2.0L (למשל מאזדה 3, יונדאי טוסון) - [תוקן!] מניעת "צוק"
-
   if (cc <= 2050) return 1.05; 
-
-  // קטגוריה 6: רכבי מנהלים/פנאי גדולים (עד 2.5L)
-
-  if (cc <= 2550) return 0.97; 
-
-  // קטגוריה 7: מנועי V6 או דיזל כבדים (עד 3.0L)
-    if (cc <= 3050) return 0.92; 
-    // קטגוריה 8: רכבי שטח כבדים/ספורט (עד 4.0L)
-    if (cc <= 4050) return 0.86; 
-    // קטגוריה 9: מנועי V8 בינוניים (עד 5.2L)
-    if (cc <= 5200) return 0.80; 
-    // קטגוריה 10: טנדרים כבדים אמריקאיים (Heavy Duty) מנועי דיזל עצומים (עד 6.8L)
-    if (cc <= 6800) return 0.68; // Massive drop to account for huge internal friction/rotational mass (e.g., Cummins 6.7)
-    // קטגוריה 11: מפלצות קיצון (7.0L+)
-    return 0.60;
-
+  
+  // קטגוריה 6: מנהלים/פנאי קטן
+  if (cc <= 2550) return 0.98; // במקום 0.97
+  
+  // קטגוריה 7: מנועי V6 מודרניים/דיזל (עד 3.0L)
+  if (cc <= 3050) return 0.95; 
+  
+  // קטגוריה 8: רכבי שטח כבדים/V6 גדול (כמו הגרנד צ'ירוקי 3.6L)
+  if (cc <= 4050) return 0.91; // במקום 0.81 - שינוי קריטי! מנוע מודרני, פחות חיכוך.
+  
+  // קטגוריה 9: V8 (עד 5.2L)
+  if (cc <= 5200) return 0.85; 
+  
+  // קטגוריה 10: משאיות/טנדרים ענקיים
+  if (cc <= 6800) return 0.75; 
+  return 0.60;
 }
 
 /**
@@ -1358,6 +1337,190 @@ export function getEffectiveWeight(
 
  */
 
+/**
+ * Fetch official WLTP data to classify vehicle as SUV or Hybrid
+ * Queries the official Israeli vehicle taxonomy database
+ * * @param record - Vehicle record from primary Data.gov API
+ * @param fallbackDegemNm - Extracted degem_nm from the primary API
+ */
+export async function fetchWLTPData(record: any, fallbackDegemNm?: string): Promise<{
+  isOfficialSUV: boolean;
+  isOfficialHybrid: boolean;
+} | null> {
+  try {
+    const tozeret_cd = record?.tozeret_cd;
+    const degem_cd = record?.degem_cd;
+    const ramat_gimur = record?.ramat_gimur;
+    
+    // 🌟 שולפים את degem_nm גם מהרשומה וגם מהפרמטר שהעברנו
+    const degem_nm = fallbackDegemNm || record?.degem_nm || record?.degem || record?.model_code;
+
+    // חובה לפחות קודי יצרן/דגם או קוד דגם טקסטואלי כדי לחפש
+    if (!tozeret_cd && !degem_cd && !degem_nm) return null;
+
+    if (IS_DEV) {
+      console.log(`\n📋 WLTP Lookup`);
+      console.log(`   tozeret_cd: ${tozeret_cd || 'N/A'}, degem_cd: ${degem_cd || 'N/A'}`);
+      console.log(`   ramat_gimur: ${ramat_gimur || 'N/A'}, degem_nm: ${degem_nm || 'N/A'}`);
+    }
+
+    // פונקציית עזר פנימית לביצוע שאילתות נקיות למאגר ה-WLTP
+    const executeWLTPQuery = async (filters: any) => {
+      const filterQuery = JSON.stringify(filters);
+      const url = `${DATA_GOV_IL_BASE}?resource_id=${WLTP_API_RESOURCE_ID}&filters=${encodeURIComponent(filterQuery)}&limit=1`;
+      const response = await fetchWithTimeout(url, undefined, 4000);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.result?.records || [];
+    };
+
+    let records: any[] = [];
+
+    // 📌 אסטרטגיה 1: חיפוש מדויק (יצרן + דגם + רמת גימור)
+    if (tozeret_cd && degem_cd && ramat_gimur) {
+      records = await executeWLTPQuery({ tozeret_cd, degem_cd, ramat_gimur });
+    }
+
+    // 📌 אסטרטגיה 2: חיפוש רחב (יצרן + דגם) - פותר בעיות של שגיאות כתיב ברמת הגימור
+    if ((!records || records.length === 0) && tozeret_cd && degem_cd) {
+      if (IS_DEV && ramat_gimur) console.log(`   ⚠️ Exact trim not found. Retrying with broad model code only...`);
+      records = await executeWLTPQuery({ tozeret_cd, degem_cd });
+    }
+
+    // 📌 אסטרטגיה 3: חיפוש לפי degem_nm (הרעיון המעולה שלך!)
+    if ((!records || records.length === 0) && degem_nm) {
+      if (IS_DEV) console.log(`   ⚠️ Retrying WLTP using degem_nm: "${degem_nm}"...`);
+      records = await executeWLTPQuery({ degem_nm });
+    }
+
+    // אם כל 3 האסטרטגיות נכשלו
+    if (!records || records.length === 0) {
+      if (IS_DEV) console.log('   ℹ️ WLTP lookup: No matching records found after all strategies');
+      return null;
+    }
+
+    const wltpRecord = records[0];
+
+    // ⚡ זיהוי היברידי מורחב (מתואם לערכי WLTP הממשלתיים)
+    // ממירים לאותיות גדולות כדי לתפוס "PLUG-IN" או "plug-in" בלי בעיות
+    const technologyField = (wltpRecord.technologiat_hanaa_nm || '').toString().toUpperCase();
+    
+    // מזהה "היברידי רגיל", "PLUG-IN", וגיבויים נוספים ליתר ביטחון
+    const isOfficialHybrid = 
+      technologyField.includes('היברידי') || 
+      technologyField.includes('PLUG-IN') || 
+      technologyField.includes('PLUG IN') || 
+      technologyField.includes('PHEV') || 
+      technologyField.includes('MHEV');
+
+    // 🚙 זיהוי SUV מורחב
+    const vehicleCategory = (wltpRecord.qvutzat_rechev_nm || '').toString().toLowerCase();
+    const vehicleType = (wltpRecord.merkav || '').toString().toLowerCase();
+    
+    const isOfficialSUV =
+      vehicleCategory.includes('פנאי') ||
+      vehicleCategory.includes('שטח') ||
+      vehicleType.includes('פנאי') ||
+      vehicleType.includes('שטח');
+
+    if (IS_DEV) {
+      console.log(`   ✅ WLTP Result Success:`);
+      console.log(`      Category: ${vehicleCategory || 'N/A'} / ${vehicleType || 'N/A'}`);
+      console.log(`      Technology: ${technologyField || 'N/A'}`);
+      console.log(`      → isOfficialHybrid: ${isOfficialHybrid ? 'YES 🔋' : 'NO'}`);
+      console.log(`      → isOfficialSUV: ${isOfficialSUV ? 'YES 🚙' : 'NO'}`);
+    }
+
+    return { isOfficialSUV, isOfficialHybrid };
+  } catch (error) {
+    if (IS_DEV) console.log(`   ❌ WLTP fetch error: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
+
+/**
+ * Estimate vehicle curb weight by segment based on model keywords and specifications
+ * 
+ * @param model - Vehicle model name (uppercase expected)
+ * @param brand - Vehicle brand name (uppercase expected)
+ * @param isSUV - Whether the vehicle is classified as an SUV
+ * @returns Estimated curb weight in kg
+ */
+export function estimateWeightBySegment(
+  model: string,
+  brand: string,
+  isSUV: boolean
+): number {
+  const modelUpper = model.toUpperCase();
+  const brandUpper = brand.toUpperCase();
+
+  // Mini/Supermini vehicles (up to 1000kg)
+  // Examples: Aygo, i10, i20, Picanto, Fiat 500, Spark, Micra
+  const miniModels = ['AYGO', 'I10', 'I20', 'PICANTO', '500', 'SPARK', 'MICRA', 'ALTO'];
+  if (miniModels.some(m => modelUpper.includes(m))) {
+    return 950;
+  }
+
+  // Compact/Sedan vehicles (~1320kg)
+  // Examples: Corolla, Forte, Civic, Golf, Mazda 3, Octavia
+  const compactModels = ['COROLLA', 'FORTE', 'CIVIC', 'GOLF', 'MAZDA 3', 'OCTAVIA', 'FOCUS', 'HYUNDAI I30', 'ELANTRA', 'SENTRA'];
+  if (compactModels.some(m => modelUpper.includes(m))) {
+    return 1320;
+  }
+
+  // SUV/Heavy classification
+  if (isSUV) {
+    // Massive SUVs (~2100kg)
+    // Examples: Prado, Cherokee, Explorer, Pajero, Cayenne, Land Cruiser
+    const massiveSUVs = ['PRADO', 'CHEROKEE', 'EXPLORER', 'PAJERO', 'CAYENNE', 'LAND CRUISER', 'SEQUOIA', 'TUNDRA', 'GRAND CHEROKEE', 'QX60'];
+    if (massiveSUVs.some(m => modelUpper.includes(m)) || brandUpper === 'LAND ROVER') {
+      return 2100;
+    }
+
+    // Average SUVs (~1650kg)
+    // Default for SUV classification
+    return 1650;
+  }
+
+  // Default fallback for non-classified vehicles
+  return 1450;
+}
+
+/**
+ * Get smart engine CC fallback based on brand and weight characteristics
+ * Replaces the flawed weight × 0.9 logic with brand-aware estimation
+ * 
+ * @param brand - Vehicle brand name (uppercase expected)
+ * @param weight - Effective vehicle weight in kg
+ * @returns Estimated engine displacement in cc
+ */
+export function getSmartCCFallback(brand: string, weight: number): number {
+  const brandUpper = brand.toUpperCase();
+
+  // Luxury/Sports brands (high CC per kg ratio)
+  // Examples: Porsche, Ferrari, Maserati
+  const luxurySportsBrands = ['PORSCHE', 'FERRARI', 'MASERATI', 'LAMBORGHINI', 'ROLLS', 'BENTLEY'];
+  if (luxurySportsBrands.some(b => brandUpper.includes(b))) {
+    return 3600;
+  }
+
+  // Heavy Duty brands (typically larger engines for torque)
+  // Examples: Land Rover, Jeep
+  const heavyDutyBrands = ['LAND ROVER', 'JEEP'];
+  if (heavyDutyBrands.some(b => brandUpper.includes(b))) {
+    return 3000;
+  }
+
+  // Mini/lightweight vehicles
+  if (weight < 1100) {
+    return 1100;
+  }
+
+  // Default estimation for regular vehicles
+  // Uses a slightly adjusted ratio: ~1.1 cc/kg instead of 0.9
+  return Math.round(weight * 1.1);
+}
+
 export function calculateICEConsumptionEnhanced(params: {
 
   mishkal_kolel?: number;
@@ -1365,7 +1528,10 @@ export function calculateICEConsumptionEnhanced(params: {
   year?: number;
   fuelType: 'Gasoline' | 'Diesel';
   vehicleType?: VehicleType;
-  isHybrid?: boolean; 
+  isHybrid?: boolean;
+  isOfficialSUV?: boolean;
+  brand?: string;
+  model?: string;
 
 }): number {
 
@@ -1428,9 +1594,7 @@ export function calculateICEConsumptionEnhanced(params: {
 
   // ============================================
 
-  // Estimate engineCC if missing - based on weight
-
-  // Typical ratio: 1500kg vehicle ≈ 1350cc engine
+  // Estimate engineCC if missing - using smart brand/weight-aware fallback
 
   let estimatedCC: number;
 
@@ -1446,9 +1610,10 @@ export function calculateICEConsumptionEnhanced(params: {
 
   } else {
 
-    estimatedCC = Math.round(weight * 0.9);
+    // Use smart fallback: brand-aware + weight-based estimation
+    estimatedCC = getSmartCCFallback(params.brand || '', weight);
 
-    ccSource = `estimated from weight (${weight}kg × 0.9)`;
+    ccSource = `estimated from brand/weight (getSmartCCFallback)`;
 
   }
 
@@ -1462,11 +1627,9 @@ export function calculateICEConsumptionEnhanced(params: {
 
     if (!params.engineCC || params.engineCC <= 0) {
 
-      console.log(`   ⚠️  No valid CC from API - using estimation`);
+      console.log(`   ⚠️  No valid CC from API - using smart estimation`);
 
-      console.log(`   Estimation formula: weight × 0.9`);
-
-      console.log(`   Calculation: ${weight}kg × 0.9 = ${estimatedCC}cc`);
+      console.log(`   Smart fallback: brand="${params.brand}", weight=${weight}kg`);
 
     }
 
@@ -1478,71 +1641,91 @@ export function calculateICEConsumptionEnhanced(params: {
 
   // ============================================
 
-  // STEP 3: GET AERODYNAMIC PARAMETERS
+  // STEP 3: SUV CLASSIFICATION & AERODYNAMIC PARAMETERS
 
   // ============================================
 
-const aero = { ...AERO_PARAMS[vehicleType] };
+  // Determine if this is an SUV at top level (needed for both aero params and drivetrain efficiency)
+  const modelLower = (params.model || '').toLowerCase();
+
+  // Fallback SUV detection heuristics
+  // True if: (heavy weight AND not explicitly sedan) OR (explicit SUV keywords)
+  const isFallbackSUV =
+    (weight >= 1650 && !modelLower.includes('sedan')) ||
+    modelLower.includes('suv') ||
+    modelLower.includes('cross') ||
+    modelLower.includes('xc');
+
+  // Final determination: Official data takes priority, fallback applies if no official data
+  // If isOfficialSUV is true → SUV. If false or undefined → use fallback heuristics.
+  const isActualSUV = vehicleType === 'car' && (params.isOfficialSUV || isFallbackSUV);
+
+  if (IS_DEV) {
+    if (vehicleType === 'car') {
+      console.log(`\n📊 STEP 3: SUV Classification`);
+      console.log(`   Official WLTP: ${params.isOfficialSUV !== undefined ? (params.isOfficialSUV ? 'YES' : 'NO') : 'N/A'}`);
+      console.log(`   Fallback heuristics: ${isFallbackSUV ? 'YES' : 'NO'} (weight: ${weight}kg, model: "${params.model}")`);
+      console.log(`   → Final classification: ${isActualSUV ? 'SUV 🚙' : 'Sedan/Regular'}`);
+    }
+  }
+
+  // Apply aerodynamic parameters based on vehicle type and SUV classification
+  const aero = { ...AERO_PARAMS[vehicleType] };
 
   if (vehicleType === 'car') {
     if (weight < 1150) {
-      // רכבי מיני (כמו קיה פיקנטו, שברולט ספארק)
-      // קצרים, קופסתיים, עם צמיגים קטנים
-      aero.A = 2.15;   // שטח פנים קטן (הם צרים)
-      aero.Cd = 0.33;  // אבל מקדם הגרר פחות יעיל מסדאן
-      aero.Crr = 0.010; // התנגדות גלגול קצת יותר גבוהה
-    } 
-    else if (weight > 1600) {
-      // רכבי פנאי וקרוסאוברים (כמו קיה ספורטאז', טוסון)
-      // גבוהים, רחבים, וחותכים את האוויר פחות טוב
-      aero.A = 2.55;
+      // Mini vehicles (Kia Picanto, Chevrolet Spark)
+      aero.A = 2.15;
       aero.Cd = 0.33;
       aero.Crr = 0.010;
-    } 
-else {
-      // משפחתיות וסדאן (כמו הונדה סיוויק, טויוטה קורולה)
-      // המבנה הארוך והנמוך חותך את האוויר הכי טוב
-      aero.A = 2.30;   
-      aero.Cd = 0.29;  // אווירודינמיקה מצוינת
-      aero.Crr = 0.009; // התנגדות גלגול סטנדרטית
+    } else if (isActualSUV) {
+      // SUV/Crossover properties: massive, tall, wide, non-aerodynamic block (fixes artificially good MPG)
+      // Penalizes vehicles like Prado and Cayenne which are physically bulky
+      aero.A = 2.8;
+      aero.Cd = 0.36;
+      aero.Crr = 0.010;
+    } else {
+      // Sedans and family cars: long, low, excellent aerodynamics
+      aero.A = 2.30;
+      aero.Cd = 0.29;
+      aero.Crr = 0.009;
     }
   }
 
-  // >>> התוספת שלנו לאופנועים: <<<
+  // Motorcycle aerodynamic parameters
   if (vehicleType === 'motorcycle') {
-    // זיהוי חכם של תצורת האופנוע לפי יחס המשקל והנפח
+    // Smart detection of motorcycle configuration by weight/displacement ratio
     if (weight > 220 && estimatedCC > 600) {
-      // אדוונצ'ר / תיור (כבד, גבוה, ארגזי צד) - שטח חזיתי וגרר גדולים
-      aero.Cd = 0.55; 
+      // Adventure / Touring (heavy, tall, side panniers) - large frontal area & drag
+      aero.Cd = 0.55;
       aero.A = 0.70;
     } else if (weight < 210 && estimatedCC > 550) {
-      // אופנוע ספורט (קל, מנוע גדול, פיירינג שחותך אוויר מצוין)
-      aero.Cd = 0.45; 
+      // Sport motorcycle (light, large engine, fairing cuts air excellently)
+      aero.Cd = 0.45;
       aero.A = 0.55;
     } else {
-      // נייקד / קטנועים / קלאסי (הרוכב חשוף ומשמש "מפרש")
-      aero.Cd = 0.60; 
+      // Naked / Scooters / Classic (rider exposed, acts as "sail")
+      aero.Cd = 0.60;
       aero.A = 0.65;
     }
   }
-  // >>> סוף התוספת לאופנועים <<<
-  // >>> תוספת אווירודינמיקה חכמה למשאיות ומסחריות <<<
+
+  // Truck aerodynamic parameters
   if (vehicleType === 'truck') {
     if (weight < 4000) {
-      // מסחריות וטנדרים (כמו שברולט סילברדו, פיאט דוקאטו)
+      // Commercial vehicles & pickups (Chevrolet Silverado, Fiat Ducato)
       aero.A = 3.5;
       aero.Cd = 0.42;
     } else if (weight < 10000) {
-      // משאיות חלוקה בינוניות עם ארגז (כמו איווקו 7 טון, איסוזו סומו) - התנגדות אוויר גדולה
+      // Medium distribution trucks with cargo (Iveco 7-ton, Isuzu Somo) - large air resistance
       aero.A = 5.5;
       aero.Cd = 0.55;
     } else {
-      // משאיות כבדות / סמי-טריילר
+      // Heavy trucks / Semi-trailers
       aero.A = 8.0;
       aero.Cd = 0.65;
     }
   }
-  // >>> סוף תוספת משאיות <<<
 
   if (IS_DEV) {
 
@@ -1597,17 +1780,14 @@ else {
 
 
 
-  // Acceleration energy calibrated from real-world driving data
-  // Accounts for: multiple cycles, kinetic energy, braking losses, drivetrain friction
-  // Values derived from EPA/WLTP test cycle analysis
+ // Acceleration energy calibrated from real-world driving data
   const accelFactor: Record<VehicleType, number> = {
-   motorcycle: 10.0,  // Aggressive riding, poor aerodynamics relatively
-    car: 12.5,        // Real-world stop-and-go traffic penalty
-    truck: 12.2,       // Heavy momentum to overcome
+   motorcycle: 10.0,  
+    car: 11.2,
+    truck: 12.2,      
   };
 
   const accelerationEnergyMJ = (weight / 1000) * accelFactor[vehicleType];
-
 
 
   // Auxiliary systems power consumption
@@ -1633,8 +1813,8 @@ else {
   
 
   // Drivetrain & transmission losses (~10-15% lost between engine output and wheels)
-
-  const DRIVETRAIN_EFFICIENCY = 0.90; // 90% of power reaches the wheels
+  // SUVs have higher friction due to all-wheel-drive systems and heavier components
+  const DRIVETRAIN_EFFICIENCY = isActualSUV ? 0.86 : 0.90; // 86% for SUVs, 90% for regular cars
 
   totalEnergyMJ = totalEnergyMJ / DRIVETRAIN_EFFICIENCY;
 
@@ -1643,6 +1823,8 @@ else {
   if (IS_DEV) {
 
     console.log(`\n📊 STEP 4: Energy Components (MJ/100km)`);
+
+    console.log(`   Drivetrain efficiency: ${(DRIVETRAIN_EFFICIENCY * 100).toFixed(0)}% (${isActualSUV ? 'SUV' : 'Regular vehicle'})`);
 
     console.log(`   Rolling resistance: ${rollingEnergyMJ.toFixed(2)} MJ`);
 
@@ -1670,28 +1852,20 @@ else {
 
   if (IS_DEV) {
 
-  const BASE_YEAR = 2026;
+  const fuel = fuelType.toLowerCase() as 'gasoline' | 'diesel';
 
-  const DEG_PER_YEAR = fuelType === 'Diesel' ? 0.25 : 0.30;
-
-
-
+  const config = THERMAL_EFFICIENCY_BASE[fuel];
   console.log(`\n📊 STEP 5: Thermal Efficiency (חישוב שנתי רציף)`);
-
   console.log(`   Year: ${params.year || 'N/A'}`);
-
   console.log(`   Fuel type: ${fuelType}`);
-
   console.log(`   Base efficiency: ${(baseEfficiency * 100).toFixed(2)}%`);
 
   if (params.year) {
 
-    const yearsDiff = BASE_YEAR - params.year;
+    const yearsDiff = config.baseYear - params.year;
 
     if (yearsDiff > 0) {
-
-      console.log(`   Years old: ${yearsDiff} → Efficiency degradation: -${(yearsDiff * DEG_PER_YEAR).toFixed(2)}%`);
-
+      console.log(`   Years old: ${yearsDiff} → Efficiency degradation: -${(yearsDiff * config.degradationPerYear * 100).toFixed(2)}%`);
     }
 
   }
@@ -1700,17 +1874,17 @@ else {
 
 
 
-// ============================================
+  // ============================================
   // STEP 6: POWER-TO-WEIGHT & TECH ADJUSTMENT
   // ============================================
 
   let expectedCC: number;
   if (vehicleType === 'motorcycle') {
-    expectedCC = weight * 2.5; // אופנועים צריכים הרבה יותר סמ"ק פר קילו
+    expectedCC = weight * 2.5; 
   } else if (vehicleType === 'truck') {
-    // משאיות מסתמכות על יחסי העברה נמוכים ומומנט מטורבו, לא על נפח עצום. 
-    // מנוע 3.0L תוכנן בדיוק למשאית 7 טון. לכן הנוסחה מתאימה את עצמה לעולם המסחרי.
     expectedCC = 1500 + (weight * 0.35); 
+  } else if (isActualSUV) {
+    expectedCC = weight * 1.4; 
   } else {
     expectedCC = weight < 1200 ? weight * 1.15 : weight * 0.9;
   }
@@ -1770,7 +1944,7 @@ else {
   const finalEfficiency = baseEfficiency * totalMultiplier;
 
 
-  if (__DEV__) {
+  if (IS_DEV) {
 
     console.log(`\n📊 STEP 6: Power-to-Weight & Displacement Adjustment`);
 
@@ -1902,184 +2076,6 @@ export function translateBrandToEnglish(hebrewBrand: string): string {
 
   const brandMap: Record<string, string> = {
 
-    // Japanese brands
-
-    'טויוטה': 'Toyota',
-
-    'טויוטה טורקיה': 'Toyota',
-
-    'הונדה': 'Honda',
-
-    'מאזדה': 'Mazda',
-
-    'ניסאן': 'Nissan',
-
-    'סובארו': 'Subaru',
-
-    'מיצובישי': 'Mitsubishi',
-
-    'לקסוס': 'Lexus',
-
-    'אקורה': 'Acura',
-
-    'אינפיניטי': 'Infiniti',
-
-
-
-    // Korean brands
-
-    'קיא': 'Kia',
-
-    'יונדאי': 'Hyundai',
-
-    'ג\'נסיס': 'Genesis',
-
-
-
-    // German brands
-
-    'פולקסווגן': 'Volkswagen',
-
-    'אאודי': 'Audi',
-
-    'מרצדס': 'Mercedes-Benz',
-
-    'מרצדס בנץ גרמנ': 'Mercedes-Benz',
-
-    'ב.מ.וו': 'BMW',
-
-    'פורשה': 'Porsche',
-
-    'מיני': 'Mini',
-
-
-
-    // European brands
-
-    'סקודה': 'Skoda',
-
-    'סיאט': 'Seat',
-
-    'רנו': 'Renault',
-
-    'פיג\'ו': 'Peugeot',
-
-    'סיטרואן': 'Citroen',
-
-    'פיאט': 'Fiat',
-
-    'אלפא רומיאו': 'Alfa Romeo',
-
-    'יגואר': 'Jaguar',
-
-    'לנד רובר': 'Land Rover',
-
-    'וולוו': 'Volvo',
-
-    'מזראטי': 'Maserati',
-
-    'למבורגיני': 'Lamborghini',
-
-    'פרארי': 'Ferrari',
-
-    'בנטלי': 'Bentley',
-
-    'אסטון מרטין': 'Aston Martin',
-
-    'רולס רויס': 'Rolls-Royce',
-
-    'לוטוס': 'Lotus',
-
-    'בוגאטי': 'Bugatti',
-
-    'פולסטאר': 'Polestar',
-
-
-
-    // American brands
-
-    'פורד': 'Ford',
-
-    'פורד גרמניה': 'Ford',
-
-    'שברולט': 'Chevrolet',
-
-    'ג\'פ': 'Jeep',
-
-    'קדילק': 'Cadillac',
-
-    'לינקולן': 'Lincoln',
-
-    'ביואיק': 'Buick',
-
-    'ראם': 'Ram',
-
-    'קרייזלר': 'Chrysler',
-
-    'דודג\'': 'Dodge',
-
-    'ג\'י אם סי': 'GMC',
-
-    'ריביאן': 'Rivian',
-
-
-
-    // Electric brands
-
-    'טסלה': 'Tesla',
-
-    'לוסיד': 'Lucid',
-
-    'פיסקר': 'Fisker',
-
-    'וינפאסט': 'Vinfast',
-
-
-
-    // Chinese and other brands
-
-    'צ\'רי סין': 'Chery',
-
-    'בי ווי די': 'BYD',
-
-    'סקיוול סין': 'Skywell',
-
-    'דאן הולנד': 'DAF',
-
-    'ימהה צרפת': 'Yamaha',
-
-    'אינאוס': 'INEOS Automotive',
-
-    "דאף-הולנד": "DAF",
-
-    "סקודה צ'כיה": "Skoda",
-
-    "יונדאי קוריאה": "Hyundai",
-
-    "קיה קוריאה": "Kia",
-
-    "יונדאי צ'כיה": "Hyundai",
-
-    "סוזוקי-יפן": "Suzuki",
-
-    "רנו צרפת": "Renault",
-
-    "ב מ וו גרמניה": "BMW",
-
-    "מ.ג סין": "MG",
-
-    "סיטרואן צרפת": "Citroen",
-
-    "פיג'ו איטליה": "Peugeot",
-
-    "איווקו איטליה": "Iveco",
-
-    "מרצדס בנץ ארהב": "Mercedes-Benz",
-
-    "מיצובישי יפן": "Mitsubishi",
-
-    "פולקסווגן ארהב": "Volkswagen",
-
   };
 
 
@@ -2087,4 +2083,3 @@ export function translateBrandToEnglish(hebrewBrand: string): string {
   return brandMap[hebrewBrand] || hebrewBrand;
 
 }
-

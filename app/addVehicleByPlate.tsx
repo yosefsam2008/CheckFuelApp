@@ -2,31 +2,34 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import 'expo-router/entry';
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Animated,
-  Platform,
-  ScrollView,
-  KeyboardAvoidingView,
-  Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  translateBrandToEnglish,
-  calculateICEConsumptionEnhanced,
-  fetchFallbackVehicleData
-} from "../lib/data/fuelData";
 import { calculateEVConsumptionAdvanced } from "../lib/data/advancedEvConsumption";
-import { lookupEngineCC, getKnownEngineCCs } from "../lib/data/engineDatabase";
+import { getKnownEngineCCs, lookupEngineCC } from "../lib/data/engineDatabase";
+import {
+  calculateICEConsumptionEnhanced,
+  estimateWeightBySegment,
+  fetchFallbackVehicleData,
+  fetchWLTPData,
+  getSmartCCFallback,
+  translateBrandToEnglish
+} from "../lib/data/fuelData";
+import { Vehicle } from "../lib/data/vehiclesData";
 import { estimateVehicleWeight } from "../lib/data/vehicleWeightLookup";
 import Toast from "./Toast";
-import { Vehicle } from "../lib/data/vehiclesData";
 
 // Conditional import for ads - only load on native platforms
 let AdBannerComponent: any = null;
@@ -123,7 +126,7 @@ function parseFloatSafeLocal(value: any): number | undefined {
 
 type DataGovResult = { record: Record<string, any>; type: VehicleType; degem_nm?: string } | null;
 
-async function fetchRecordByPlate(plate: string): Promise<DataGovResult> {
+export async function fetchRecordByPlate(plate: string): Promise<DataGovResult> {
   // ✅ PERFORMANCE OPTIMIZATION: Query all 3 APIs in parallel instead of sequentially
   // Before: 3-6 seconds (sequential)
   // After: 1-2 seconds (parallel - limited by slowest API)
@@ -155,7 +158,7 @@ async function fetchRecordByPlate(plate: string): Promise<DataGovResult> {
   return results.find(r => r !== null) ?? null;
 }
 
-async function parseRelevantFields(record: Record<string, any>, _degem_nm?: string, vehicleType?: VehicleType) {
+export async function parseRelevantFields(record: Record<string, any>, _degem_nm?: string, vehicleType?: VehicleType) {
   const fuelTypeRaw = record.sug_delek_nm ?? record.fuel ?? '';
   const fuelType = detectFuelTypeCanonical({ sug_delek_nm: fuelTypeRaw });
 
@@ -453,7 +456,7 @@ async function searchCCByEngineCodeCached(
  * 3. Static lookup table by engine code
  * 4. Brand-model database lookup (from extracted government data)
  */
-async function extractEngineCC(
+export async function extractEngineCC(
   record: Record<string, any>,
   vehicleType: VehicleType
 ): Promise<number | undefined> {
@@ -594,7 +597,7 @@ function estimateEngineCCFromWeight(
  * @param year - שנת ייצור הרכב
  * @returns נפח מנוע מותאם לשנת הייצור
  */
-function adjustCCByYear(baseCC: number, year: number | undefined): number {
+export function adjustCCByYear(baseCC: number, year: number | undefined): number {
   if (!year) return baseCC;
 
   // מגמת downsizing - מנועים חדשים יותר קטנים ויעילים יותר
@@ -828,13 +831,15 @@ export default function AddVehicleByPlate() {
         let kwhPerKm: number | undefined;
         let avgConsumption: number | undefined = undefined;
 
-        // 1. משתנים בסיסיים - שולפים CC רק אם זה לא רכב חשמלי
+        // ============================================
+        // UNIFIED PHASE 1-3: FETCH ONCE & REUSE
+        // ✅ OPTIMIZED: Single fallback fetch, reusable across EV/ICE
+        // ============================================
         let effectiveMishkalKolel = parsed.mishkal_kolel;
         let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
 
-        // ============================================
-        // PHASE 2: FALLBACK API FOR MISSING DATA (לכל הרכבים!)
-        // ============================================
+        // Cache fallback data to avoid double-fetch
+        let fallbackData: any = null;
         const needsFallbackWeight = !effectiveMishkalKolel;
         const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
 
@@ -843,7 +848,7 @@ export default function AddVehicleByPlate() {
             console.log('\n🔄 Missing data - trying fallback API...');
           }
 
-          const fallbackData = await fetchFallbackVehicleData({
+          fallbackData = await fetchFallbackVehicleData({
             brand: parsed.brand,
             model: parsed.model,
             year: parsed.year,
@@ -877,6 +882,26 @@ export default function AddVehicleByPlate() {
         }
 
         // ============================================
+        // PHASE 4 SETUP: FETCH OFFICIAL WLTP DATA
+        // ============================================
+        let officialSUV = false;
+        let officialHybrid = false;
+
+        // Fetch official WLTP data for cars (year >= 2018 or unknown)
+        if (found.type === 'car' && (!parsed.year || parsed.year >= 2018)) {
+        const wltpData = await fetchWLTPData(found.record, found.degem_nm);
+                  if (wltpData) {
+            officialSUV = wltpData.isOfficialSUV;
+            officialHybrid = wltpData.isOfficialHybrid;
+            if (__DEV__) {
+              console.log(`\n📋 WLTP Official Classification Retrieved:`);
+              console.log(`   isOfficialSUV: ${officialSUV ? 'YES 🚙' : 'NO'}`);
+              console.log(`   isOfficialHybrid: ${officialHybrid ? 'YES 🔋' : 'NO'}`);
+            }
+          }
+        }
+
+        // ============================================
         // PHASE 4: SPLIT BY FUEL TYPE FOR FINAL CALCULATION
         // ============================================
         const isElectricOrPhev = parsed.fuelType === "Electric" || parsed.fuelType === "PHEV";
@@ -897,102 +922,103 @@ const isPhev = parsed.fuelType === "PHEV";
           
         } else {
           if (__DEV__) console.log('⛽ ICE vehicle calculation - Fuel:', parsed.fuelType);
+          // ✅ cc & effectiveMishkalKolel already populated from unified PHASE 1-3 above
+          // ✅ NO RE-DECLARATION, NO DOUBLE-FETCH
 
           // ============================================
-          // PHASE 1: GET ENGINE CC FROM PRIMARY API
+          // PHASE 4: SMART FALLBACK HEURISTICS
           // ============================================
-          let cc = await extractEngineCC(found.record, found.type);
-          let effectiveMishkalKolel = parsed.mishkal_kolel;
+          // Apply intelligent weight and CC estimation if still missing after all previous phases
 
-          // ============================================
-          // PHASE 2: FALLBACK API FOR MISSING DATA
-          // ============================================
-          const needsFallback = !cc || !effectiveMishkalKolel;
-
-          if (needsFallback) {
-            if (__DEV__) {
-              console.log('\n🔄 Missing data - trying fallback API...');
-              console.log(`   Need CC: ${!cc ? 'YES' : 'NO'}`);
-              console.log(`   Need Weight: ${!effectiveMishkalKolel ? 'YES' : 'NO'}`);
-            }
-
-            const fallbackData = await fetchFallbackVehicleData({
-              brand: parsed.brand,
-              model: parsed.model,
-              year: parsed.year,
-              engineCode: found.record.degem_manoa,
-              plateNumber: plateTrimmed,
-              degem_nm: found.degem_nm,
-              isElectric: false,
-            });
-
-            if (fallbackData) {
-              if (!cc && fallbackData.nefach_manoa) {
-                cc = fallbackData.nefach_manoa;
-                if (__DEV__) {
-                  console.log(`   ✅ CC from fallback: ${cc}cc`);
-                }
-              }
-
-              if (!effectiveMishkalKolel && fallbackData.mishkal_kolel) {
-                effectiveMishkalKolel = fallbackData.mishkal_kolel;
-                if (__DEV__) {
-                  console.log(`   ✅ Weight from fallback: ${effectiveMishkalKolel}kg`);
-                }
-              }
-            } else {
-              if (__DEV__) {
-                console.log('   ⚠️  Fallback API found no data');
-              }
-            }
-          }
-
-          // ============================================
-          // PHASE 3: BRAND/MODEL WEIGHT ESTIMATION
-          // ============================================
           if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-            const estimatedWeight = estimateVehicleWeight(
-              parsed.brand,
-              parsed.model,
-              parsed.year
-            );
+            if (__DEV__) {
+              console.log('\n🤖 PHASE 4: Applying Smart Fallback Heuristics');
+            }
 
-            if (estimatedWeight) {
-              effectiveMishkalKolel = estimatedWeight.gross;
-              const brandName = translateBrandToEnglish(parsed.brand);
-              if (__DEV__) {
-                console.log(`📊 ${brandName} weight estimated: ${effectiveMishkalKolel}kg (gross)`);
-              }
+            // Use smart segment-based weight estimation
+            const smartWeight = estimateWeightBySegment(parsed.model, parsed.brand, officialSUV);
+            effectiveMishkalKolel = smartWeight;
+            if (__DEV__) {
+              console.log(`   ✅ Weight from estimateWeightBySegment: ${effectiveMishkalKolel}kg`);
+            }
+          }
+
+          if (!cc && parsed.brand && effectiveMishkalKolel) {
+            // Use smart brand/weight-based CC estimation
+            const smartCC = getSmartCCFallback(parsed.brand, effectiveMishkalKolel);
+            cc = smartCC;
+            if (__DEV__) {
+              console.log(`   ✅ CC from getSmartCCFallback: ${cc}cc`);
             }
           }
 
           // ============================================
-          // PHASE 4: ADVANCED PHYSICS CALCULATION
+          // PHASE 5: DATA SOURCING SUMMARY (for debugging)
+          // ============================================
+          if (__DEV__) {
+            console.log('\n📊 DATA SOURCING SUMMARY:');
+            const weightSource = needsFallbackWeight 
+              ? (fallbackData?.mishkal_kolel ? 'Fallback API ✅' : 'Smart Heuristic 🤖')
+              : 'Primary API ✅';
+            const ccSource = needsFallbackCC
+              ? (fallbackData?.nefach_manoa ? 'Fallback API ✅' : 'Smart Heuristic 🤖')
+              : 'Primary API ✅';
+            console.log(`   Weight (${effectiveMishkalKolel}kg): ${weightSource}`);
+            console.log(`   CC (${cc}cc): ${ccSource}`);
+          }
+
+          // ============================================
+          // PHASE 6: ADVANCED PHYSICS CALCULATION
           // ============================================
 
           // 🔥 זיהוי רכב היברידי משופר (לוכד גם היברידיות סמויות)
           const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
-          const engineStr = found.record.degem_manoa ? String(found.record.degem_manoa).toUpperCase() : '';
+          const brandStr = typeof parsed.brand === 'string' ? parsed.brand.toUpperCase() : '';
 
-          // 1. זיהוי רגיל לפי שם מפורש
-          const isExplicitHybrid = modelStr.includes('HYBRID') || modelStr.includes('HEV') || modelStr.includes('PHEV') || modelStr.includes('HSD');
+          // 1. Official WLTP data takes priority
+          let isHybridCar = officialHybrid;
 
-          // 2. זיהוי לפי דגמים שהם תמיד היברידיים בישראל
-          const isKnownHybridModel = ['IONIQ', 'NIRO', 'PRIUS', 'COROLLA CROSS', 'C-HR', 'YARIS CROSS'].some(m => modelStr.includes(m));
+          // 2. If no official data, use heuristic fallbacks
+          if (!officialHybrid) {
+            // Keyword arrays for hybrid detection
+            const hybridKeywords = ['PRIUS', 'HYBRID', 'IONIQ', 'INSIGHT', 'HSD', 'CT200H', 'NIRO'];
+            
+            // Check if model name includes any hybrid keywords
+            const isHybridByKeyword = hybridKeywords.some(keyword => modelStr.includes(keyword));
+            
+            // Check brand for hybrid-heavy manufacturers
+            const isHybridBrand = brandStr === 'TOYOTA' || brandStr === 'LEXUS' || brandStr === 'HONDA' || brandStr === 'HYUNDAI';
+            
+            // Hidden hybrid detection: Lexus/Toyota models ending with H or H+ (e.g., NX450H+, RX550H)
+            const isToyotaLexusHybridCode = isHybridBrand && /[A-Z]{2,3}\d{2,3}H/i.test(modelStr);
 
-          // 3. זיהוי לפי קודי מנוע קלאסיים של מערכות היברידיות (2ZR של טויוטה, G4LE של יונדאי/קיה)
-          const isKnownHybridEngine = ['2ZR', 'G4LE'].includes(engineStr);
+            isHybridCar = isHybridByKeyword || isToyotaLexusHybridCode;
+          }
 
-          // אם אחד מהתנאים מתקיים - הרכב היברידי
-          const isHybridCar = isExplicitHybrid || isKnownHybridModel || isKnownHybridEngine;
+          // 🚙 SUV Detection Enhancement with Keyword Arrays
+          let isActualSUV = officialSUV;
+
+          if (!officialSUV) {
+            // Keyword arrays for SUV detection
+            const suvKeywords = ['RAV4', 'PRADO', 'LAND CRUISER', 'CHEROKEE', 'GRAND', 'TUCSON', 'SPORTAGE', 'IX35', 'CR-V', 'CAYENNE', 'VITARA', 'SUV', 'CROSS'];
+            
+            // Check if model name includes any SUV keywords
+            const isSUVByKeyword = suvKeywords.some(keyword => modelStr.includes(keyword));
+            
+            // Check if brand is JEEP or LAND ROVER
+            const isSUVBrand = brandStr === 'JEEP' || brandStr === 'LAND ROVER';
+
+            isActualSUV = isSUVByKeyword || isSUVBrand;
+          }
 
           if (__DEV__) {
-            console.log('\n🔧 ICE Calculation Input:');
+            console.log('\n🔧 PHASE 7: ICE Calculation Input:');
             console.log(`   mishkal_kolel (gross): ${effectiveMishkalKolel || 'N/A'}kg`);
             console.log(`   engineCC: ${cc || 'N/A'}cc`);
             console.log(`   year: ${parsed.year || 'N/A'}`);
             console.log(`   fuelType: ${parsed.fuelType}`);
-            console.log(`   isHybrid: ${isHybridCar ? 'YES 🔋' : 'NO'}`);
+            console.log(`   isHybrid (Official: ${officialHybrid ? 'YES 🔋' : 'NO'}, Fallback: ${isHybridCar ? 'YES 🔋' : 'NO'})`);
+            console.log(`   isActualSUV (Official: ${officialSUV ? 'YES 🚙' : 'NO'}, Fallback: ${isActualSUV ? 'YES 🚙' : 'NO'})`);
           }
 
           avgConsumption = calculateICEConsumptionEnhanced({
@@ -1001,7 +1027,10 @@ const isPhev = parsed.fuelType === "PHEV";
             year: parsed.year,
             fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
             vehicleType: found.type,
-            isHybrid: isHybridCar, // <-- מעבירים את הנתון לפונקציית הפיזיקה
+            isHybrid: isHybridCar,
+            isOfficialSUV: isActualSUV,
+            brand: parsed.brand,
+            model: parsed.model,
           });
 
           if (__DEV__) {

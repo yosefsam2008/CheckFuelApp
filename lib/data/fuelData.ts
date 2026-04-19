@@ -1588,54 +1588,45 @@ export function calculateICEConsumptionEnhanced(params: {
 
 
 
-  // ============================================
+// ============================================
+  // STEP 2: DETERMINE ENGINE CC
+  // ============================================
 
-  // STEP 2: DETERMINE ENGINE CC
+  // Calculate the smart fallback first so we can use it as a benchmark
+  const smartFallbackCC = getSmartCCFallback(params.brand || '', weight);
 
-  // ============================================
+  let estimatedCC: number;
+  let ccSource: string;
 
-  // Estimate engineCC if missing - using smart brand/weight-aware fallback
+  if (params.engineCC && params.engineCC > 0) {
+    // 🛡️ SANITY CHECK: Detect garbage API data
+    // If the API claims the engine is more than 2.2x larger than our smart estimate,
+    // we assume the API data is corrupted (e.g., a 1300kg Skoda with 5700cc) and override it.
+    if (vehicleType === 'car' && params.engineCC > (smartFallbackCC * 2.2)) {
+      estimatedCC = smartFallbackCC;
+      ccSource = `estimated (API value ${params.engineCC}cc rejected as absurd)`;
+    } else {
+      estimatedCC = params.engineCC;
+      ccSource = 'from API/Database';
+    }
+  } else {
+    // Use smart fallback: brand-aware + weight-based estimation
+    estimatedCC = smartFallbackCC;
+    ccSource = `estimated from brand/weight (getSmartCCFallback)`;
+  }
 
-  let estimatedCC: number;
-
-  let ccSource: string;
-
-
-
-  if (params.engineCC && params.engineCC > 0) {
-
-    estimatedCC = params.engineCC;
-
-    ccSource = 'from API/Database';
-
-  } else {
-
-    // Use smart fallback: brand-aware + weight-based estimation
-    estimatedCC = getSmartCCFallback(params.brand || '', weight);
-
-    ccSource = `estimated from brand/weight (getSmartCCFallback)`;
-
-  }
-
-
-
-  if (IS_DEV) {
-
-    console.log(`\n📊 STEP 2: Engine CC Determination`);
-
-    console.log(`   Provided CC from API: ${params.engineCC || 'N/A'}cc`);
-
-    if (!params.engineCC || params.engineCC <= 0) {
-
-      console.log(`   ⚠️  No valid CC from API - using smart estimation`);
-
-      console.log(`   Smart fallback: brand="${params.brand}", weight=${weight}kg`);
-
-    }
-
-    console.log(`   ✅ Final CC: ${estimatedCC}cc (${ccSource})`);
-
-  }
+  if (IS_DEV) {
+    console.log(`\n📊 STEP 2: Engine CC Determination`);
+    console.log(`   Provided CC from API: ${params.engineCC || 'N/A'}cc`);
+    if (!params.engineCC || params.engineCC <= 0) {
+      console.log(`   ⚠️  No valid CC from API - using smart estimation`);
+      console.log(`   Smart fallback: brand="${params.brand}", weight=${weight}kg`);
+    } else if (estimatedCC !== params.engineCC) {
+      console.log(`   🛑 SANITY CHECK FAILED: API CC (${params.engineCC}cc) is absurdly high!`);
+      console.log(`   → Overriding with smart fallback: ${smartFallbackCC}cc`);
+    }
+    console.log(`   ✅ Final CC: ${estimatedCC}cc (${ccSource})`);
+  }
 
 
 

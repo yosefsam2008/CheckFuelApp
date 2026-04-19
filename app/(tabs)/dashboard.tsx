@@ -18,10 +18,22 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import {
+  TrendingUp,
+  CircleDollarSign,
+  Route,
+  Target,
+  Car,
+  BarChart2,
+  HelpCircle,
+  Scale,
+  Fuel,
+  ChevronRight,
+} from 'lucide-react-native';
 import BannerAd from '../../components/BannerAd';
 import LegalScreen from '../LegalScreen';
 import UserGuideScreen from '../UserGuideScreen';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // --- Types ---
 interface TripRecord {
@@ -46,9 +58,8 @@ interface DashboardStats {
   avgCostPerKm: number;
 }
 
-// 'featured': horizontal full-width card; 'compact': vertical (default)
 interface StatCardProps {
-  icon: string;
+  iconNode: React.ReactNode;
   label: string;
   value: string | number;
   unit?: string;
@@ -57,7 +68,7 @@ interface StatCardProps {
 }
 
 interface ActionButtonProps {
-  icon: string;
+  iconNode: React.ReactNode;
   label: string;
   onPress: () => void;
   featured?: boolean;
@@ -80,11 +91,8 @@ const Colors = {
   glassBg: 'rgba(255, 255, 255, 0.85)',
 };
 
-// Hebrew-compatible font stack.
-// Expo: add `expo-font` + `@expo-google-fonts/heebo` and load via useFonts() in _layout.tsx.
-// Fallback chain covers iOS (system Hebrew) → Android (Roboto w/ Hebrew glyphs) → default.
 const HEB_FONT = Platform.select({
-  ios: 'Heebo-Regular',   // loaded via expo-google-fonts; falls back to system if missing
+  ios: 'Heebo-Regular',
   android: 'Heebo-Regular',
   default: undefined,
 });
@@ -94,13 +102,11 @@ const HEB_FONT_BOLD = Platform.select({
   default: undefined,
 });
 
-// Base RTL text style applied to every Text element
 const rtlText = {
   writingDirection: 'rtl' as const,
   textAlign: 'right' as const,
 };
 
-// Typography scale — single source of truth for all text sizing
 const Typography = StyleSheet.create({
   h1: { fontSize: 32, fontWeight: '900', color: '#fff', fontFamily: HEB_FONT_BOLD, textAlign: 'right' },
   h2: { fontSize: 22, fontWeight: '800', color: Colors.textDark, fontFamily: HEB_FONT_BOLD, ...rtlText, letterSpacing: -0.5 },
@@ -121,21 +127,15 @@ const sharedShadow = Platform.select({
   android: { elevation: 4 },
 });
 
-// RTL-aware chevron: in RTL context "back" is visually rightward (›)
 const ChevronBack = I18nManager.isRTL ? '›' : '‹';
 
 // --- Sub-components ---
 const StatCard = React.memo(function StatCard({
-  icon, label, value, unit, variant = 'compact', accessibilityLabel,
+  iconNode, label, value, unit, variant = 'compact', accessibilityLabel,
 }: StatCardProps) {
   if (variant === 'featured') {
     return (
-      <View
-        style={styles.statCardFeatured}
-        accessible
-        accessibilityLabel={accessibilityLabel ?? `${label}: ${value}${unit ?? ''}`}
-      >
-        {/* RTL: text first in JSX + row-reverse = text on right, icon on left */}
+      <View style={styles.statCardFeatured} accessible accessibilityLabel={accessibilityLabel ?? `${label}: ${value}${unit ?? ''}`}>
         <View style={styles.statFeaturedText}>
           <Text style={styles.statLabelFeatured}>{label}</Text>
           <View style={styles.statValueContainer}>
@@ -144,44 +144,33 @@ const StatCard = React.memo(function StatCard({
           </View>
         </View>
         <View style={styles.statIconContainer}>
-            <Text style={styles.statIcon}>{icon}</Text>
-            </View>
+          {iconNode}
+        </View>
       </View>
     );
   }
   return (
-    <View
-      style={styles.statCard}
-      accessible
-      accessibilityLabel={accessibilityLabel ?? `${label}: ${value}${unit ?? ''}`}
-    >
-      <Text style={styles.statIcon}>{icon}</Text>
+    <View style={styles.statCard} accessible accessibilityLabel={accessibilityLabel ?? `${label}: ${value}${unit ?? ''}`}>
+      <View style={{ marginBottom: 10 }}>{iconNode}</View>
       <Text style={Typography.sectionLabel}>{label}</Text>
       <View style={styles.statValueContainer}>
         <Text style={styles.statValue}>{value}</Text>
         {unit && <Text style={styles.statUnit}>{unit}</Text>}
-</View>
+      </View>
     </View>
   );
 });
 
 const ActionButton = React.memo(function ActionButton({
-  icon, label, onPress, featured = false, accessibilityLabel,
+  iconNode, label, onPress, featured = false, accessibilityLabel,
 }: ActionButtonProps) {
   const button = (
-    <TouchableOpacity
-      style={styles.actionButton}
-      onPress={onPress}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-    >
-      <Text style={styles.actionIcon}>{icon}</Text>
+    <TouchableOpacity style={styles.actionButton} onPress={onPress} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label}>
+      <View style={{ marginBottom: 4 }}>{iconNode}</View>
       <Text style={styles.actionLabel}>{label}</Text>
     </TouchableOpacity>
   );
 
-  // First action button gets a subtle tinted gradient to create visual hierarchy
   if (featured) {
     return (
       <LinearGradient
@@ -199,9 +188,12 @@ const RecentTripCard = React.memo(function RecentTripCard({ trip }: { trip: Trip
   return (
     <View style={styles.tripCard}>
       <View style={styles.tripHeader}>
-        <Text style={[Typography.body, { color: Colors.textDark, fontWeight: '600' }]}>
-          🚗 {trip.vehicleName}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Car size={16} color={Colors.textDark} />
+          <Text style={[Typography.body, { color: Colors.textDark, fontWeight: '600' }]}>
+            {trip.vehicleName}
+          </Text>
+        </View>
         <Text style={Typography.caption}>
           {new Date(trip.date).toLocaleDateString('he-IL')}
         </Text>
@@ -227,10 +219,10 @@ const RecentTripCard = React.memo(function RecentTripCard({ trip }: { trip: Trip
 // --- Main Component ---
 export default function Dashboard() {
   const router = useRouter();
-  const insets = useSafeAreaInsets(); // replaces hardcoded paddingTop: 60
+  const insets = useSafeAreaInsets();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [allTrips, setAllTrips] = useState<TripRecord[]>([]); // raw data; derived values via useMemo
+  const [allTrips, setAllTrips] = useState<TripRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showLegalModal, setShowLegalModal] = useState(false);
@@ -240,7 +232,6 @@ export default function Dashboard() {
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
-  // Respect system-level "Reduce Motion" accessibility setting before animating
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
       setReduceMotion(enabled);
@@ -255,7 +246,6 @@ export default function Dashboard() {
     });
   }, [floatAnim]);
 
-  // Memoized stats — recomputes only when allTrips reference changes
   const stats: DashboardStats = useMemo(() => {
     if (!allTrips.length) return { totalTrips: 0, totalDistance: 0, totalCost: 0, avgCostPerKm: 0 };
     const totalTrips = allTrips.length;
@@ -264,7 +254,6 @@ export default function Dashboard() {
     return { totalTrips, totalDistance, totalCost, avgCostPerKm: totalDistance > 0 ? totalCost / totalDistance : 0 };
   }, [allTrips]);
 
-  // Memoized sort — avoids O(n log n) re-sort on every render cycle
   const recentTrips = useMemo(
     () => [...allTrips].sort((a, b) => b.timestamp - a.timestamp).slice(0, 3),
     [allTrips]
@@ -311,7 +300,6 @@ export default function Dashboard() {
         }
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Hero — paddingTop driven by safe-area insets, not hardcoded */}
         <LinearGradient
           colors={[Colors.primary, Colors.primaryLight]}
           style={[styles.heroSection, { paddingTop: insets.top + 20 }]}
@@ -322,20 +310,19 @@ export default function Dashboard() {
             style={[styles.heroContent, { transform: [{ translateY: reduceMotion ? 0 : floatAnim }] }]}
           >
             <View style={styles.heroIconContainer}>
-              <Text style={styles.heroIcon}>⛽</Text>
+              <MaterialCommunityIcons name="gas-station" size={48} color="#fff" />
             </View>
             <Text style={Typography.h1}>{heroGreeting}</Text>
             <Text style={styles.heroSubtitle}>מחשבון חכם לניהול עלויות הדלק שלך</Text>
           </Animated.View>
         </LinearGradient>
-<View style={styles.bannerAdContainer}><BannerAd /></View>
+
+        <View style={styles.bannerAdContainer}><BannerAd /></View>
+        
         <View style={styles.content}>
-          {/* h2 — larger section title with RTL-correct accent border */}
           <View style={styles.sectionTitleWrapper}>
             <Text style={styles.sectionTitleLarge}>📊 סיכום כולל</Text>
           </View>
-
-          
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
@@ -343,32 +330,28 @@ export default function Dashboard() {
             </View>
           ) : (
             <View style={styles.statsContainer}>
-              {/* Featured (horizontal) cards for high-priority metrics */}
               <StatCard
-                icon="📈" label="נסיעות" value={stats.totalTrips}
+                iconNode={<TrendingUp size={28} color={Colors.primary} />}
+                label="נסיעות" value={stats.totalTrips}
                 variant="featured"
                 accessibilityLabel={`סך הכל ${stats.totalTrips} נסיעות`}
               />
               <StatCard
-                icon="💰" label="עלות כוללת" value={`₪${stats.totalCost.toFixed(0)}`}
+                iconNode={<CircleDollarSign size={28} color={Colors.primary} />}
+                label="עלות כוללת" value={`₪${stats.totalCost.toFixed(0)}`}
                 variant="featured"
                 accessibilityLabel={`עלות כוללת ${stats.totalCost.toFixed(0)} שקלים`}
               />
-              {/* Compact 2-column grid for secondary metrics */}
-              <View style={styles.statsGrid}>
-                <View style={styles.statsColumn}>
-                  <StatCard
-                    icon="🛣️" label="מרחק" value={stats.totalDistance.toFixed(0)} unit="km"
-                    accessibilityLabel={`מרחק כולל ${stats.totalDistance.toFixed(0)} קילומטרים`}
-                  />
-                </View>
-                <View style={styles.statsColumn}>
-                  <StatCard
-                    icon="🎯" label="ממוצע לק״מ" value={`₪${stats.avgCostPerKm.toFixed(2)}`}
-                    accessibilityLabel={`ממוצע לקילומטר ${stats.avgCostPerKm.toFixed(2)} שקלים`}
-                  />
-                </View>
-              </View>
+              <StatCard
+                iconNode={<Route size={24} color={Colors.primary} />}
+                label="מרחק" value={stats.totalDistance.toFixed(0)} unit="km"
+                accessibilityLabel={`מרחק כולל ${stats.totalDistance.toFixed(0)} קילומטרים`}
+              />
+              <StatCard
+                iconNode={<Target size={24} color={Colors.primary} />}
+                label="ממוצע לק״מ" value={`₪${stats.avgCostPerKm.toFixed(2)}`}
+                accessibilityLabel={`ממוצע לקילומטר ${stats.avgCostPerKm.toFixed(2)} שקלים`}
+              />
             </View>
           )}
 
@@ -380,39 +363,41 @@ export default function Dashboard() {
             accessibilityLabel="חישוב נסיעה חדשה"
           >
             <LinearGradient colors={[Colors.primary, Colors.primaryDark]} style={styles.primaryButtonGradient}>
-              <Text style={styles.primaryButtonArrow}>{ChevronBack}</Text>
+              <ChevronRight size={24} color="rgba(255,255,255,0.8)" />
               <Text style={styles.primaryButtonText}>חישוב נסיעה חדשה</Text>
               <View style={styles.primaryButtonIcon}>
-                <Text style={{ fontSize: 28 }}>🧮</Text>
+                <Fuel size={28} color="#fff" />
               </View>
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* h3 — smaller than h2 to establish visual size contrast */}
           <View style={styles.sectionTitleWrapper}>
             <Text style={styles.sectionTitleSmall}>פעולות מהירות</Text>
           </View>
 
-          {/* Single flexWrap grid replaces two separate row grids */}
           <View style={styles.actionsGrid}>
             <ActionButton
-              icon="🚗" label="הרכבים שלי"
+              iconNode={<Car size={30} color={Colors.primary} />}
+              label="הרכבים שלי"
               onPress={() => router.push('./vehicles')}
-              featured // subtle gradient to surface as primary action
+              featured
               accessibilityLabel="נווט לרשימת הרכבים שלי"
             />
             <ActionButton
-              icon="📊" label="היסטוריה"
+              iconNode={<BarChart2 size={30} color={Colors.primary} />}
+              label="היסטוריה"
               onPress={() => router.push('./history')}
               accessibilityLabel="נווט להיסטוריית הנסיעות"
             />
             <ActionButton
-              icon="❓" label="מדריך שימוש"
+              iconNode={<HelpCircle size={30} color={Colors.primary} />}
+              label="מדריך שימוש"
               onPress={() => setShowUserGuide(true)}
               accessibilityLabel="פתח מדריך שימוש"
             />
             <ActionButton
-              icon="⚖️" label="מדיניות ומשפט"
+              iconNode={<Scale size={30} color={Colors.primary} />}
+              label="מדיניות ומשפט"
               onPress={() => setShowLegalModal(true)}
               accessibilityLabel="פתח מדיניות פרטיות ותנאים משפטיים"
             />
@@ -423,19 +408,16 @@ export default function Dashboard() {
           {!isLoading && recentTrips.length > 0 && (
             <>
               <View style={styles.recentHeader}>
-  <TouchableOpacity
-    onPress={() => router.push('./history')}
-    accessibilityRole="button"
-    accessibilityLabel="הצג את כל הנסיעות"
-  >
-    <Text style={styles.viewAllLink}>{ChevronBack} הצג הכל</Text>
-  </TouchableOpacity>
-  
-  {/* הכותרת עומדת עכשיו בפני עצמה ומתיישרת באופן טבעי מול הכפתור */}
-  <Text style={styles.sectionTitleSmall}>נסיעות אחרונות</Text>
-</View>
+                <TouchableOpacity
+                  onPress={() => router.push('./history')}
+                  accessibilityRole="button"
+                  accessibilityLabel="הצג את כל הנסיעות"
+                >
+                  <Text style={styles.viewAllLink}>{ChevronBack} הצג הכל</Text>
+                </TouchableOpacity>
+                <Text style={styles.sectionTitleSmall}>נסיעות אחרונות</Text>
+              </View>
               {recentTrips.map((trip) => (
-                // Stable string id avoids full unmount/remount on list updates
                 <RecentTripCard key={trip.id} trip={trip} />
               ))}
             </>
@@ -467,7 +449,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { paddingBottom: 40 },
 
-  // Hero
   heroSection: {
     paddingBottom: 50,
     paddingHorizontal: 20,
@@ -482,25 +463,21 @@ const styles = StyleSheet.create({
   heroIcon: { fontSize: 48 },
   heroSubtitle: { fontSize: 16, color: Colors.textLight, fontWeight: '500', fontFamily: HEB_FONT, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
 
-  // marginTop: -20 pulls content under the hero curve; paddingTop compensates so
-  // "סיכום כולל" has breathing room — not flush against the hero bottom edge.
-  content: { padding: 20, marginTop: -20, paddingTop: 36 },
+  content: {
+    padding: 20,
+    paddingTop: 24,
+  },
 
-  // Section title wrapper — full-width View carries the accent border; Text inside aligns right
- sectionTitleWrapper: {
-    marginBottom: 25,
-    marginTop: 5,
-    width: '100%',
-    // מתאים את היישור לצד ימין בצורה חכמה:
-    // אם המכשיר ב-RTL, צד ימין הוא flex-start. אחרת, צד ימין הוא flex-end.
-    alignItems: I18nManager.isRTL ? 'flex-start' : 'flex-end', 
-  },
+  sectionTitleWrapper: {
+    marginBottom: 25,
+    marginTop: 5,
+    width: '100%',
+    alignItems: I18nManager.isRTL ? 'flex-start' : 'flex-end',
+  },
 
   sectionTitleLarge: {
     ...Typography.h2,
-    // ביטול Borders קודמים ליתר ביטחון
-    borderLeftWidth: 0, 
-    // הצמדה מפורשת לצד ימין
+    borderLeftWidth: 0,
     borderRightWidth: 5,
     borderRightColor: Colors.primary,
     paddingRight: 12,
@@ -520,40 +497,43 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
   },
 
-  bannerAdContainer: { marginVertical: 16, borderRadius: 12 },
+  bannerAdContainer: {
+    marginVertical: 24,
+    borderRadius: 12,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.06)',
+    paddingVertical: 8,
+  },
   loadingContainer: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
 
-  // Stats layout
   statsContainer: { marginBottom: 24, gap: 12 },
   statsGrid: { flexDirection: 'row', gap: 12 },
   statsColumn: { flex: 1 },
 
-  // Compact StatCard (vertical)
   statCard: {
     backgroundColor: Colors.card,
-    borderRadius: 24, // יותר מעוגל = יותר מודרני
+    borderRadius: 24,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.03)', // גבול כמעט בלתי נראה
+    borderColor: 'rgba(0, 0, 0, 0.03)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.07, // צל מאוד עדין
+        shadowOpacity: 0.07,
         shadowRadius: 15,
       },
       android: { elevation: 3 },
     }),
   },
-  statIcon: { fontSize: 30, marginBottom: 10 },
   statLabel: { ...Typography.caption, marginBottom: 6 },
   statValueContainer: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   statValue: { fontSize: 26, fontWeight: '800', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl' as const },
   statUnit: { ...Typography.caption },
 
-  // Featured StatCard (horizontal, full-width)
-    statCardFeatured: {
+  statCardFeatured: {
     backgroundColor: Colors.card,
     borderRadius: 24,
     padding: 22,
@@ -564,11 +544,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
   },
   statIconFeatured: { fontSize: 36 },
-  statFeaturedText: { flex: 1, alignItems: 'flex-start' }, // flex-start = visual right in row-reverse
+  statFeaturedText: { flex: 1, alignItems: 'flex-start' },
   statLabelFeatured: { ...Typography.caption, marginBottom: 4 },
   statValueFeatured: { fontSize: 30, fontWeight: '800', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl' as const, textAlign: 'right' as const },
 
-  // Primary CTA
   primaryButton: {
     marginBottom: 28,
     borderRadius: 20,
@@ -589,7 +568,6 @@ const styles = StyleSheet.create({
   primaryButtonText: { flex: 1, fontSize: 19, fontWeight: '700', color: '#fff', fontFamily: HEB_FONT_BOLD, textAlign: 'right', writingDirection: 'rtl', marginRight: 12 },
   primaryButtonArrow: { fontSize: 28, color: '#fff', opacity: 0.8 },
 
-  // Actions — single flexWrap grid; 47% width + aspectRatio: 1.1 for consistent touch targets
   actionsGrid: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
@@ -613,12 +591,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    minHeight: 44, // WCAG 2.5.5 minimum touch target
+    minHeight: 44,
   },
   actionIcon: { fontSize: 30 },
   actionLabel: { ...Typography.body, fontWeight: '600', textAlign: 'center', writingDirection: 'rtl' },
 
-  // Recent trips
   recentHeader: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
@@ -651,7 +628,6 @@ const styles = StyleSheet.create({
   tripDetailLabel: { ...Typography.caption, marginBottom: 4, textAlign: 'center' },
   tripDetailValue: { fontSize: 15, fontWeight: '700', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl', textAlign: 'center' },
 
-  // Toast
   toast: {
     position: 'absolute',
     bottom: 30,
@@ -666,12 +642,12 @@ const styles = StyleSheet.create({
     }),
   },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '600', fontFamily: HEB_FONT, writingDirection: 'rtl', textAlign: 'center' },
-statIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0, 150, 136, 0.08)',
+  statIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 150, 136, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
 });

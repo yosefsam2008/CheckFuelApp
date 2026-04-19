@@ -15,6 +15,19 @@ import {
 import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
 
+// Unified Lucide Icons
+import {
+  ArrowRight,
+  Car,
+  Building2,
+  Zap,
+  Fuel,
+  Droplet,
+  Save,
+  CheckCircle2,
+  Info
+} from "lucide-react-native";
+
 // Conditional import for ads
 const VehicleRewardedAd = Platform.OS === "web" ? () => null : require("../components/VehicleRewardedAd").default;
 const AdBanner = Platform.OS === "web" ? () => null : require("../components/BannerAd").default;
@@ -124,13 +137,11 @@ export default function AddVehicle() {
 
     setPendingVehicle(newVehicle);
 
-    // On Web, skip ad logic completely
     if (Platform.OS === "web") {
       saveVehicleToStorage(newVehicle);
       return;
     }
 
-    // On Native, trigger the ad overlay
     setShowAd(true);
   };
 
@@ -143,8 +154,6 @@ export default function AddVehicle() {
 
   const handleAdError = (error: any) => {
     console.error("Ad error:", error);
-    // You don't need to call handleAdComplete here because the Ad Component
-    // already calls onAdComplete when onAdError fires (Fail-safe mechanism).
   };
 
   const avgPlaceholder = fuelType === "Electric" ? "לדוגמה: 0.15 (kWh/ק״מ)" : "לדוגמה: 16.5 (km/l)";
@@ -162,10 +171,12 @@ export default function AddVehicle() {
         {/* Header Section */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtnTop} onPress={() => router.back()}>
-            <Text style={styles.backBtnTopText}>→</Text>
+            <ArrowRight size={24} color="#333" />
           </TouchableOpacity>
           <View style={styles.titleContainer}>
-            <Text style={styles.emoji}>🚗</Text>
+            <View style={styles.headerIconWrapper}>
+              <Car size={48} color="#009688" />
+            </View>
             <Text style={styles.title}>הוספת רכב חדש</Text>
             <Text style={styles.subtitle}>מלא את הפרטים להוספת הרכב שלך</Text>
           </View>
@@ -183,7 +194,10 @@ export default function AddVehicle() {
           {/* Required Fields Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>פרטים חובה</Text>
+              <View style={styles.sectionTitleRow}>
+                <CheckCircle2 size={18} color="#1F2937" style={{ marginLeft: 8 }} />
+                <Text style={styles.sectionTitle}>פרטים חובה</Text>
+              </View>
               <View style={styles.requiredBadge}>
                 <Text style={styles.requiredBadgeText}>נדרש</Text>
               </View>
@@ -227,7 +241,7 @@ export default function AddVehicle() {
                       onPress={() => handleManufacturerSelect(item)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.dropdownIcon}>🏢</Text>
+                      <Building2 size={18} color="#6B7280" style={{ marginLeft: 12 }} />
                       <Text style={styles.dropdownText}>{item}</Text>
                     </TouchableOpacity>
                   ))}
@@ -249,7 +263,7 @@ export default function AddVehicle() {
                   onPress={() => setFuelType("Electric")}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.fuelIcon}>⚡</Text>
+                  <Zap size={28} color={fuelType === "Electric" ? "#F59E0B" : "#6B7280"} style={{ marginBottom: 6 }} />
                   <Text style={[
                     styles.fuelBtnText,
                     fuelType === "Electric" && styles.fuelBtnTextActive
@@ -264,7 +278,7 @@ export default function AddVehicle() {
                   onPress={() => setFuelType("Diesel")}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.fuelIcon}>🛢</Text>
+                  <Droplet size={28} color={fuelType === "Diesel" ? "#3B82F6" : "#6B7280"} style={{ marginBottom: 6 }} />
                   <Text style={[
                     styles.fuelBtnText,
                     fuelType === "Diesel" && styles.fuelBtnTextActive
@@ -279,7 +293,7 @@ export default function AddVehicle() {
                   onPress={() => setFuelType("Gasoline")}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.fuelIcon}>⛽</Text>
+                  <Fuel size={28} color={fuelType === "Gasoline" ? "#10B981" : "#6B7280"} style={{ marginBottom: 6 }} />
                   <Text style={[
                     styles.fuelBtnText,
                     fuelType === "Gasoline" && styles.fuelBtnTextActive
@@ -315,7 +329,10 @@ export default function AddVehicle() {
           {/* Optional Fields Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>פרטים נוספים</Text>
+              <View style={styles.sectionTitleRow}>
+                <Info size={18} color="#1F2937" style={{ marginLeft: 8 }} />
+                <Text style={styles.sectionTitle}>פרטים נוספים</Text>
+              </View>
               <View style={styles.optionalBadge}>
                 <Text style={styles.optionalBadgeText}>אופציונלי</Text>
               </View>
@@ -405,7 +422,7 @@ export default function AddVehicle() {
           activeOpacity={0.9}
         >
           <View style={styles.saveButtonContent}>
-            <Text style={styles.saveButtonIcon}>💾</Text>
+            <Save size={22} color="#fff" style={{ marginLeft: 10 }} />
             <Text style={styles.saveButtonText}>שמור רכב</Text>
           </View>
         </TouchableOpacity>
@@ -455,18 +472,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  backBtnTopText: {
-    fontSize: 24,
-    color: "#333",
-    fontWeight: "600",
-    transform: [{ scaleX: -1 }],
-  },
   titleContainer: {
     alignItems: "center",
     marginTop: 8,
   },
-  emoji: {
-    fontSize: 48,
+  headerIconWrapper: {
     marginBottom: 12,
   },
   title: {
@@ -500,6 +510,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 20,
+  },
+  sectionTitleRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
   },
   sectionTitle: {
     fontSize: 18,
@@ -562,6 +576,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#E5E7EB",
     fontWeight: "500",
+    textAlign: 'right',
   },
   inputOptional: {
     backgroundColor: "#FAFBFC",
@@ -571,6 +586,7 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
+    textAlign: 'right',
   },
   inputFocused: {
     borderColor: "#009688",
@@ -595,7 +611,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   dropdownItem: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -605,14 +621,11 @@ const styles = StyleSheet.create({
   dropdownItemLast: {
     borderBottomWidth: 0,
   },
-  dropdownIcon: {
-    fontSize: 18,
-    marginRight: 12,
-  },
   dropdownText: {
     fontSize: 16,
     color: "#1F2937",
     fontWeight: "500",
+    textAlign: 'right',
   },
   fuelRow: {
     flexDirection: "row",
@@ -657,10 +670,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  fuelIcon: {
-    fontSize: 28,
-    marginBottom: 6,
-  },
   fuelBtnText: {
     fontWeight: "700",
     fontSize: 14,
@@ -685,10 +694,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  saveButtonIcon: {
-    fontSize: 22,
-    marginRight: 10,
-  },
   saveButtonText: {
     color: "#fff",
     fontSize: 18,
@@ -699,7 +704,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 12, // רווח נעים מעל ומתחת לפרסומת
-    backgroundColor: "transparent", // מבטיח שאין רקע לבן שחורג
+    marginVertical: 12,
+    backgroundColor: "transparent",
   },
 });

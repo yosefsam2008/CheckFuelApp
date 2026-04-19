@@ -11,6 +11,33 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Unified Lucide Icons
+import {
+  Target,
+  Car,
+  Calculator,
+  BarChart3,
+  Fuel,
+  Rocket,
+  Smartphone,
+  Search,
+  PenTool,
+  Ruler,
+  TrendingUp,
+  DollarSign,
+  Trash2,
+  ChevronDown,
+  ChevronLeft,
+  X,
+  Lightbulb,
+  AlertTriangle,
+  Info,
+  Map,
+  History,
+  CheckCircle2,
+  Table
+} from 'lucide-react-native';
+
 interface UserGuideScreenProps {
   onClose: () => void;
 }
@@ -20,7 +47,7 @@ type TabType = 'basics' | 'vehicles' | 'calculations' | 'history';
 interface SectionProps {
   title: string;
   content?: React.ReactNode;
-  icon?: string;
+  iconNode?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -38,7 +65,7 @@ const Colors = {
   shadow: 'rgba(0, 150, 136, 0.15)',
 };
 
-const Section: React.FC<SectionProps> = ({ title, content, icon, children }) => {
+const Section: React.FC<SectionProps> = ({ title, content, iconNode, children }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -48,9 +75,11 @@ const Section: React.FC<SectionProps> = ({ title, content, icon, children }) => 
         onPress={() => setExpanded(!expanded)}
         activeOpacity={0.7}
       >
-        {icon && <Text style={styles.sectionIcon}>{icon}</Text>}
+        <View style={styles.sectionIconWrapper}>{iconNode}</View>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.expandIcon}>{expanded ? '▼' : '◀'}</Text>
+        <View style={styles.expandIconWrapper}>
+          {expanded ? <ChevronDown size={14} color={Colors.primary} /> : <ChevronLeft size={14} color={Colors.primary} />}
+        </View>
       </TouchableOpacity>
       {expanded && (
         <View style={styles.sectionContent}>
@@ -75,15 +104,18 @@ const InfoBox: React.FC<{ children: React.ReactNode; type?: 'tip' | 'warning' | 
     warning: '#ff9800',
     info: '#00bcd4',
   };
-  const icons = {
-    tip: '💡',
-    warning: '⚠️',
-    info: 'ℹ️',
+
+  const renderIcon = () => {
+    switch (type) {
+      case 'tip': return <Lightbulb size={20} color={borderColors.tip} />;
+      case 'warning': return <AlertTriangle size={20} color={borderColors.warning} />;
+      default: return <Info size={20} color={borderColors.info} />;
+    }
   };
 
   return (
     <View style={[styles.infoBox, { backgroundColor: bgColors[type], borderColor: borderColors[type] }]}>
-      <Text style={styles.infoIcon}>{icons[type]}</Text>
+      <View style={styles.infoIconWrapper}>{renderIcon()}</View>
       <View style={styles.infoContent}>
         {children}
       </View>
@@ -100,26 +132,20 @@ const StepItem: React.FC<{ number: number; text: string }> = ({ number, text }) 
   </View>
 );
 
-const Screenshot: React.FC<{ label: string; height?: number }> = ({ label, height = 120 }) => (
-  <View style={[styles.screenshot, { height }]}>
-    <Text style={styles.screenshotLabel}>{label}</Text>
-  </View>
-);
-
 export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
-  const insets = useSafeAreaInsets(); // מביא את השוליים הבטוחים של המכשיר
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('basics');
 
   const tabs = [
-    { id: 'basics' as TabType, label: 'בסיסי', icon: '🎯' },
-    { id: 'vehicles' as TabType, label: 'רכבים', icon: '🚗' },
-    { id: 'calculations' as TabType, label: 'חישובים', icon: '🧮' },
-    { id: 'history' as TabType, label: 'היסטוריה', icon: '📊' },
+    { id: 'basics' as TabType, label: 'בסיסי', iconNode: <Target size={18} color={activeTab === 'basics' ? '#fff' : Colors.textDark} /> },
+    { id: 'vehicles' as TabType, label: 'רכבים', iconNode: <Car size={18} color={activeTab === 'vehicles' ? '#fff' : Colors.textDark} /> },
+    { id: 'calculations' as TabType, label: 'חישובים', iconNode: <Calculator size={18} color={activeTab === 'calculations' ? '#fff' : Colors.textDark} /> },
+    { id: 'history' as TabType, label: 'היסטוריה', iconNode: <BarChart3 size={18} color={activeTab === 'history' ? '#fff' : Colors.textDark} /> },
   ];
 
   const renderBasicsContent = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <Section title="על האפליקציה" icon="⛽">
+      <Section title="על האפליקציה" iconNode={<Fuel size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
           CheckFuel עוזרת לך לחשב עלויות דלק ולנהל רכבים בקלות.
         </Text>
@@ -130,7 +156,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </Text>
       </Section>
 
-      <Section title="מתחילים" icon="🚀">
+      <Section title="מתחילים" iconNode={<Rocket size={22} color={Colors.primary} />}>
         <StepItem number={1} text='הוסף רכב בלשונית "רכבים"' />
         <StepItem number={2} text='הזן צריכת דלק (ק״מ/ליטר)' />
         <StepItem number={3} text='חשב עלות נסיעה ב"מחשבון"' />
@@ -142,12 +168,12 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </InfoBox>
       </Section>
 
-      <Section title="לשוניות ראשיות" icon="📱">
+      <Section title="לשוניות ראשיות" iconNode={<Smartphone size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
-          🏠 <Text style={styles.boldText}>לוח בקרה</Text> - סיכום כללי{'\n'}
-          🚗 <Text style={styles.boldText}>רכבים</Text> - ניהול הרכבים שלך{'\n'}
-          🧮 <Text style={styles.boldText}>מחשבון</Text> - חישוב עלות נסיעה{'\n'}
-          📊 <Text style={styles.boldText}>היסטוריה</Text> - מעקב אחר נסיעות
+          • <Text style={styles.boldText}>לוח בקרה</Text> - סיכום כללי{'\n'}
+          • <Text style={styles.boldText}>רכבים</Text> - ניהול הרכבים שלך{'\n'}
+          • <Text style={styles.boldText}>מחשבון</Text> - חישוב עלות נסיעה{'\n'}
+          • <Text style={styles.boldText}>היסטוריה</Text> - מעקב אחר נסיעות
         </Text>
       </Section>
     </ScrollView>
@@ -155,7 +181,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
 
   const renderVehiclesContent = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <Section title="הוספה לפי לוחית רישוי" icon="🔍">
+      <Section title="הוספה לפי לוחית רישוי" iconNode={<Search size={22} color={Colors.primary} />}>
         <StepItem number={1} text='לחץ "הוסף לפי לוחית רישוי"' />
         <StepItem number={2} text='הזן מספר לוחית (7-8 ספרות)' />
         <StepItem number={3} text='המתן לטעינת הפרטים' />
@@ -168,14 +194,14 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </InfoBox>
       </Section>
 
-      <Section title="הוספה ידנית" icon="✍️">
+      <Section title="הוספה ידנית" iconNode={<PenTool size={22} color={Colors.primary} />}>
         <StepItem number={1} text='לחץ "הוסף ידני"' />
         <StepItem number={2} text='בחר סוג דלק (בנזין/סולר/חשמל)' />
         <StepItem number={3} text='הזן שם, דגם וצריכת דלק' />
         <StepItem number={4} text='שמור את הרכב' />
       </Section>
 
-      <Section title="צריכת דלק - איך מזינים?" icon="📏">
+      <Section title="צריכת דלק - איך מזינים?" iconNode={<Ruler size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
           <Text style={styles.boldText}>בנזין/סולר:</Text> כמה ק״מ לליטר{'\n'}
           דוגמה: רכב שעושה 15 ק״מ/ליטר → הזן 15
@@ -193,7 +219,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </InfoBox>
       </Section>
 
-      <Section title="עריכה ומחיקה" icon="✏️">
+      <Section title="עריכה ומחיקה" iconNode={<PenTool size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
           <Text style={styles.boldText}>עריכה:</Text> לחץ על הרכב → ערוך → שמור
         </Text>
@@ -212,16 +238,16 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
 
   const renderCalculationsContent = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <Section title="איך מחשבים?" icon="🧮">
+      <Section title="איך מחשבים?" iconNode={<Calculator size={22} color={Colors.primary} />}>
         <StepItem number={1} text='בחר רכב מהרשימה' />
         <StepItem number={2} text='הזן מרחק (בק״מ)' />
         <StepItem number={3} text='לחץ "חשב עלות"' />
         <StepItem number={4} text='שמור נסיעה להיסטוריה (אופציונלי)' />
       </Section>
 
-      <Section title="התוצאות שתקבל" icon="📈">
+      <Section title="התוצאות שתקבל" iconNode={<TrendingUp size={22} color={Colors.primary} />}>
         <View style={styles.resultItem}>
-          <Text style={styles.resultIcon}>💰</Text>
+          <View style={styles.resultIconWrapper}><DollarSign size={20} color={Colors.primary} /></View>
           <View style={styles.resultContent}>
             <Text style={styles.resultTitle}>עלות כוללת</Text>
             <Text style={styles.resultDesc}>
@@ -231,7 +257,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </View>
 
         <View style={styles.resultItem}>
-          <Text style={styles.resultIcon}>⛽</Text>
+          <View style={styles.resultIconWrapper}><Fuel size={20} color={Colors.primary} /></View>
           <View style={styles.resultContent}>
             <Text style={styles.resultTitle}>צריכת דלק</Text>
             <Text style={styles.resultDesc}>
@@ -241,7 +267,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </View>
 
         <View style={styles.resultItem}>
-          <Text style={styles.resultIcon}>📊</Text>
+          <View style={styles.resultIconWrapper}><BarChart3 size={20} color={Colors.primary} /></View>
           <View style={styles.resultContent}>
             <Text style={styles.resultTitle}>עלות לק״מ</Text>
             <Text style={styles.resultDesc}>
@@ -257,7 +283,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </InfoBox>
       </Section>
 
-      <Section title="דוגמאות" icon="💡">
+      <Section title="דוגמאות" iconNode={<Lightbulb size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
           <Text style={styles.boldText}>בנזין:</Text> 100 ק״מ ב-12 ק״מ/ליטר{'\n'}
           → 8.33 ליטר × 6.5 ₪ = 54 ₪
@@ -269,7 +295,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </Text>
       </Section>
 
-      <Section title="מחירי דלק" icon="💸">
+      <Section title="מחירי דלק" iconNode={<DollarSign size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
           • מחירים עדכניים (95, 98, סולר){'\n'}
           • ממוצע ארצי - המחיר בתחנה עשוי להשתנות{'\n'}
@@ -280,7 +306,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
 
   const renderHistoryContent = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <Section title="מה מוצג בהיסטוריה?" icon="📜">
+      <Section title="מה מוצג בהיסטוריה?" iconNode={<History size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
           • תאריך ושעה{'\n'}
           • רכב (שם ודגם){'\n'}
@@ -296,41 +322,41 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
         </InfoBox>
       </Section>
 
-      <Section title="סטטיסטיקות" icon="📊">
+      <Section title="סטטיסטיקות" iconNode={<BarChart3 size={22} color={Colors.primary} />}>
         <Text style={styles.contentText}>
           בראש המסך תראה סיכום:
         </Text>
 
         <View style={styles.statExample}>
-          <Text style={styles.statExampleIcon}>📈</Text>
+          <TrendingUp size={18} color={Colors.primary} />
           <Text style={styles.statExampleText}>
             <Text style={styles.boldText}>סה״כ נסיעות</Text>
           </Text>
         </View>
 
         <View style={styles.statExample}>
-          <Text style={styles.statExampleIcon}>🛣️</Text>
+          <Map size={18} color={Colors.primary} />
           <Text style={styles.statExampleText}>
             <Text style={styles.boldText}>סה״כ מרחק</Text>
           </Text>
         </View>
 
         <View style={styles.statExample}>
-          <Text style={styles.statExampleIcon}>💰</Text>
+          <DollarSign size={18} color={Colors.primary} />
           <Text style={styles.statExampleText}>
             <Text style={styles.boldText}>סה״כ עלות</Text>
           </Text>
         </View>
 
         <View style={styles.statExample}>
-          <Text style={styles.statExampleIcon}>🎯</Text>
+          <Target size={18} color={Colors.primary} />
           <Text style={styles.statExampleText}>
             <Text style={styles.boldText}>ממוצע לק״מ</Text>
           </Text>
         </View>
       </Section>
 
-      <Section title="מחיקת נסיעה" icon="🗑️">
+      <Section title="מחיקת נסיעה" iconNode={<Trash2 size={22} color={Colors.primary} />}>
         <StepItem number={1} text='לחץ על נסיעה ברשימה' />
         <StepItem number={2} text='לחץ "מחק"' />
         <StepItem number={3} text='אשר מחיקה' />
@@ -355,13 +381,13 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
   };
 
   return (
-    // כופה כיווניות RTL על כל המסך, ומרחיק את התוכן התחתון מהפס של האנדרואיד
-    <View style={[styles.container, { direction: 'ltr', paddingBottom: insets.bottom }]}>      {/* Header */}
+    <View style={[styles.container, { direction: 'ltr', paddingBottom: insets.bottom }]}>
+      {/* Header */}
       <LinearGradient colors={[Colors.primary, Colors.primaryLight]} style={styles.header}>
         <Text style={styles.headerTitle}>מדריך שימוש</Text>
         <Text style={styles.headerSubtitle}>מדריך מהיר ויעיל לשימוש באפליקציה</Text>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>✕</Text>
+          <X size={20} color="#fff" />
         </TouchableOpacity>
       </LinearGradient>
 
@@ -375,7 +401,7 @@ export default function UserGuideScreen({ onClose }: UserGuideScreenProps) {
               onPress={() => setActiveTab(tab.id)}
               activeOpacity={0.7}
             >
-              <Text style={styles.tabIcon}>{tab.icon}</Text>
+              {tab.iconNode}
               <Text style={[styles.tabLabel, activeTab === tab.id && styles.activeTabLabel]}>
                 {tab.label}
               </Text>
@@ -419,18 +445,13 @@ const styles = StyleSheet.create({
   closeButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 40,
-    left: 20, // באפליקציה עברית נהוג להשאיר את ה-X בצד שמאל
+    left: 20,
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 20,
-    color: '#fff',
-    fontWeight: '600',
   },
   tabsContainer: {
     backgroundColor: '#fff',
@@ -440,25 +461,23 @@ const styles = StyleSheet.create({
   tabsScroll: {
     paddingHorizontal: 12,
     paddingVertical: 12,
+    flexDirection: 'row-reverse',
     gap: 8,
   },
   tab: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: Colors.background,
-    gap: 6,
+    gap: 8,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
   },
   activeTab: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
-  },
-  tabIcon: {
-    fontSize: 18,
   },
   tabLabel: {
     fontSize: 14,
@@ -495,14 +514,15 @@ const styles = StyleSheet.create({
     }),
   },
   sectionHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     padding: 16,
     backgroundColor: Colors.card,
-    gap: 12, // מחליף את ה-marginLeft שהיה באייקון למרווח חכם יותר שמותאם ל-RTL
+    gap: 12,
   },
-  sectionIcon: {
-    fontSize: 24,
+  sectionIconWrapper: {
+    width: 24,
+    alignItems: 'center',
   },
   sectionTitle: {
     flex: 1,
@@ -512,10 +532,9 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  expandIcon: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '700',
+  expandIconWrapper: {
+    width: 14,
+    alignItems: 'center',
   },
   sectionContent: {
     padding: 16,
@@ -535,15 +554,15 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   infoBox: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     gap: 10,
     marginVertical: 8,
   },
-  infoIcon: {
-    fontSize: 20,
+  infoIconWrapper: {
+    paddingTop: 2,
   },
   infoContent: {
     flex: 1,
@@ -556,7 +575,7 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
   },
   stepItem: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'flex-start',
     gap: 12,
     marginBottom: 12,
@@ -583,57 +602,8 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     paddingTop: 4,
   },
-  screenshot: {
-    backgroundColor: '#e0f2f1',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 12,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    borderStyle: 'dashed',
-  },
-  screenshotLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.primary,
-    textAlign: 'center',
-    writingDirection: 'rtl',
-  },
-  featureList: {
-    gap: 12,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 12,
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-  },
-  featureIcon: {
-    fontSize: 28,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.textDark,
-    marginBottom: 4,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-  },
-  featureDesc: {
-    fontSize: 13,
-    color: Colors.textGray,
-    lineHeight: 18,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-  },
   resultItem: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'flex-start',
     gap: 12,
     marginBottom: 16,
@@ -641,8 +611,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.cardBorder,
   },
-  resultIcon: {
-    fontSize: 24,
+  resultIconWrapper: {
+    paddingTop: 2,
   },
   resultContent: {
     flex: 1,
@@ -662,29 +632,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  exampleBox: {
-    backgroundColor: '#fff3e0',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ff9800',
-    marginVertical: 8,
-  },
-  exampleText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: Colors.textDark,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-  },
   statExample: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 8,
-  },
-  statExampleIcon: {
-    fontSize: 20,
   },
   statExampleText: {
     flex: 1,

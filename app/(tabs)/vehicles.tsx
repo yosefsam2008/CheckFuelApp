@@ -19,41 +19,86 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Vehicle } from "../../lib/data/vehiclesData";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 
+// Unified Lucide Icons
+import {
+  Zap,
+  Plug,
+  Fuel,
+  HelpCircle,
+  Car,
+  Truck,
+  Bike,
+  Type,
+  Hash,
+  Wrench,
+  Calendar,
+  Activity,
+  ChevronLeft,
+  Scan,
+  CheckCircle,
+  Gift,
+  X,
+  PlaySquare,
+  Trash2,
+  Edit2,
+  Plus,
+  Check
+} from "lucide-react-native";
+
 // Conditional import for ads - only load on native platforms
 const PlateDetectionRewardedAd =
   Platform.OS === "web"
     ? () => null
     : require("../../components/PlateDetectionRewardedAd").default;
-    const AdBanner = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
+const AdBanner = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 
 const IS_WEB = Platform.OS === "web";
 const MAX_WIDTH = 600;
 
-// סינכרון מלא עם הטיפוסים ב-Vehicle Interface
+// Full synchronization with Vehicle Interface types
 type FuelType = "Electric" | "Gasoline" | "Diesel" | "PHEV" | "Unknown";
 
-// הוספת PHEV ו-Unknown לקונפיגורציה
-const FUEL_CONFIG: Record<FuelType, { label: string; emoji: string; color: string }> = {
-  Electric: { label: "חשמלי ⚡", emoji: "⚡", color: "#4CAF50" },
-  PHEV: { label: "פלאג-אין 🔌", emoji: "🔌", color: "#8BC34A" }, // ירוק בהיר להבדיל מחשמלי מלא
-  Gasoline: { label: "בנזין ⛽", emoji: "⛽", color: "#FF9800" },
-  Diesel: { label: "דיזל ⛽", emoji: "⛽", color: "#607D8B" },
-  Unknown: { label: "לא ידוע ❓", emoji: "❓", color: "#9E9E9E" },
+// Cleaned up FUEL_CONFIG (removed inline emojis from labels)
+const FUEL_CONFIG: Record<FuelType, { label: string; color: string }> = {
+  Electric: { label: "חשמלי", color: "#4CAF50" },
+  PHEV: { label: "פלאג-אין", color: "#8BC34A" },
+  Gasoline: { label: "בנזין", color: "#FF9800" },
+  Diesel: { label: "דיזל", color: "#607D8B" },
+  Unknown: { label: "לא ידוע", color: "#9E9E9E" },
 };
 
-// כבר אין צורך ב-DEFAULT_FUEL נפרד, נשתמש ב-Unknown מהקונפיגורציה
 const getFuelData = (fuelType: string | undefined) => {
   return FUEL_CONFIG[(fuelType as FuelType)] || FUEL_CONFIG.Unknown;
 };
 
+// Dynamic Icon Helpers
+const getFuelIcon = (fuelType: FuelType | string | undefined, size = 20, color = "#000") => {
+  switch (fuelType) {
+    case "Electric": return <Zap size={size} color={color} />;
+    case "PHEV": return <Plug size={size} color={color} />;
+    case "Gasoline":
+    case "Diesel": return <Fuel size={size} color={color} />;
+    default: return <HelpCircle size={size} color={color} />;
+  }
+};
+
+const getVehicleIcon = (type: string | undefined, size = 24, color = "#000") => {
+  switch (type) {
+    case "car": return <Car size={size} color={color} />;
+    case "motorcycle": return <Bike size={size} color={color} />;
+    case "truck": return <Truck size={size} color={color} />;
+    default: return <Car size={size} color={color} />;
+  }
+};
+
 // Detail Row Component
 const DetailRow = ({
-  icon,
+  iconNode,
   label,
   value,
   isLast = false,
 }: {
-  icon: string;
+  iconNode: React.ReactNode;
   label: string;
   value: string;
   isLast?: boolean;
@@ -61,12 +106,12 @@ const DetailRow = ({
   <View style={[styles.detailRow, isLast && styles.detailRowLast]}>
     <View style={styles.detailLeft}>
       <View style={styles.detailIconContainer}>
-        <Text style={styles.detailIconText}>{icon}</Text>
+        {iconNode}
       </View>
       <Text style={styles.detailLabel}>{label}</Text>
     </View>
     <Text style={styles.detailValue} numberOfLines={2}>
-      {value}
+      {value} 
     </Text>
   </View>
 );
@@ -156,7 +201,7 @@ export default function VehiclesScreen() {
     setAvgConsumption(item.avgConsumption ? String(item.avgConsumption) : "");
     const safeFuelType = item.fueltype || "Unknown";
     const isValidFuel = Object.keys(FUEL_CONFIG).includes(safeFuelType);
-  setFuelType(isValidFuel ? (safeFuelType as FuelType) : "Unknown");    
+    setFuelType(isValidFuel ? (safeFuelType as FuelType) : "Unknown");    
     setManufactureYear(item.year ? String(item.year) : "");
     setEditMode(false);
     setShowModal(true);
@@ -230,10 +275,10 @@ export default function VehiclesScreen() {
 
       closeModal();
       setSelected(null);
-      showToast("🗑️ הרכב נמחק בהצלחה");
+      showToast("הרכב נמחק בהצלחה");
     } catch (error) {
       console.error("❌ שגיאה במחיקה:", error);
-      showToast("❌ שגיאה במחיקה");
+      showToast("שגיאה במחיקה");
     }
   };
 
@@ -247,15 +292,6 @@ export default function VehiclesScreen() {
 
   const handleDeleteCancelled = () => setShowDeleteConfirm(false);
 
-  const getVehicleEmoji = (type: Vehicle["type"]) => {
-    switch (type) {
-      case "car": return "🚗";
-      case "motorcycle": return "🏍️";
-      case "truck": return "🚛";
-      default: return "❓";
-    }
-  };
-
   const handleShowPlateAd = () => {
     setShowPlateDetectionModal(false);
     if (Platform.OS === "web") {
@@ -268,7 +304,7 @@ export default function VehiclesScreen() {
   const onPlateAdComplete = () => {
     setShowPlateDetectionAd(false);
     router.push("/addVehicleByPlate");
-    showToast("✓ זיהוי אוטומטי זמין!");
+    showToast("זיהוי אוטומטי זמין!");
   };
 
   const headerOpacity = scrollY.interpolate({
@@ -297,7 +333,9 @@ export default function VehiclesScreen() {
           ]}
         >
           <View style={styles.headerContent}>
-            <Text style={styles.headerEmoji}>🚗</Text>
+            <View style={{ marginRight: 12 }}>
+              <Car size={32} color="#009688" />
+            </View>
             <Text style={styles.title}>הרכבים שלי</Text>
           </View>
           <Text style={styles.subtitle}>
@@ -352,12 +390,12 @@ export default function VehiclesScreen() {
                 ]}
               >
                 <View style={[styles.fuelBadge, { backgroundColor: fuelData.color }]}>
-                  <Text style={styles.fuelBadgeText}>{fuelData.emoji}</Text>
+                  {getFuelIcon(item.fueltype, 18, "#fff")}
                 </View>
 
                 <View style={styles.cardContent}>
                   <View style={styles.vehicleIconContainer}>
-                    <Text style={styles.vehicleIcon}>{getVehicleEmoji(item.type)}</Text>
+                    {getVehicleIcon(item.type, 32, "#009688")}
                   </View>
 
                   <View style={styles.vehicleInfo}>
@@ -382,7 +420,7 @@ export default function VehiclesScreen() {
                   </View>
 
                   <View style={styles.arrowContainer}>
-                    <Text style={styles.arrow}>‹</Text>
+                    <ChevronLeft size={24} color="#009688" />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -390,7 +428,9 @@ export default function VehiclesScreen() {
           }}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🚗</Text>
+              <View style={{ marginBottom: 20 }}>
+                <Car size={72} color="#009688" />
+              </View>
               <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noVehicles}</Text>
               <Text style={styles.emptyText}>{LEGAL_UI_STRINGS.empty.addFirst}</Text>
               
@@ -414,7 +454,7 @@ export default function VehiclesScreen() {
             testID="btn-add-by-plate"
           >
             <View style={styles.btnGradient}>
-              <Text style={styles.addBtnIconPrimary}>📋</Text>
+              <Scan size={28} color="#fff" style={{ marginBottom: 6 }} />
               <Text style={styles.addBtnTextPrimary}>הוסף לפי לוחית רישוי</Text>
               <Text style={styles.addBtnSubtext}>זיהוי אוטומטי מהיר</Text>
             </View>
@@ -427,7 +467,7 @@ export default function VehiclesScreen() {
             testID="btn-add-manual"
           >
             <View style={styles.btnGradientSecondary}>
-              <Text style={styles.addBtnIconSecondary}>✏️</Text>
+              <Plus size={26} color="#fff" style={{ marginBottom: 4 }} />
               <Text style={styles.addBtnTextSecondary}>הוסף ידני</Text>
             </View>
           </TouchableOpacity>
@@ -446,7 +486,7 @@ export default function VehiclesScreen() {
           >
             <View style={styles.modalHeader}>
               <TouchableOpacity style={styles.modalCloseButton} onPress={closeModal}>
-                <Text style={styles.modalCloseButtonText}>✕</Text>
+                <X size={20} color="#6b7280" />
               </TouchableOpacity>
               <View
                 style={[
@@ -454,9 +494,7 @@ export default function VehiclesScreen() {
                   { backgroundColor: getFuelData(selected?.fueltype).color },
                 ]}
               >
-                <Text style={styles.modalHeaderIcon}>
-                  {selected && getFuelData(selected.fueltype).emoji}
-                </Text>
+                {selected && getFuelIcon(selected.fueltype, 28, "#fff")}
               </View>
               <Text style={styles.modalTitle}>{editMode ? "עריכת רכב" : "פרטי רכב"}</Text>
             </View>
@@ -468,18 +506,18 @@ export default function VehiclesScreen() {
             >
               {selected && !editMode && (
                 <View style={styles.detailsContainer}>
-                  <DetailRow icon="📝" label="שם" value={selected.name} />
-                  <DetailRow icon="🔢" label="לוחית רישוי" value={selected.plate} />
-                  <DetailRow icon="🚙" label="דגם" value={selected.model} />
-                  <DetailRow icon="⚙️" label="מנוע" value={selected.engine} />
-                  <DetailRow icon="📅" label="שנת ייצור" value={String(selected.year)} />
+                  <DetailRow iconNode={<Type size={20} color="#009688" />} label="שם" value={selected.name} />
+                  <DetailRow iconNode={<Hash size={20} color="#009688" />} label="לוחית רישוי" value={selected.plate} />
+                  <DetailRow iconNode={<Car size={20} color="#009688" />} label="דגם" value={selected.model} />
+                  <DetailRow iconNode={<Wrench size={20} color="#009688" />} label="מנוע" value={selected.engine} />
+                  <DetailRow iconNode={<Calendar size={20} color="#009688" />} label="שנת ייצור" value={String(selected.year)} />
                   <DetailRow
-                    icon={getFuelData(selected.fueltype).emoji}
+                    iconNode={getFuelIcon(selected.fueltype, 20, "#009688")}
                     label="סוג דלק"
                     value={getFuelData(selected.fueltype).label}
                   />
                   <DetailRow
-                    icon="📊"
+                    iconNode={<Activity size={20} color="#009688" />}
                     label="צריכה ממוצעת"
                     value={
                       selected.avgConsumption
@@ -580,7 +618,7 @@ export default function VehiclesScreen() {
                               fuelType === key && styles.fuelBtnTextActive,
                             ]}
                           >
-                            {ft.label.replace(/ \D$/, "")}
+                            {ft.label}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -598,14 +636,20 @@ export default function VehiclesScreen() {
                     onPress={() => setEditMode(true)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.editBtnText}>✏️ ערוך</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Edit2 size={16} color="#fff" />
+                       <Text style={styles.editBtnText}>ערוך</Text>
+                    </View>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalBtn, styles.deleteBtn]}
                     onPress={confirmDelete}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.deleteBtnText}>🗑️ מחק</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Trash2 size={16} color="#fff" />
+                       <Text style={styles.deleteBtnText}>מחק</Text>
+                    </View>
                   </TouchableOpacity>
                 </>
               ) : (
@@ -615,14 +659,20 @@ export default function VehiclesScreen() {
                     onPress={saveChanges}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.saveBtnText}>✓ שמור</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Check size={18} color="#fff" />
+                       <Text style={styles.saveBtnText}>שמור</Text>
+                    </View>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalBtn, styles.cancelBtn]}
                     onPress={() => setEditMode(false)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.cancelBtnText}>✕ בטל</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <X size={18} color="#6b7280" />
+                       <Text style={styles.cancelBtnText}>בטל</Text>
+                    </View>
                   </TouchableOpacity>
                 </>
               )}
@@ -646,7 +696,9 @@ export default function VehiclesScreen() {
               onPress={() => setShowPlateDetectionModal(false)}
             />
             <View style={styles.plateModalContent}>
-              <Text style={styles.plateModalIcon}>🎬</Text>
+              <View style={{ marginBottom: 16 }}>
+                <PlaySquare size={56} color="#009688" />
+              </View>
               <Text style={styles.plateModalTitle}>זיהוי אוטומטי לפי לוחית רישוי</Text>
               <Text style={styles.plateModalDescription}>
                 כדי לזהות את הרכב שלך אוטומטית,{'\n'}צפה בפרסומת קצרה של 15-30 שניות
@@ -654,15 +706,15 @@ export default function VehiclesScreen() {
 
               <View style={styles.plateBenefits}>
                 <View style={styles.plateBenefit}>
-                  <Text style={styles.plateBenefitIcon}>⚡</Text>
+                  <Zap size={32} color="#F59E0B" style={{ marginBottom: 8 }} />
                   <Text style={styles.plateBenefitText}>זיהוי מיידי</Text>
                 </View>
                 <View style={styles.plateBenefit}>
-                  <Text style={styles.plateBenefitIcon}>✓</Text>
+                  <CheckCircle size={32} color="#10B981" style={{ marginBottom: 8 }} />
                   <Text style={styles.plateBenefitText}>נתונים מדויקים</Text>
                 </View>
                 <View style={styles.plateBenefit}>
-                  <Text style={styles.plateBenefitIcon}>🎁</Text>
+                  <Gift size={32} color="#3B82F6" style={{ marginBottom: 8 }} />
                   <Text style={styles.plateBenefitText}>שירות חינמי</Text>
                 </View>
               </View>
@@ -679,7 +731,10 @@ export default function VehiclesScreen() {
                   style={styles.plateContinueButton}
                   onPress={handleShowPlateAd}
                 >
-                  <Text style={styles.plateContinueButtonText}>פתח זיהוי אוטומטי ◀</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <Text style={styles.plateContinueButtonText}>פתח זיהוי אוטומטי</Text>
+                    <ChevronLeft size={16} color="#fff" />
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -713,7 +768,9 @@ export default function VehiclesScreen() {
               onPress={handleDeleteCancelled}
             />
             <View style={styles.deleteModalContent}>
-              <Text style={styles.deleteModalIcon}>🗑️</Text>
+              <View style={{ marginBottom: 16 }}>
+                 <Trash2 size={56} color="#f44336" />
+              </View>
               <Text style={styles.deleteModalTitle}>מחיקת רכב</Text>
               <Text style={styles.deleteModalDescription}>
                 האם אתה בטוח שברצונך למחוק את{"\n"}
@@ -732,7 +789,10 @@ export default function VehiclesScreen() {
                   style={styles.deleteConfirmButton}
                   onPress={handleDeleteConfirmed}
                 >
-                  <Text style={styles.deleteConfirmButtonText}>🗑️ מחק</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                     <Trash2 size={16} color="#fff" />
+                     <Text style={styles.deleteConfirmButtonText}>מחק</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -774,10 +834,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-  },
-  headerEmoji: {
-    fontSize: 32,
-    marginRight: 12,
   },
   title: {
     fontSize: 32,
@@ -826,9 +882,6 @@ const styles = StyleSheet.create({
     elevation: 4,
     zIndex: 1,
   },
-  fuelBadgeText: {
-    fontSize: 18,
-  },
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
@@ -843,9 +896,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 16,
-  },
-  vehicleIcon: {
-    fontSize: 36,
   },
   vehicleInfo: {
     flex: 1,
@@ -869,7 +919,7 @@ const styles = StyleSheet.create({
   consumptionRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end", // מיישר את בועת הצריכה לימין
+    justifyContent: "flex-end",
   },
   consumptionBadge: {
     flexDirection: "row",
@@ -894,18 +944,12 @@ const styles = StyleSheet.create({
   arrowContainer: {
     marginLeft: 8,
   },
-  arrow: {
-    fontSize: 24,
-    color: "#009688",
-    fontWeight: "bold",
-  },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 30, // הקטנו מ-80 כדי להשאיר מקום לפרסומת ולכפתורים למטה
+    paddingVertical: 30, 
     paddingHorizontal: 40,
   },
-  // העיצובים החדשים לפרסומת:
   emptyAdWrapper: {
     marginTop: 20,
     alignItems: "center",
@@ -917,10 +961,6 @@ const styles = StyleSheet.create({
     color: "#999",
     marginBottom: 4,
     textAlign: "center",
-  },
-  emptyIcon: {
-    fontSize: 72,
-    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 24,
@@ -942,7 +982,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
-    flexDirection: "row", // הוחזר ל-row
+    flexDirection: "row", 
     gap: 12,
   },
   addBtn: {
@@ -976,14 +1016,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
-  },
-  addBtnIconPrimary: {
-    fontSize: 28,
-    marginBottom: 6,
-  },
-  addBtnIconSecondary: {
-    fontSize: 26,
-    marginBottom: 4,
   },
   addBtnTextPrimary: {
     color: "#fff",
@@ -1025,7 +1057,7 @@ const styles = StyleSheet.create({
     shadowRadius: 30,
     elevation: 24,
     maxHeight: "85%",
-    direction: "rtl", // חובה כדי שהמודל יעבוד מימין לשמאל תמיד
+    direction: "rtl", 
   },
   modalHeader: {
     alignItems: "center",
@@ -1057,11 +1089,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 10,
   },
-  modalCloseButtonText: {
-    fontSize: Platform.OS === "android" ? 20 : 18,
-    color: "#6b7280",
-    fontWeight: "600",
-  },
   modalHeaderBadge: {
     width: 56,
     height: 56,
@@ -1074,9 +1101,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 4,
-  },
-  modalHeaderIcon: {
-    fontSize: 28,
   },
   modalTitle: {
     fontSize: 22,
@@ -1091,7 +1115,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   detailRow: {
-    flexDirection: "row", // תוקן מ-row-reverse
+    flexDirection: "row", 
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 16,
@@ -1119,9 +1143,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  detailIconText: {
-    fontSize: 20,
-  },
   detailLabel: {
     fontSize: 14,
     color: "#6b7280",
@@ -1133,7 +1154,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#1f2937",
     fontWeight: "700",
-    textAlign: "left", // הערך ייצמד לשמאל השורה
+    textAlign: "left", 
     flex: 1,
     paddingLeft: 10,
     lineHeight: 22,
@@ -1164,19 +1185,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     fontWeight: "500",
     textAlign: "right",
-    writingDirection: "rtl", // זה מה שימנע מהנקודות לקפוץ לצד השני
+    writingDirection: "rtl", 
     minHeight: 46,
   },
   fuelSelector: {
     flexDirection: "row",
     flexWrap: "wrap", 
-    justifyContent: "flex-start", // 👈 מסדר אותם יפה מימין לשמאל
+    justifyContent: "flex-start", 
     gap: 8,
   },
   fuelBtn: {
-    flexGrow: 1, // 👈 מאפשר להם לגדול ולמלא את השורה
-    flexBasis: "30%", // 👈 כל כפתור לוקח בערך שליש מהשורה
-    minWidth: 50, // 👈 🎯 שומר שהכפתור יהיה מספיק רחב למילה "פלאג-אין"
+    flexGrow: 1, 
+    flexBasis: "30%", 
+    minWidth: 50, 
     paddingVertical: 14,
     paddingHorizontal: 6,
     borderRadius: 12,
@@ -1204,7 +1225,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   modalActions: {
-    flexDirection: "row", // תוקן מ-row-reverse
+    flexDirection: "row", 
     gap: 10,
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -1311,10 +1332,6 @@ const styles = StyleSheet.create({
     elevation: 24,
     direction: "rtl",
   },
-  plateModalIcon: {
-    fontSize: 56,
-    marginBottom: 16,
-  },
   plateModalTitle: {
     fontSize: 22,
     fontWeight: "800",
@@ -1341,10 +1358,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
-  plateBenefitIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
   plateBenefitText: {
     fontSize: 13,
     fontWeight: "600",
@@ -1353,7 +1366,7 @@ const styles = StyleSheet.create({
     writingDirection: "rtl",
   },
   plateModalActions: {
-    flexDirection: "row", // תוקן מ-row-reverse
+    flexDirection: "row", 
     gap: 12,
     width: "100%",
   },
@@ -1421,10 +1434,6 @@ const styles = StyleSheet.create({
     shadowRadius: 30,
     elevation: 24,
     direction: "rtl",
-  },
-  deleteModalIcon: {
-    fontSize: 56,
-    marginBottom: 16,
   },
   deleteModalTitle: {
     fontSize: 22,

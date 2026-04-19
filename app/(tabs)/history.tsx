@@ -17,6 +17,19 @@ import {
 } from "react-native";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 
+// Import unified icons from Lucide
+import { 
+  Zap, 
+  Fuel, 
+  Trash2, 
+  AlertTriangle, 
+  ClipboardList, 
+  Calculator, 
+  Calendar, 
+  TrendingUp, 
+  Info 
+} from 'lucide-react-native';
+
 // Conditional import for ads - only load on native platforms
 const AdBanner = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 
@@ -67,41 +80,41 @@ export default function HistoryScreen() {
     });
   };
 
-const loadHistory = useCallback(async () => {
-  try {
-    const stored = await AsyncStorage.getItem("tripHistory");
-    if (!stored) {
-      setHistory([]);
-      return;
-    }
-    
-    const parsed = JSON.parse(stored) as TripRecord[];
-    if (!Array.isArray(parsed)) {
-      throw new Error("Invalid history data format");
-    }
-    
-    const sorted = parsed.sort((a, b) => b.timestamp - a.timestamp);
-    setHistory(sorted);
-    
-    sorted.forEach((trip, index) => {
-      if (!cardAnimations[trip.id]) {
-        cardAnimations[trip.id] = new Animated.Value(0);
-        Animated.spring(cardAnimations[trip.id], {
-          toValue: 1,
-          delay: index * 50,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }).start();
+  const loadHistory = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem("tripHistory");
+      if (!stored) {
+        setHistory([]);
+        return;
       }
-    });
-  } catch (error) {
-    console.error("Failed to load history:", error);
-    showToast(LEGAL_UI_STRINGS.errors.apiError);
-    setHistory([]);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+      
+      const parsed = JSON.parse(stored) as TripRecord[];
+      if (!Array.isArray(parsed)) {
+        throw new Error("Invalid history data format");
+      }
+      
+      const sorted = parsed.sort((a, b) => b.timestamp - a.timestamp);
+      setHistory(sorted);
+      
+      sorted.forEach((trip, index) => {
+        if (!cardAnimations[trip.id]) {
+          cardAnimations[trip.id] = new Animated.Value(0);
+          Animated.spring(cardAnimations[trip.id], {
+            toValue: 1,
+            delay: index * 50,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }).start();
+        }
+      });
+    } catch (error) {
+      console.error("Failed to load history:", error);
+      showToast(LEGAL_UI_STRINGS.errors.apiError);
+      setHistory([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -110,36 +123,36 @@ const loadHistory = useCallback(async () => {
     }, [])
   );
 
-const deleteTrip = async (id: string) => {
-  try {
-    const updated = history.filter((trip) => trip.id !== id);
-    setHistory(updated);
-    await AsyncStorage.setItem("tripHistory", JSON.stringify(updated));
-    closeDetailsModal();
-    setShowDeleteConfirm(false);
-    setSelectedTrip(null);
-    showToast(LEGAL_UI_STRINGS.toasts.dataDeleted);
-  } catch (error) {
-    console.error("Failed to delete trip:", error);
-    showToast(LEGAL_UI_STRINGS.errors.apiError);
-  }
-};
+  const deleteTrip = async (id: string) => {
+    try {
+      const updated = history.filter((trip) => trip.id !== id);
+      setHistory(updated);
+      await AsyncStorage.setItem("tripHistory", JSON.stringify(updated));
+      closeDetailsModal();
+      setShowDeleteConfirm(false);
+      setSelectedTrip(null);
+      showToast(LEGAL_UI_STRINGS.toasts.dataDeleted);
+    } catch (error) {
+      console.error("Failed to delete trip:", error);
+      showToast(LEGAL_UI_STRINGS.errors.apiError);
+    }
+  };
 
-const clearAllHistory = async () => {
-  try {
-    await AsyncStorage.removeItem("tripHistory");
-    setHistory([]);
-    setShowClearAllConfirm(false);
-    showToast(LEGAL_UI_STRINGS.toasts.dataDeleted);
-  } catch (error) {
-    console.error("Failed to clear history:", error);
-    showToast(LEGAL_UI_STRINGS.errors.apiError);
-  }
-};
+  const clearAllHistory = async () => {
+    try {
+      await AsyncStorage.removeItem("tripHistory");
+      setHistory([]);
+      setShowClearAllConfirm(false);
+      showToast(LEGAL_UI_STRINGS.toasts.dataDeleted);
+    } catch (error) {
+      console.error("Failed to clear history:", error);
+      showToast(LEGAL_UI_STRINGS.errors.apiError);
+    }
+  };
 
-const confirmClearAllHistory = () => {
-  setShowClearAllConfirm(true);
-};
+  const confirmClearAllHistory = () => {
+    setShowClearAllConfirm(true);
+  };
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
@@ -162,9 +175,10 @@ const confirmClearAllHistory = () => {
     }
   };
 
-  const getFuelEmoji = (fuelType: string): string => {
-    if (fuelType === "Electric") return "⚡";
-    return "⛽";
+  // Helper mapping to return unified SVG Icons instead of text emojis
+  const getFuelIcon = (fuelType: string, size: number, color: string) => {
+    if (fuelType === "Electric") return <Zap size={size} color={color} />;
+    return <Fuel size={size} color={color} />;
   };
 
   const openTripDetails = (trip: TripRecord) => {
@@ -255,13 +269,16 @@ const confirmClearAllHistory = () => {
             ]}
           />
 
-          <Text style={styles.cardBgEmoji}>{getFuelEmoji(item.fuelType)}</Text>
+          {/* Replaced massive background emoji with scaled SVG icon */}
+          <View style={styles.cardBgIconWrapper}>
+             {getFuelIcon(item.fuelType, 140, "#000000")}
+          </View>
 
           <View style={styles.cardContent}>
             <View style={styles.cardTop}>
               <View style={styles.cardTopRight}>
                 <View style={styles.emojiCircle}>
-                  <Text style={styles.cardEmoji}>{getFuelEmoji(item.fuelType)}</Text>
+                  {getFuelIcon(item.fuelType, 24, "#00BFA5")}
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardVehicle} numberOfLines={1}>
@@ -301,7 +318,7 @@ const confirmClearAllHistory = () => {
     );
   };
 
- // Policy-compliant Feed Banner Ad
+  // Policy-compliant Feed Banner Ad
   const FeedBannerAd = () => (
     <View style={styles.feedAdContainer}>
       <Text style={styles.adTagSmall}>פרסומת</Text>
@@ -320,7 +337,6 @@ const confirmClearAllHistory = () => {
         </Text>
       </View>
 
-    
       {/* Toast */}
       {toastMessage && (
         <Animated.View
@@ -343,11 +359,11 @@ const confirmClearAllHistory = () => {
         </Animated.View>
       )}
 
- {history.length === 0 ? (
+      {history.length === 0 ? (
         <>
           <View style={styles.emptyContainer}>
             <View style={styles.emptyCircle}>
-              <Text style={styles.emptyEmoji}>📋</Text>
+              <ClipboardList size={64} color="#00BFA5" />
             </View>
             <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noHistory}</Text>
             <Text style={styles.emptyText}>
@@ -358,7 +374,10 @@ const confirmClearAllHistory = () => {
               onPress={() => router.push("/calculator")}
               activeOpacity={0.8}
             >
-              <Text style={styles.emptyButtonText}>🧮 צור חישוב ראשון</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                 <Calculator size={20} color="#fff" />
+                 <Text style={styles.emptyButtonText}>צור חישוב ראשון</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -389,13 +408,16 @@ const confirmClearAllHistory = () => {
             showsVerticalScrollIndicator={false}
           />
 
-<TouchableOpacity
+          <TouchableOpacity
             style={styles.clearAllButton}
             onPress={confirmClearAllHistory}
             activeOpacity={0.8}
           >
             <View style={styles.clearAllGradient} />
-            <Text style={styles.clearAllText}>🗑️ נקה הכל</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 1 }}>
+              <Trash2 size={20} color="#fff" />
+              <Text style={styles.clearAllText}>נקה הכל</Text>
+            </View>
           </TouchableOpacity>
         </>
       )}
@@ -434,9 +456,7 @@ const confirmClearAllHistory = () => {
                 <>
                   <View style={styles.modalHeader}>
                     <View style={styles.modalEmojiCircle}>
-                      <Text style={styles.modalEmoji}>
-                        {getFuelEmoji(selectedTrip.fuelType)}
-                      </Text>
+                      {getFuelIcon(selectedTrip.fuelType, 40, "#00BFA5")}
                     </View>
                     <Text style={styles.modalTitle}>{selectedTrip.vehicleName}</Text>
                     <Text style={styles.modalSubtitle}>{selectedTrip.vehicleModel}</Text>
@@ -465,26 +485,26 @@ const confirmClearAllHistory = () => {
 
                   <View style={styles.detailsContainer}>
                     <DetailRow
-                      icon="📅"
+                      iconNode={<Calendar size={20} color="#666" />}
                       label="תאריך"
                       value={formatDate(selectedTrip.timestamp)}
                     />
                     <DetailRow
-                      icon={selectedTrip.energyType === "electricity" ? "⚡" : "⛽"}
+                      iconNode={selectedTrip.energyType === "electricity" ? <Zap size={20} color="#666" /> : <Fuel size={20} color="#666" />}
                       label={selectedTrip.energyType === "electricity" ? "חשמל" : "דלק"}
                       value={`${selectedTrip.fuelConsumed.toFixed(2)} ${
                         selectedTrip.energyType === "electricity" ? "kWh" : "ליטר"
                       }`}
                     />
                     <DetailRow
-                      icon="📊"
+                      iconNode={<TrendingUp size={20} color="#666" />}
                       label="יעילות"
                       value={`${selectedTrip.consumption.toFixed(2)} ${
                         selectedTrip.energyType === "electricity" ? "km/%" : "km/l"
                       }`}
                     />
                     <DetailRow
-                      icon="🔋"
+                      iconNode={<Info size={20} color="#666" />}
                       label="סוג"
                       value={selectedTrip.fuelType}
                       isLast
@@ -496,7 +516,10 @@ const confirmClearAllHistory = () => {
                     onPress={() => setShowDeleteConfirm(true)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.deleteButtonText}>🗑️ מחק נסיעה</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                       <Trash2 size={18} color="#FF5252" />
+                       <Text style={styles.deleteButtonText}>מחק נסיעה</Text>
+                    </View>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -528,7 +551,7 @@ const confirmClearAllHistory = () => {
           />
           <View style={styles.confirmModal}>
             <View style={styles.confirmIconCircle}>
-              <Text style={styles.confirmIcon}>🗑️</Text>
+              <Trash2 size={40} color="#FF5252" />
             </View>
             <Text style={styles.confirmTitle}>מחיקת נסיעה</Text>
             <Text style={styles.confirmText}>
@@ -594,8 +617,8 @@ const confirmClearAllHistory = () => {
             onPress={() => setShowClearAllConfirm(false)}
           />
           <View style={styles.confirmModal}>
-            <View style={styles.confirmIconCircle}>
-              <Text style={styles.confirmIcon}>⚠️</Text>
+            <View style={[styles.confirmIconCircle, { backgroundColor: '#FFFBEB' }]}>
+              <AlertTriangle size={40} color="#F59E0B" />
             </View>
             <Text style={styles.confirmTitle}>מחיקת כל ההיסטוריה</Text>
             <Text style={styles.confirmText}>
@@ -628,19 +651,19 @@ const confirmClearAllHistory = () => {
 }
 
 const DetailRow = ({
-  icon,
+  iconNode,
   label,
   value,
   isLast = false,
 }: {
-  icon: string;
+  iconNode: React.ReactNode;
   label: string;
   value: string;
   isLast?: boolean;
 }) => (
   <View style={[styles.detailRow, isLast && styles.detailRowLast]}>
     <View style={styles.detailLeft}>
-      <Text style={styles.detailIcon}>{icon}</Text>
+      {iconNode}
       <Text style={styles.detailLabel}>{label}</Text>
     </View>
     <Text style={styles.detailValue}>{value}</Text>
@@ -686,16 +709,16 @@ const styles = StyleSheet.create({
   },
 
   // Empty State
-    emptyContainer: {
-    flex: 1, // תופס את כל המסך
-    justifyContent: "center", // ממרכז את האייקון והכפתור
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-    paddingBottom: 220, // חשוב! משאיר מקום לבאנר למטה שלא יסתיר את הכפתור
+    paddingBottom: 220, 
   },
   emptyAdAbsolute: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 30 : 10, // גובה מעל הבר התחתון
+    bottom: Platform.OS === 'ios' ? 30 : 10,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -718,11 +741,8 @@ const styles = StyleSheet.create({
   },
   emptyContentWrapper: {
     flex: 1,
-    justifyContent: "center", // משאיר את הסמל והכפתור בדיוק באמצע השטח הפנוי
+    justifyContent: "center", 
     alignItems: "center",
-  },
-  emptyEmoji: {
-    fontSize: 64,
   },
   emptyTitle: {
     fontSize: 26,
@@ -790,9 +810,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#4ECDC4",
     opacity: 0.08,
   },
-  cardBgEmoji: {
+  cardBgIconWrapper: {
     position: "absolute",
-    fontSize: 140,
     right: -20,
     bottom: -30,
     opacity: 0.04,
@@ -820,9 +839,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 12,
-  },
-  cardEmoji: {
-    fontSize: 28,
   },
   cardInfo: {
     flex: 1,
@@ -884,7 +900,7 @@ const styles = StyleSheet.create({
 
   clearAllButton: {
     position: "absolute",
-    bottom: 95, // הרמנו את הכפתור כדי שלא יתנגש בפרסומת למטה
+    bottom: 95, 
     left: 20,
     right: 20,
     height: 56,
@@ -899,17 +915,16 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: "hidden",
   },
-  // עיצוב לבאנר שצמוד למטה
   stickyBottomAd: {
     position: "absolute",
     bottom: 0,
     width: "100%",
     alignItems: "center",
-    backgroundColor: "#fff", // רקע לבן יוצר אשליה שהוא חלק מסרגל הניווט
+    backgroundColor: "#fff", 
     borderTopWidth: 1,
     borderTopColor: "rgba(0,0,0,0.05)",
     paddingTop: 6,
-    paddingBottom: Platform.OS === "ios" ? 20 : 6, // מרווח בטיחותי לאייפונים החדשים
+    paddingBottom: Platform.OS === "ios" ? 20 : 6, 
     zIndex: 50,
   },
   clearAllGradient: {
@@ -960,9 +975,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  modalEmoji: {
-    fontSize: 40,
-  },
   modalTitle: {
     fontSize: 24,
     fontWeight: "800",
@@ -998,7 +1010,7 @@ const styles = StyleSheet.create({
   },
   costHeroLabel: {
     fontSize: 14,
-    color: "#666",
+   color: "#666",
     fontWeight: "600",
     marginBottom: 8,
   },
@@ -1056,9 +1068,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-  },
-  detailIcon: {
-    fontSize: 24,
   },
   detailLabel: {
     fontSize: 15,
@@ -1119,9 +1128,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     marginBottom: 20,
-  },
-  confirmIcon: {
-    fontSize: 40,
   },
   confirmTitle: {
     fontSize: 22,
@@ -1198,12 +1204,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-// Feed Ad and Empty Ad Styles
-    emptyAdWrapper: {
+  emptyAdWrapper: {
     alignItems: "center",
     justifyContent: "center",
     minHeight: 260,
-    marginTop: 20, // מרווח קטן ליתר ביטחון במסכים קטנים
+    marginTop: 20, 
   },
   feedAdContainer: {
     alignItems: "center",

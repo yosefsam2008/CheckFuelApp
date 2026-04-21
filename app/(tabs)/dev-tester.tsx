@@ -25,17 +25,33 @@ import {
 } from "../../lib/data/fuelData";
 import { estimateVehicleWeight } from "../../lib/data/vehicleWeightLookup";
 
-// Simply add the real license plates you want to test here
+// Expanded Test Fleet covering multiple vehicle segments
 const TEST_PLATES = [
-  "5437565", // Example 7-digit car
-  "7858864", // Example 8-digit car
-  "6951479", // Example Motorcycle
-  "1122334",
-  "7008032",
-  "60536904",
-  "13399304",
-  "7652867" ,
-  "6921479" ,
+  // User's Original Plates
+  "9751174",
+  "93197301",
+  "92391001",
+  "92729601",
+  "91398701",
+  "38491904",
+  "36662004",
+  
+  // High-Performance / Heavy SUVs (To test the new getSmartCCFallback)
+  "2002002", // Placeholder 7-digit format
+  "3003003", 
+  
+  // Standard Family Cars / Compacts
+  "8877665",
+  "1234567",
+  
+  // Electric Vehicles (EVs)
+  "4004004", 
+  "5005005",
+
+  // Modern 8-Digit Plates (Post-2017)
+  "12345678",
+  "87654321",
+  "11223344"
 ];
 
 type TestResult = {
@@ -71,6 +87,8 @@ export default function DevTester() {
         const found = await fetchRecordByPlate(plate);
         if (!found) {
           updatedResults.push({ plate, status: "failed", error: "Not found in API" });
+          // Update UI progressively even on fail
+          setResults([...updatedResults, ...results.slice(updatedResults.length)]);
           continue;
         }
 
@@ -143,8 +161,9 @@ export default function DevTester() {
             effectiveMishkalKolel = estimateWeightBySegment(parsed.model, parsed.brand, officialSUV);
           }
 
+          // FIXED: Now using the advanced 4-parameter signature for getSmartCCFallback
           if (!cc && parsed.brand && effectiveMishkalKolel) {
-            cc = getSmartCCFallback(parsed.brand, effectiveMishkalKolel);
+            cc = getSmartCCFallback(parsed.brand, parsed.model || "", effectiveMishkalKolel, found.type);
           }
 
           const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
@@ -201,7 +220,7 @@ export default function DevTester() {
         updatedResults.push({ plate, status: "failed", error: err.message });
       }
       
-      // Update UI progressively
+      // Update UI progressively so the app doesn't freeze while testing
       setResults([...updatedResults, ...results.slice(updatedResults.length)]);
     }
     

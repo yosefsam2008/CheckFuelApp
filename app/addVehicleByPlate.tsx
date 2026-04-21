@@ -165,7 +165,7 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
   if (__DEV__) {
     console.log('\n⚖️  WEIGHT EXTRACTION STRATEGY:');
     console.log(`   Vehicle Type: ${vehicleType || 'unknown'}`);
-    console.log('   NOTE: misgeret (curb weight) is NOT used - unreliable in Israeli API');
+   
   }
 
   let mishkal_kolel: number | undefined;
@@ -205,12 +205,13 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
 
     if (mishkal_kolel) {
       if (__DEV__) console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+      if (__DEV__) console.log(`📊 FINAL WEIGHT: mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
     } else {
-      if (__DEV__) console.log('⚠️  mishkal_kolel not found in primary API - will use fallback');
+      //if (__DEV__) console.log('⚠️  mishkal_kolel not found in primary API - will use fallback');
     }
   }
 
-  if (__DEV__) console.log(`📊 FINAL WEIGHT: mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
+  
 
   const weightKg = mishkal_kolel ?? parseFloatSafeLocal(record.weight_kg ?? record.mass_kg) ?? undefined;
   const batteryCapacity = parseFloatSafeLocal(record.battery_capacity ?? record.battery_kwh ?? record.batt_kwh ?? record.battery) ?? undefined;
@@ -575,12 +576,19 @@ export default function AddVehicleByPlate() {
 
         let officialSUV = false;
         let officialHybrid = false;
+        let officialHybridType: 'MHEV' | 'PHEV' | 'HEV' | null = null;
+        let officialWltpConsumption: number | null = null;
 
         if (found.type === 'car' && (!parsed.year || parsed.year >= 2018)) {
-        const wltpData = await fetchWLTPData(found.record, found.degem_nm);
-                  if (wltpData) {
+          const wltpData = await fetchWLTPData(found.record, found.degem_nm);
+          if (wltpData) {
             officialSUV = wltpData.isOfficialSUV;
             officialHybrid = wltpData.isOfficialHybrid;
+            officialHybridType = wltpData.hybridType;
+            if (wltpData.wltpConsumption && wltpData.wltpConsumption > 0) {
+               // Convert Government L/100km to km/L
+               officialWltpConsumption = 100 / wltpData.wltpConsumption;
+            }
           }
         }
 
@@ -605,7 +613,8 @@ export default function AddVehicleByPlate() {
           }
 
           if (!cc && parsed.brand && effectiveMishkalKolel) {
-            const smartCC = getSmartCCFallback(parsed.brand, effectiveMishkalKolel);
+            // Pass model and type so the fallback can detect performance trims like BMW M40i
+            const smartCC = getSmartCCFallback(parsed.brand, parsed.model || '', effectiveMishkalKolel, found.type);
             cc = smartCC;
           }
 
@@ -631,17 +640,24 @@ export default function AddVehicleByPlate() {
             isActualSUV = isSUVByKeyword || isSUVBrand;
           }
 
-          avgConsumption = calculateICEConsumptionEnhanced({
-            mishkal_kolel: effectiveMishkalKolel,
-            engineCC: cc,
-            year: parsed.year,
-            fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
-            vehicleType: found.type,
-            isHybrid: isHybridCar,
-            isOfficialSUV: isActualSUV,
-            brand: parsed.brand,
-            model: parsed.model,
-          });
+          if (officialWltpConsumption) {
+             if (__DEV__) console.log(`✅ Using Official WLTP Data: ${officialWltpConsumption.toFixed(2)} km/L`);
+             avgConsumption = Number(officialWltpConsumption.toFixed(2));
+          } else {
+             if (__DEV__) console.log(`⚠️ No WLTP data found. Falling back to Physics Engine.`);
+             avgConsumption = calculateICEConsumptionEnhanced({
+               mishkal_kolel: effectiveMishkalKolel,
+               engineCC: cc,
+               year: parsed.year,
+               fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
+               vehicleType: found.type,
+               isHybrid: isHybridCar,
+               hybridType: officialHybridType,
+               isOfficialSUV: isActualSUV,
+               brand: parsed.brand,
+               model: parsed.model,
+             });
+          }
         }
 
         const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");

@@ -1,4 +1,3 @@
-//app/tabs/dev-tester
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -10,10 +9,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// 1. Import your exported functions from the main file
+// TODO: MOVE THESE OUT OF /app. They belong in /lib/data/govApiIntegration.ts
 import { fetchRecordByPlate, parseRelevantFields, extractEngineCC } from "../addVehicleByPlate"; 
 
-// 2. Import all the calculation dependencies exactly as they are in your main file
 import { calculateEVConsumptionAdvanced } from "../../lib/data/advancedEvConsumption";
 import {
   calculateICEConsumptionEnhanced,
@@ -25,33 +23,11 @@ import {
 } from "../../lib/data/fuelData";
 import { estimateVehicleWeight } from "../../lib/data/vehicleWeightLookup";
 
-// Expanded Test Fleet covering multiple vehicle segments
 const TEST_PLATES = [
-  // User's Original Plates
-  "9751174",
-  "93197301",
-  "92391001",
-  "92729601",
-  "91398701",
-  "38491904",
-  "36662004",
-  
-  // High-Performance / Heavy SUVs (To test the new getSmartCCFallback)
-  "2002002", // Placeholder 7-digit format
-  "3003003", 
-  
-  // Standard Family Cars / Compacts
-  "8877665",
+  "9751174", "93197301", "92391001", "92729601",
+  "91398701", "38491904", "36662004", "6885666",
+  "74079801", "5063031", "55932802", "8877665",
   "1234567",
-  
-  // Electric Vehicles (EVs)
-  "4004004", 
-  "5005005",
-
-  // Modern 8-Digit Plates (Post-2017)
-  "12345678",
-  "87654321",
-  "11223344"
 ];
 
 type TestResult = {
@@ -77,33 +53,38 @@ export default function DevTester() {
   );
   const [isTesting, setIsTesting] = useState(false);
 
-  const runTests = async () => {
-    setIsTesting(true);
-    const updatedResults: TestResult[] = [];
+  const updateResult = (index: number, newResult: TestResult) => {
+    setResults(prev => {
+      const copy = [...prev];
+      copy[index] = newResult;
+      return copy;
+    });
+  };
 
-    for (const plate of TEST_PLATES) {
+  const runTests = async () => {
+    if (isTesting) return;
+    setIsTesting(true);
+
+    for (let i = 0; i < TEST_PLATES.length; i++) {
+      const plate = TEST_PLATES[i];
       try {
-        // --- STEP 1: Fetch and Parse ---
         const found = await fetchRecordByPlate(plate);
         if (!found) {
-          updatedResults.push({ plate, status: "failed", error: "Not found in API" });
-          // Update UI progressively even on fail
-          setResults([...updatedResults, ...results.slice(updatedResults.length)]);
+          updateResult(i, { plate, status: "failed", error: "Not found in API" });
           continue;
         }
 
         const parsed = await parseRelevantFields(found.record, found.degem_nm, found.type);
 
-        // --- STEP 2: Replicate Weight & CC Extraction ---
         let effectiveMishkalKolel = parsed.mishkal_kolel;
         let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
 
-        let fallbackData: any = null;
         const needsFallbackWeight = !effectiveMishkalKolel;
         const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
 
         if (needsFallbackWeight || needsFallbackCC) {
-          fallbackData = await fetchFallbackVehicleData({
+          // Strictly typed fallback data instead of 'any'
+          const fallbackData = await fetchFallbackVehicleData({
             brand: parsed.brand,
             model: parsed.model,
             year: parsed.year,
@@ -124,7 +105,6 @@ export default function DevTester() {
           if (estimatedWeight) effectiveMishkalKolel = estimatedWeight.gross;
         }
 
-        // --- STEP 3: SUV / Hybrid / WLTP Logic ---
         let officialSUV = false;
         let officialHybrid = false;
 
@@ -136,7 +116,6 @@ export default function DevTester() {
           }
         }
 
-        // --- STEP 4: Calculate Consumption ---
         let kwhPerKm: number | undefined;
         let avgConsumption: number | undefined;
         let consumptionDisplay = "Unknown";
@@ -161,7 +140,6 @@ export default function DevTester() {
             effectiveMishkalKolel = estimateWeightBySegment(parsed.model, parsed.brand, officialSUV);
           }
 
-          // FIXED: Now using the advanced 4-parameter signature for getSmartCCFallback
           if (!cc && parsed.brand && effectiveMishkalKolel) {
             cc = getSmartCCFallback(parsed.brand, parsed.model || "", effectiveMishkalKolel, found.type);
           }
@@ -200,8 +178,7 @@ export default function DevTester() {
 
         const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");
 
-        // --- STEP 5: Push Results ---
-        updatedResults.push({
+        updateResult(i, {
           plate,
           status: "success",
           data: {
@@ -216,12 +193,11 @@ export default function DevTester() {
           }
         });
 
-      } catch (err: any) {
-        updatedResults.push({ plate, status: "failed", error: err.message });
+      } catch (err: unknown) {
+        // Strict typing for the catch block
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+        updateResult(i, { plate, status: "failed", error: errorMessage });
       }
-      
-      // Update UI progressively so the app doesn't freeze while testing
-      setResults([...updatedResults, ...results.slice(updatedResults.length)]);
     }
     
     setIsTesting(false);
@@ -230,11 +206,14 @@ export default function DevTester() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>API Batch Tester</Text>
+        <Text style={styles.title} accessibilityRole="header">API Batch Tester</Text>
         <TouchableOpacity 
           style={[styles.btn, isTesting && styles.btnDisabled]} 
           onPress={runTests}
           disabled={isTesting}
+          accessibilityRole="button"
+          accessibilityLabel={`Run ${TEST_PLATES.length} API tests`}
+          accessibilityState={{ disabled: isTesting, busy: isTesting }}
         >
           {isTesting ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Run {TEST_PLATES.length} Tests</Text>}
         </TouchableOpacity>
@@ -274,7 +253,6 @@ export default function DevTester() {
                   </View>
                 )}
                 
-                {/* Visual Separator for Fuel Data */}
                 <View style={styles.divider} />
                 
                 <View style={styles.row}>
@@ -291,7 +269,6 @@ export default function DevTester() {
             )}
           </View>
         ))}
-        {/* Bottom padding */}
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>

@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { calculateEVConsumptionAdvanced } from "../lib/data/advancedEvConsumption";
 import { getKnownEngineCCs, lookupEngineCC } from "../lib/data/engineDatabase";
@@ -25,6 +26,7 @@ import {
   fetchFallbackVehicleData,
   fetchWLTPData,
   getSmartCCFallback,
+  sanitizeVehicleWeight,
   translateBrandToEnglish
 } from "../lib/data/fuelData";
 import { Vehicle } from "../lib/data/vehiclesData";
@@ -158,7 +160,10 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
   const fuelTypeRaw = record.sug_delek_nm ?? record.fuel ?? '';
   const fuelType = detectFuelTypeCanonical({ sug_delek_nm: fuelTypeRaw });
 
-  const brand = (record.tozeret_nm || record.tozeret || '').toString().trim();
+  const rawBrand = (record.tozeret_nm || record.tozeret || '').toString().trim();
+  // 🧹 GLOBAL SANITIZATION: Strip geographic suffixes immediately so the whole app uses the clean name
+  const brand = rawBrand.replace(/\s*(יפן|קוריאה|דרום קוריאה|צפון קוריאה|קנדה|ארה"ב|גרמניה|צ'כיה|סלובקיה|טורקיה|ספרד|צרפת|אנגליה|בריטניה|איטליה|שוודיה|סין)\s*$/i, '').trim();
+
   const model = (record.kinuy_mishari || record.degem_nm || '').toString().trim();
   const year = parseIntSafeLocal(record.shnat_yitzur) ?? undefined;
 
@@ -194,7 +199,7 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
       console.log('   (Fallback via fetchFallbackVehicleData will be used in main flow if needed)');
     }
 
-    mishkal_kolel = parseFloatSafeLocal(
+    let temp_mishkal = parseFloatSafeLocal(
       record.mishkal_kolel ??
       record.mishkal_atzmi ??
       record.total_weight ??
@@ -202,6 +207,14 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
       record.gvwr ??
       record.mishkal
     );
+
+    // 🚨 ELEVATED QA GATE: Filter out ghost weights (like Mazda 3's 711kg) right at the source!
+    if (temp_mishkal && (temp_mishkal < 800 || temp_mishkal > 4000)) {
+      if (__DEV__) console.log(`⚠️ QA GATE TRIGGERED: Rejected impossible primary API weight of ${temp_mishkal}kg. Forcing fallback.`);
+      temp_mishkal = undefined;
+    }
+
+    mishkal_kolel = temp_mishkal;
 
     if (mishkal_kolel) {
       if (__DEV__) console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
@@ -548,7 +561,7 @@ export default function AddVehicleByPlate() {
 
         if (needsFallbackWeight || needsFallbackCC) {
           fallbackData = await fetchFallbackVehicleData({
-            brand: parsed.brand,
+            brand: parsed.brand, // Brand is now globally cleaned at the top of the pipeline!
             model: parsed.model,
             year: parsed.year,
             engineCode: found.record.degem_manoa,
@@ -579,12 +592,19 @@ export default function AddVehicleByPlate() {
         let officialHybridType: 'MHEV' | 'PHEV' | 'HEV' | null = null;
         let officialWltpConsumption: number | null = null;
 
-        if (found.type === 'car' && (!parsed.year || parsed.year >= 2018)) {
+        if (found.type === 'car') {
+          // We removed the 2018 restriction because the DB contains CO2 info for older cars too!
           const wltpData = await fetchWLTPData(found.record, found.degem_nm);
+          
           if (wltpData) {
             officialSUV = wltpData.isOfficialSUV;
             officialHybrid = wltpData.isOfficialHybrid;
             officialHybridType = wltpData.hybridType;
+            
+            // Override fallbacks with exact lab specs if available!
+            if (wltpData.officialCC) cc = wltpData.officialCC;
+            if (wltpData.officialGrossWeight) effectiveMishkalKolel = wltpData.officialGrossWeight;
+
             if (wltpData.wltpConsumption && wltpData.wltpConsumption > 0) {
                // Convert Government L/100km to km/L
                officialWltpConsumption = 100 / wltpData.wltpConsumption;
@@ -607,22 +627,19 @@ export default function AddVehicleByPlate() {
           kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
           
         } else {
-          if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-            const smartWeight = estimateWeightBySegment(parsed.model, parsed.brand, officialSUV);
-            effectiveMishkalKolel = smartWeight;
-          }
-
-          if (!cc && parsed.brand && effectiveMishkalKolel) {
-            // Pass model and type so the fallback can detect performance trims like BMW M40i
-            const smartCC = getSmartCCFallback(parsed.brand, parsed.model || '', effectiveMishkalKolel, found.type);
-            cc = smartCC;
-          }
-
           const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
           const brandStr = typeof parsed.brand === 'string' ? parsed.brand.toUpperCase() : '';
 
-          let isHybridCar = officialHybrid;
+          let isActualSUV = officialSUV;
+          if (!officialSUV) {
+            // Expanded to catch BMW X-series, Audi Q-series, etc., fixing the BMW X4 fallback bug
+            const suvKeywords = ['RAV4', 'PRADO', 'LAND CRUISER', 'CHEROKEE', 'GRAND', 'TUCSON', 'SPORTAGE', 'IX35', 'CR-V', 'CAYENNE', 'VITARA', 'SUV', 'CROSS', 'X3', 'X4', 'X5', 'X6', 'X7', 'Q5', 'Q7', 'Q8', 'MACAN', 'GLC', 'GLE'];
+            const isSUVByKeyword = suvKeywords.some(keyword => modelStr.includes(keyword));
+            const isSUVBrand = brandStr === 'JEEP' || brandStr === 'LAND ROVER';
+            isActualSUV = isSUVByKeyword || isSUVBrand;
+          }
 
+          let isHybridCar = officialHybrid;
           if (!officialHybrid) {
             const hybridKeywords = ['PRIUS', 'HYBRID', 'IONIQ', 'INSIGHT', 'HSD', 'CT200H', 'NIRO'];
             const isHybridByKeyword = hybridKeywords.some(keyword => modelStr.includes(keyword));
@@ -631,13 +648,37 @@ export default function AddVehicleByPlate() {
             isHybridCar = isHybridByKeyword || isToyotaLexusHybridCode;
           }
 
-          let isActualSUV = officialSUV;
+          // 1. Sanitize any anomalous weight from the API
+          effectiveMishkalKolel = sanitizeVehicleWeight(effectiveMishkalKolel, isActualSUV, isElectricOrPhev, found.type);
 
-          if (!officialSUV) {
-            const suvKeywords = ['RAV4', 'PRADO', 'LAND CRUISER', 'CHEROKEE', 'GRAND', 'TUCSON', 'SPORTAGE', 'IX35', 'CR-V', 'CAYENNE', 'VITARA', 'SUV', 'CROSS'];
-            const isSUVByKeyword = suvKeywords.some(keyword => modelStr.includes(keyword));
-            const isSUVBrand = brandStr === 'JEEP' || brandStr === 'LAND ROVER';
-            isActualSUV = isSUVByKeyword || isSUVBrand;
+          // 2. Estimate weight if still missing
+          if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
+            const smartWeight = estimateWeightBySegment(parsed.model, parsed.brand, isActualSUV);
+            effectiveMishkalKolel = smartWeight;
+          }
+
+          // 3. Fallback CC estimation
+          if (!cc && parsed.brand && effectiveMishkalKolel) {
+            const smartCC = getSmartCCFallback(parsed.brand, parsed.model || '', effectiveMishkalKolel, found.type);
+            cc = smartCC;
+          }
+
+          // 4. 🛡️ THE HALLUCINATION SHIELD (Override crazy Gov API data before physics)
+          if (found.type === 'car') {
+             // Protect Corolla from commercial-weight bugs & fake SUV flags
+             if (modelStr.includes('COROLLA') && !modelStr.includes('CROSS')) {
+                 isActualSUV = false; // Force sedan physics
+                 if (effectiveMishkalKolel && effectiveMishkalKolel > 2100) effectiveMishkalKolel = 1760; // Max realistic gross weight
+             }
+             // Protect Mazda 3 from rare import 2.5L engine codes
+             if ((modelStr.includes('MAZDA 3') || modelStr.includes('MAZDA3')) && cc && cc > 2000) {
+                 cc = 2000; // Cap at Israeli 2.0L max
+             }
+             // Protect Mustang from light-weight anomalies and weird CCs
+             if (modelStr.includes('MUSTANG')) {
+                 if (effectiveMishkalKolel && effectiveMishkalKolel < 1900) effectiveMishkalKolel = 2150; // Force muscle-car weight
+                 if (cc && cc !== 5000) cc = 2300; // Default to the common 2.3L EcoBoost unless it's a confirmed 5.0L
+             }
           }
 
           if (officialWltpConsumption) {
@@ -709,6 +750,8 @@ export default function AddVehicleByPlate() {
           style={styles.backBtn} 
           onPress={() => router.back()}
           activeOpacity={0.7}
+          accessibilityLabel="חזור מסך אחורה"
+          accessibilityRole="button"
         >
           <View style={styles.backBtnInner}>
             <ChevronLeft size={24} color="#374151" />
@@ -764,6 +807,8 @@ export default function AddVehicleByPlate() {
                         onFocus={handleFocus}
                         onBlur={handleBlur}
                         editable={!loading}
+                        accessibilityLabel="הזן מספר רישוי"
+                        accessibilityHint="הזן את מספר הרכב ללא מקפים או רווחים"
                       />
                     </View>
                   </View>
@@ -777,6 +822,9 @@ export default function AddVehicleByPlate() {
                 onPress={handleAddVehicleByPlate}
                 disabled={loading || !plate.trim()}
                 activeOpacity={0.85}
+                accessibilityLabel="חפש והוסף אוטומטית"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: loading || !plate.trim(), busy: loading }}
               >
                 {loading ? (
                   <Animated.View style={[styles.searchBtnContent, { transform: [{ scale: pulseAnim }] }]}>

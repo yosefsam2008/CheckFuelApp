@@ -6,11 +6,15 @@ import * as NavigationBar from 'expo-navigation-bar';
 import mobileAds, { RequestConfiguration } from 'react-native-google-mobile-ads';
 import { runAutoMigration } from '../lib/utils/evDataMigration';
 import { I18nManager } from 'react-native';
+import * as Updates from 'expo-updates';
 
 export default function RootLayout() {
 
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+if (!I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+  Updates.reloadAsync(); 
+}
 
   useEffect(() => {
     // 1. הגדרת סביבת בדיקות (Test Devices) לפני האתחול

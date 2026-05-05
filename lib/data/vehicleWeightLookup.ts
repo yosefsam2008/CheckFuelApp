@@ -13,7 +13,7 @@
  *
  * Data sources:
  * - Manufacturer official specifications
- * - Wikipedia platform/chassis codes
+ * - Wikipedia platform/ch  assis codes
  * - Car comparison databases (edmunds.com, caranddriver.com)
  * - Israeli market data (yad2.co.il, auto.co.il)
  *

@@ -45,3 +45,24 @@ export interface CalculationResult {
   // הוספת 'phev_mixed' למקרים של נסיעה משולבת
   energyType: 'fuel' | 'electricity' | 'phev_mixed';
 }
+
+/**
+ * Accurately determines if a vehicle is an SUV/Crossover based on Gov.il model strings.
+ * Includes strict exclusions for standard M1 hatchbacks/sedans.
+ */
+export function determineIfSUV(modelName: string, vehicleCategory: string): boolean {
+  if (!modelName) return false;
+  
+  const upperModel = modelName.toUpperCase();
+  
+  // Explicitly block standard M1 vehicles from triggering SUV aerodynamic penalties
+  const nonSuvExceptions = ['COROLLA', 'OCTAVIA', 'MAZDA 3', 'GOLF', 'LEON', 'I20', 'I30', 'PICANTO', 'JAZZ'];
+  if (nonSuvExceptions.some(car => upperModel.includes(car))) {
+    return false;
+  }
+
+  // Identify true SUVs/Crossovers
+  const suvKeywords = ['SUV', 'CROSS', 'X', 'SPORTAGE', 'TUCSON', 'CX-', 'RAV4', 'QASHQAI', 'JUKE', '2008', '3008'];
+  
+  return suvKeywords.some(keyword => upperModel.includes(keyword)) || vehicleCategory.includes('M1G');
+}

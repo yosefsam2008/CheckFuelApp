@@ -26,7 +26,6 @@ import {
   fetchFallbackVehicleData,
   fetchWLTPData,
   getSmartCCFallback,
-  sanitizeVehicleWeight,
   translateBrandToEnglish
 } from "../lib/data/fuelData";
 import { Vehicle } from "../lib/data/vehiclesData";
@@ -75,7 +74,7 @@ function detectFuelTypeCanonical(record: any): FuelType {
        raw.includes('phev') ||
        raw.includes('plug-in') ||
        raw.includes('פלאג')) {
-    if (__DEV__) console.log('---------------------- Detected PHEV fuel type based on:', raw);
+        console.log('---------------------- Detected PHEV fuel type based on:', raw);
     return "PHEV";
   }
 
@@ -175,7 +174,9 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
   let mishkal_kolel: number | undefined;
 
   if (vehicleType === 'motorcycle') {
-    if (__DEV__) console.log('🏍️  Motorcycle detected: using primary API for mishkal_kolel');
+    if (__DEV__) {
+      console.log('🏍️  Motorcycle detected: using primary API for mishkal_kolel');
+    }
     mishkal_kolel = parseFloatSafeLocal(
       record.mishkal_kolel ??
       record.mishkal_atzmi ??
@@ -185,7 +186,11 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
       record.mishkal
     );
 
-    if (mishkal_kolel && __DEV__) console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+    if (mishkal_kolel) {
+      if (__DEV__) console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+    } else {
+      if (__DEV__) console.log('⚠️  mishkal_kolel not found in primary API');
+    }
   } else {
     if (__DEV__) {
       console.log('🚗 Car/Truck detected: extracting weight from primary API');
@@ -209,9 +214,9 @@ export async function parseRelevantFields(record: Record<string, any>, _degem_nm
 
     mishkal_kolel = temp_mishkal;
 
-    if (mishkal_kolel && __DEV__) {
-      console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
-      console.log(`📊 FINAL WEIGHT: mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
+    if (mishkal_kolel) {
+      if (__DEV__) console.log(`✅ mishkal_kolel (gross weight) from primary API: ${mishkal_kolel}kg`);
+      if (__DEV__) console.log(`📊 FINAL WEIGHT: mishkal_kolel=${mishkal_kolel || 'N/A'}kg\n`);
     }
   }
 
@@ -243,12 +248,28 @@ async function saveVehicle(vehicle: Vehicle): Promise<void> {
   }
 }
 
+function validateKmPerL(value?: number, vehicleType?: VehicleType): number | undefined {
+  if (!value || value <= 0) return undefined;
+  if (vehicleType === "motorcycle" && value > 60) return 60;
+  if (vehicleType === "truck" && value > 20) return 20;
+  if (value > 30) return 30;
+  return value;
+}
+
 const engineCodeCache = new Map<string, number | null>();
 
 function extractCCDirect(record: Record<string, any>): number | undefined {
   const ccFields = [
-    'nefach_manoa', 'kobah_pnimiyt', 'nefach', 'volume_cm3', 'displacement_cc',
-    'engine_displacement', 'engine_cc', 'cubic_capacity', 'displacement', 'cc',
+    'nefach_manoa',
+    'kobah_pnimiyt',
+    'nefach',
+    'volume_cm3',
+    'displacement_cc',
+    'engine_displacement',
+    'engine_cc',
+    'cubic_capacity',
+    'displacement',
+    'cc',
   ];
 
   for (const field of ccFields) {
@@ -257,6 +278,7 @@ function extractCCDirect(record: Record<string, any>): number | undefined {
 
     const strValue = String(value).trim();
     if (strValue === '') continue;
+
     if (/[a-zA-Z]/.test(strValue) && strValue.length > 6) continue;
 
     const cleanedValue = strValue.replace(/[^\d]/g, '');
@@ -268,6 +290,7 @@ function extractCCDirect(record: Record<string, any>): number | undefined {
       return cc;
     }
   }
+
   return undefined;
 }
 
@@ -331,7 +354,9 @@ export async function extractEngineCC(
   if (engineCode && String(engineCode).trim().length > 1) {
     const apiCC = await searchCCByEngineCodeCached(String(engineCode).trim(), vehicleType);
     if (apiCC) return apiCC;
-    
+  }
+
+  if (engineCode && String(engineCode).trim().length > 1) {
     const staticCC = lookupEngineCC(String(engineCode).trim());
     if (staticCC) return staticCC;
   }
@@ -348,6 +373,62 @@ export async function extractEngineCC(
   }
 
   return undefined;
+}
+
+function estimateEngineCCFromWeight(
+  weight: number | undefined,
+  vehicleType: VehicleType
+): number {
+  if (!weight) {
+    if (vehicleType === 'motorcycle') return 250;
+    if (vehicleType === 'truck') return 3000;
+    return 1600;
+  }
+
+  if (vehicleType === 'motorcycle') {
+    if (weight < 150) return 125;
+    if (weight < 200) return 150;
+    if (weight < 250) return 250;
+    if (weight < 350) return 400;
+    return 650;
+  }
+
+  if (vehicleType === 'truck') {
+    if (weight < 4000) return 3000;
+    if (weight < 6000) return 4000;
+    if (weight < 8000) return 5000;
+    if (weight < 10000) return 7000;
+    return 9000;
+  }
+
+  if (weight < 1000) return 1000;
+  if (weight < 1200) return 1200;
+  if (weight < 1400) return 1400;
+  if (weight < 1600) return 1600;
+  if (weight < 1800) return 2000;
+  if (weight < 2200) return 2500;
+  return 3000;
+}
+
+export function adjustCCByYear(baseCC: number, year: number | undefined): number {
+  if (!year) return baseCC;
+  if (year >= 2020) return Math.round(baseCC * 0.85);
+  if (year >= 2010) return Math.round(baseCC * 0.95);
+  return baseCC;
+}
+
+function calculateSmartEngineCC(params: {
+  apiCC?: number;
+  weight?: number;
+  year?: number;
+  vehicleType: VehicleType;
+}): number {
+  const { apiCC, weight, year, vehicleType } = params;
+
+  if (apiCC) return apiCC;
+
+  const estimatedCC = estimateEngineCCFromWeight(weight, vehicleType);
+  return adjustCCByYear(estimatedCC, year);
 }
 
 export default function AddVehicleByPlate() {
@@ -455,155 +536,136 @@ export default function AddVehicleByPlate() {
         return;
       }
 
-      const parsed = await parseRelevantFields(found.record, found.degem_nm, found.type);
+        if (__DEV__) {
+          console.log(`\n✅ Found: ${found.record.tozeret_nm || found.record.tozeret} ${found.record.degem_nm || found.record.kinuy_mishari}`);
+          console.log(`   Type: ${found.type} | Engine: ${found.record.degem_manoa} | Year: ${found.record.shnat_yitzur}`);
+        }
 
-      let kwhPerKm: number | undefined;
-      let avgConsumption: number | undefined = undefined;
+        const parsed = await parseRelevantFields(found.record, found.degem_nm, found.type);
 
-      let effectiveMishkalKolel = parsed.mishkal_kolel;
-      let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
+        let effectiveMishkalKolel = parsed.mishkal_kolel;
+        let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
 
-      const needsFallbackWeight = !effectiveMishkalKolel;
-      const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
+        const needsFallbackWeight = !effectiveMishkalKolel;
+        const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
 
-      if (needsFallbackWeight || needsFallbackCC) {
-        const fallbackData = await fetchFallbackVehicleData({
-          brand: parsed.brand,
-          model: parsed.model,
-          year: parsed.year,
-          engineCode: found.record.degem_manoa,
-          plateNumber: plateTrimmed,
-          degem_nm: found.degem_nm,
-          isElectric: parsed.fuelType === "Electric",
-        });
+        if (needsFallbackWeight || needsFallbackCC) {
+          const fallbackData = await fetchFallbackVehicleData({
+            brand: parsed.brand, 
+            model: parsed.model,
+            year: parsed.year,
+            engineCode: found.record.degem_manoa,
+            plateNumber: plateTrimmed,
+            degem_nm: found.degem_nm,
+            isElectric: parsed.fuelType === "Electric",
+          });
 
-        if (fallbackData) {
-          if (needsFallbackWeight && fallbackData.mishkal_kolel) {
-            effectiveMishkalKolel = fallbackData.mishkal_kolel;
+          if (fallbackData) {
+            if (needsFallbackWeight && fallbackData.mishkal_kolel) {
+              effectiveMishkalKolel = fallbackData.mishkal_kolel;
+            }
+            if (needsFallbackCC && fallbackData.nefach_manoa) {
+              cc = fallbackData.nefach_manoa;
+            }
           }
-          if (needsFallbackCC && fallbackData.nefach_manoa) {
-            cc = fallbackData.nefach_manoa;
-          }
-        }
-      }
-
-      if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-        const estimatedWeight = estimateVehicleWeight(parsed.brand, parsed.model, parsed.year);
-        if (estimatedWeight) {
-          effectiveMishkalKolel = estimatedWeight.gross;
-        }
-      }
-
-      let officialSUV = false;
-      let officialHybrid = false;
-      let officialHybridType: 'MHEV' | 'PHEV' | 'HEV' | null = null;
-
-      if (found.type === 'car' && (!parsed.year || parsed.year >= 2018)) {
-        const wltpData = await fetchWLTPData(found.record, found.degem_nm);
-        if (wltpData) {
-          officialSUV = wltpData.isOfficialSUV;
-          officialHybrid = wltpData.isOfficialHybrid;
-          officialHybridType = wltpData.hybridType;
-          
-          if (wltpData.officialCC) cc = wltpData.officialCC;
-          // Note: We bypass wltpData.wltpConsumption deliberately to use the exact real-world physics engine logic from your tester!
-        }
-      }
-
-      const isElectricOrPhev = parsed.fuelType === "Electric" || parsed.fuelType === "PHEV";
-      const isPhev = parsed.fuelType === "PHEV";
-
-      if (isElectricOrPhev) {
-        const evData = await calculateEVConsumptionAdvanced({
-          brand: parsed.brand,
-          model: parsed.model,
-          year: parsed.year || new Date().getFullYear(),
-          vehicleType: found.type,
-          mishkal_kolel: effectiveMishkalKolel,
-          isPhev,                    
-        });
-        kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
-        
-      } else {
-        const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
-        const brandStr = typeof parsed.brand === 'string' ? parsed.brand.toUpperCase() : '';
-
-        let isActualSUV = officialSUV;
-        if (!officialSUV) {
-          const suvKeywords = ['RAV4', 'PRADO', 'LAND CRUISER', 'CHEROKEE', 'GRAND', 'TUCSON', 'SPORTAGE', 'IX35', 'CR-V', 'CAYENNE', 'VITARA', 'SUV', 'CROSS', 'X3', 'X4', 'X5', 'X6', 'X7', 'Q5', 'Q7', 'Q8', 'MACAN', 'GLC', 'GLE'];
-          const isSUVBrand = brandStr === 'JEEP' || brandStr === 'LAND ROVER';
-          isActualSUV = suvKeywords.some(keyword => modelStr.includes(keyword)) || isSUVBrand;
         }
 
-        let isHybridCar = officialHybrid;
-        if (!officialHybrid) {
-          const hybridKeywords = ['PRIUS', 'HYBRID', 'IONIQ', 'INSIGHT', 'HSD', 'CT200H', 'NIRO'];
-          const isHybridBrand = brandStr === 'TOYOTA' || brandStr === 'LEXUS' || brandStr === 'HONDA' || brandStr === 'HYUNDAI';
-          const isToyotaLexusHybridCode = isHybridBrand && /[A-Z]{2,3}\d{2,3}H/i.test(modelStr);
-          isHybridCar = hybridKeywords.some(keyword => modelStr.includes(keyword)) || isToyotaLexusHybridCode;
-        }
-
-        // 1. Sanitize any anomalous weight from the API
-        effectiveMishkalKolel = sanitizeVehicleWeight(effectiveMishkalKolel, isActualSUV, isElectricOrPhev, found.type);
-
-        // 2. Estimate weight if still missing
         if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-          effectiveMishkalKolel = estimateWeightBySegment(parsed.model, parsed.brand, isActualSUV);
+          const estimatedWeight = estimateVehicleWeight(parsed.brand, parsed.model, parsed.year);
+          if (estimatedWeight) {
+            effectiveMishkalKolel = estimatedWeight.gross;
+          }
         }
 
-        // 3. Fallback CC estimation
-        if (!cc && parsed.brand && effectiveMishkalKolel) {
-          cc = getSmartCCFallback(parsed.brand, parsed.model || '', effectiveMishkalKolel, found.type);
+        let officialSUV = false;
+        let officialHybrid = false;
+
+        if (found.type === 'car' && (!parsed.year || parsed.year >= 2018)) {
+          const wltpData = await fetchWLTPData(found.record, found.degem_nm);
+          if (wltpData) {
+            officialSUV = wltpData.isOfficialSUV;
+            officialHybrid = wltpData.isOfficialHybrid;
+          }
         }
 
-        // 4. 🛡️ THE HALLUCINATION SHIELD (Override crazy Gov API data before physics)
-        if (found.type === 'car') {
-           if (modelStr.includes('COROLLA') && !modelStr.includes('CROSS')) {
-               isActualSUV = false; 
-               if (effectiveMishkalKolel && effectiveMishkalKolel > 2100) effectiveMishkalKolel = 1760; 
-           }
-           if ((modelStr.includes('MAZDA 3') || modelStr.includes('MAZDA3')) && cc && cc > 2000) {
-               cc = 2000; 
-           }
-           if (modelStr.includes('MUSTANG')) {
-               if (effectiveMishkalKolel && effectiveMishkalKolel < 1900) effectiveMishkalKolel = 2150; 
-               if (cc && cc !== 5000) cc = 2300; 
-           }
+        let kwhPerKm: number | undefined;
+        let avgConsumption: number | undefined;
+
+        const isElectricOrPhev = parsed.fuelType === "Electric" || parsed.fuelType === "PHEV";
+        const isPhev = parsed.fuelType === "PHEV";
+
+        if (isElectricOrPhev) {
+          const evData = await calculateEVConsumptionAdvanced({
+            brand: parsed.brand,
+            model: parsed.model,
+            year: parsed.year || new Date().getFullYear(),
+            vehicleType: found.type,
+            mishkal_kolel: effectiveMishkalKolel,
+            isPhev,                    
+          });
+          kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
+          
+        } else {
+          if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
+            effectiveMishkalKolel = estimateWeightBySegment(parsed.model, parsed.brand, officialSUV);
+          }
+
+          if (!cc && parsed.brand && effectiveMishkalKolel) {
+            cc = getSmartCCFallback(parsed.brand, parsed.model || '', effectiveMishkalKolel, found.type);
+          }
+
+          const modelStr = typeof parsed.model === 'string' ? parsed.model.toUpperCase() : '';
+          const brandStr = typeof parsed.brand === 'string' ? parsed.brand.toUpperCase() : '';
+
+          let isHybridCar = officialHybrid;
+          if (!officialHybrid) {
+            const hybridKeywords = ['PRIUS', 'HYBRID', 'IONIQ', 'INSIGHT', 'HSD', 'CT200H', 'NIRO'];
+            const isHybridBrand = brandStr === 'TOYOTA' || brandStr === 'LEXUS' || brandStr === 'HONDA' || brandStr === 'HYUNDAI';
+            isHybridCar = hybridKeywords.some(keyword => modelStr.includes(keyword)) || (isHybridBrand && /[A-Z]{2,3}\d{2,3}H/i.test(modelStr));
+          }
+
+          let isActualSUV = officialSUV;
+          if (!officialSUV) {
+            const suvKeywords = ['RAV4', 'PRADO', 'LAND CRUISER', 'CHEROKEE', 'GRAND', 'TUCSON', 'SPORTAGE', 'IX35', 'CR-V', 'CAYENNE', 'VITARA', 'SUV', 'CROSS'];
+            const isSUVBrand = brandStr === 'JEEP' || brandStr === 'LAND ROVER';
+            isActualSUV = suvKeywords.some(keyword => modelStr.includes(keyword)) || isSUVBrand;
+          }
+
+          const rawAvgConsumption = calculateICEConsumptionEnhanced({
+            mishkal_kolel: effectiveMishkalKolel,
+            engineCC: cc,
+            year: parsed.year,
+            fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
+            vehicleType: found.type,
+            isHybrid: isHybridCar,
+            isOfficialSUV: isActualSUV,
+            brand: parsed.brand,
+            model: parsed.model,
+          });
+
+          if (rawAvgConsumption) {
+             avgConsumption = Number(rawAvgConsumption.toFixed(1)); 
+          }
         }
 
-        // DELIBERATELY BYPASS WLTP CONSUMPTION to ensure the math perfectly mirrors your successful DevTester tests
-        avgConsumption = calculateICEConsumptionEnhanced({
+        const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");
+        const newVehicle: Vehicle = {
+          id: String(found.record._id ?? Date.now()),
+          plate: String(found.record.mispar_rechev ?? plateTrimmed).toUpperCase(),
+          name: vehicleName,
+          model: parsed.model || "לא ידוע",
+          engine: String(found.record.degem_manoa ?? found.record.engine_type ?? "לא ידוע"),
+          type: found.type,
+          avgConsumption: (parsed.fuelType === "Electric" || parsed.fuelType === "PHEV") ? kwhPerKm : avgConsumption,
+          fueltype: parsed.fuelType, 
+          year: parsed.year ?? new Date().getFullYear(),
           mishkal_kolel: effectiveMishkalKolel,
-          engineCC: cc,
-          year: parsed.year,
-          fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
-          vehicleType: found.type,
-          isHybrid: isHybridCar,
-          hybridType: officialHybridType,
-          isOfficialSUV: isActualSUV,
-          brand: parsed.brand,
-          model: parsed.model,
-        });
-      }
+        };
 
-      const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");
-      const newVehicle: Vehicle = {
-        id: String(found.record._id ?? Date.now()),
-        plate: String(found.record.mispar_rechev ?? plateTrimmed).toUpperCase(),
-        name: vehicleName,
-        model: parsed.model || "לא ידוע",
-        engine: String(found.record.degem_manoa ?? found.record.engine_type ?? "לא ידוע"),
-        type: found.type,
-        avgConsumption: (parsed.fuelType === "Electric" || parsed.fuelType === "PHEV") ? kwhPerKm : avgConsumption,
-        fueltype: parsed.fuelType, 
-        year: parsed.year ?? new Date().getFullYear(),
-        mishkal_kolel: parsed.mishkal_kolel,
-      };
+        await saveVehicle(newVehicle);
 
-      await saveVehicle(newVehicle);
-
-      setToastMessage(`${newVehicle.name} (${newVehicle.plate}) נוסף בהצלחה — סוג דלק: ${newVehicle.fueltype} — דגם: ${newVehicle.model}`);
-      setTimeout(() => router.back(), 1400);
+        setToastMessage(`${newVehicle.name} (${newVehicle.plate}) נוסף בהצלחה — סוג דלק: ${newVehicle.fueltype} — דגם: ${newVehicle.model}`);
+        setTimeout(() => router.back(), 1400);
 
     } catch (error) {
       console.error('\n❌ ERROR in AddVehicleByPlate:', error);
@@ -630,6 +692,7 @@ export default function AddVehicleByPlate() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        {/* Back Button - Fixed Position */}
         <TouchableOpacity 
           style={styles.backBtn} 
           onPress={() => router.back()}
@@ -642,6 +705,7 @@ export default function AddVehicleByPlate() {
           </View>
         </TouchableOpacity>
 
+        {/* Scrollable Content */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -649,6 +713,7 @@ export default function AddVehicleByPlate() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.contentWrapper}>
+            {/* Header Section */}
             <View style={styles.header}>
               <View style={styles.iconContainer}>
                 <View style={styles.iconCircle}>
@@ -659,9 +724,12 @@ export default function AddVehicleByPlate() {
               <Text style={styles.subtitle}>הזן מספר רישוי לאיתור מיידי ממאגרי הממשלה</Text>
             </View>
 
+            {/* Toast */}
             {toastMessage && <Toast message={toastMessage} onHide={() => setToastMessage(null)} />}
 
+            {/* Main Content Card */}
             <View style={styles.card}>
+              {/* License Plate Input */}
               <View style={styles.inputSection}>
                 <Text style={styles.inputLabel}>מספר רישוי</Text>
                 <Animated.View
@@ -695,6 +763,7 @@ export default function AddVehicleByPlate() {
                 <Text style={styles.inputHint}>תתבצע חיפוש אוטומטי במאגרי רכב, אופנוע ומשאית</Text>
               </View>
 
+              {/* Search Button */}
               <TouchableOpacity
                 style={[styles.searchBtn, loading && styles.searchBtnDisabled]}
                 onPress={handleAddVehicleByPlate}
@@ -717,6 +786,7 @@ export default function AddVehicleByPlate() {
                 )}
               </TouchableOpacity>
 
+              {/* Features List */}
               <View style={styles.featuresContainer}>
                 <FeatureItem iconNode={<Search size={20} color="#009688" />} text="זיהוי מיידי מבסיס נתונים ממשלתי" />
                 <FeatureItem iconNode={<Zap size={20} color="#009688" />} text="ניתוח אוטומטי של סוג דלק וצריכה" />
@@ -724,16 +794,19 @@ export default function AddVehicleByPlate() {
               </View>
             </View>
 
+            {/* Trust Badge */}
             <View style={styles.trustBadge}>
               <ShieldCheck size={20} color="#00695c" />
               <Text style={styles.trustBadgeText}>נתונים מאומתים ממשרד התחבורה</Text>
             </View>
 
+            {/* Bottom Spacer */}
             <View style={{ height: 40 }} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Banner Ad at the bottom (Hidden when keyboard is open) */}
       <View style={[
         styles.adContainer, 
         { 
@@ -747,6 +820,7 @@ export default function AddVehicleByPlate() {
   );
 }
 
+// Feature Item Component
 function FeatureItem({ iconNode, text }: { iconNode: React.ReactNode; text: string }) {
   return (
     <View style={styles.featureItem}>

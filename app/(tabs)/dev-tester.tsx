@@ -10,7 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // TODO: MOVE THESE OUT OF /app. They belong in /lib/data/govApiIntegration.ts
-import { fetchRecordByPlate, parseRelevantFields, extractEngineCC } from "../addVehicleByPlate"; 
+import { extractEngineCC, fetchRecordByPlate, parseRelevantFields } from "../addVehicleByPlate";
 
 import { calculateEVConsumptionAdvanced } from "../../lib/data/advancedEvConsumption";
 import {
@@ -24,10 +24,55 @@ import {
 import { estimateVehicleWeight } from "../../lib/data/vehicleWeightLookup";
 
 const TEST_PLATES = [
-  "9751174", "93197301", "92391001", "92729601",
-  "91398701", "38491904", "36662004", "6885666",
-  "74079801", "5063031", "55932802", "8877665",
-  "1234567",
+  // "4195526",
+  // "6777626", 
+  // "51453703",
+  // "59527301",
+  "7121365",
+  "51802603",
+  "6871511",
+  "6632037",
+  "87669702",
+  "55020802",
+  "8511776",
+  "57151801",
+  "6053570",
+  "6810785",
+  "4473476",
+  "64517303",
+  "2910072",
+  "19439903",
+  "4026781",
+  "88257802",
+  "1397231",
+  "61364901",
+  "1954876",
+  "89741803",
+  "93348501",
+  "1412133",
+  "4237326",
+  "53245703",
+  "14280104",
+  "24193703",
+  "53491101",
+  "6792379",
+  "40380202",
+  "85029203",
+  "13707301",
+  "4419679",
+  "45174403",
+  "8468153",
+  "1024568",
+  "22944202",
+  "5732073",
+  "14610203",
+  "6344230",
+  "32824603",
+  "74878001",
+  "3860954",
+  "79833802",
+  "40350901",
+  "46588301",
 ];
 
 type TestResult = {
@@ -70,6 +115,7 @@ export default function DevTester() {
       try {
         const found = await fetchRecordByPlate(plate);
         if (!found) {
+          console.log(`⚠️ [${plate}] Not found in API`);
           updateResult(i, { plate, status: "failed", error: "Not found in API" });
           continue;
         }
@@ -178,6 +224,8 @@ export default function DevTester() {
 
         const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");
 
+        console.log(`✅ [${plate}] ${vehicleName} ${parsed.model} (${parsed.year}) - ${parsed.fuelType} - ${consumptionDisplay}`);
+
         updateResult(i, {
           plate,
           status: "success",
@@ -196,6 +244,7 @@ export default function DevTester() {
       } catch (err: unknown) {
         // Strict typing for the catch block
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+        console.log(`❌ [${plate}] Failed: ${errorMessage}`);
         updateResult(i, { plate, status: "failed", error: errorMessage });
       }
     }

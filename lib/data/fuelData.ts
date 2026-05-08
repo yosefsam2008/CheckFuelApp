@@ -4,7 +4,7 @@
   // CONFIGURATION & UTILITIES
   // ============================================================================
   import AsyncStorage from '@react-native-async-storage/async-storage';
-  import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
+import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
 
   const IS_DEV = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
 
@@ -114,7 +114,7 @@
 
   // Energy Calculation Factors
   const AVG_SPEED_KMH: Record<VehicleType, number> = { motorcycle: 75, car: 70, truck: 50 };
-  const ACCEL_FACTOR: Record<VehicleType, number> = { motorcycle: 10.0, car: 11.2, truck: 12.2 };
+  const ACCEL_FACTOR: Record<VehicleType, number> = { motorcycle: 10.0, car: 11, truck: 12.2 };
   const AUXILIARY_FACTOR: Record<VehicleType, number> = { motorcycle: 0.10, car: 0.15, truck: 0.18 };
 
   // ============================================================================
@@ -569,11 +569,14 @@
 
     if (vehicleType === 'car') {
       if (weight < 1150) {
-        aero.A = 2.15; aero.Cd = 0.33; aero.Crr = 0.010;
+        // תיקון: רכבים קטנים יעילים יותר אווירודינמית (הקטנת שטח חזית וחיכוך כביש)
+        aero.A = 2.05; aero.Cd = 0.31; aero.Crr = 0.008;
       } else if (isActualSUV) {
-        // תיקון: מיתון הענישה האווירודינמית עבור SUV בטווח המשקלים 1,400-1,600 ק"ג
         if (weight >= 1400 && weight <= 1600) {
           aero.A = 2.55; aero.Cd = 0.335; aero.Crr = 0.010; 
+        } else if (weight > 1850) {
+          // 🧱 BRICK AERO PENALTY: Massive SUVs (Wagoneer, Land Cruiser) have huge drag
+          aero.A = 3.2; aero.Cd = 0.40; aero.Crr = 0.011;
         } else {
           aero.A = 2.8; aero.Cd = 0.36; aero.Crr = 0.010;
         }
@@ -647,26 +650,75 @@
       else multiplier *= 0.65; 
     }
 
-    if (year && year >= 2016 && estimatedCC >= 950 && estimatedCC <= 1550 && weight >= 1200) {
-      multiplier *= 1.08; 
+   // תיקון: ריכוך ענישת הגיל (Age Penalty Smoothing) - חסד בהתחלה וקנס מדורג
+    if (year) {
+      const age = new Date().getFullYear() - year;
+      let agePenalty = 1.0;
+      
+      if (age > 4 && age <= 10) {
+        // רכבי ביניים: ירידה עדינה מאוד (שונתה מ-0.5% ל-0.3%)
+        agePenalty = 1 - ((age - 4) * 0.003); 
+      } else if (age > 10) {
+        // רכבים ישנים: הקלה בענישה המצטברת
+        agePenalty = 1 - (6 * 0.003) - ((age - 10) * 0.007); 
+      }
+      
+      multiplier *= Math.max(0.85, agePenalty)  ;
+    }
+
+    // ⚙️ LEGACY TRANSMISSION PENALTY: Older torque converters and CVTs (2008-2017)
+    if (year && year >= 2008 && year <= 2017 && vehicleType === 'car' && !isHybrid) {
+      // Typically affects 1.6L - 2.0L family sedans (i35, Lancer, Forte, Impreza)
+      if (estimatedCC >= 1450 && estimatedCC <= 2100) {
+        multiplier *= 0.91; // ~9% efficiency loss compared to modern DSG/8-Speed
+      }
+    }
+
+    // תיקון: בונוס רק למנועי טורבו חדישים אמיתיים (2018+) שמנצלים דלק טוב יותר
+    if (year && year >= 2018 && estimatedCC >= 950 && estimatedCC <= 1550 && weight >= 1200) {
+      multiplier *= 1.04; 
     }
 
     if (isHybrid) {
-    // 🏎️ Performance MHEV Check: If it's a massive engine, it's a performance mild-hybrid (like BMW M40i), not a Prius.
-    if (estimatedCC > 2500 && hybridType !== 'PHEV') {
-      multiplier *= 1.05; // Minimal MHEV assist
-    } else if (hybridType === 'MHEV') {
-      multiplier *= 1.08;
-    } else if (hybridType === 'HEV') {
-      multiplier *= 1.45;
-    } else if (hybridType === 'PHEV') {
-      multiplier *= 1.35;
-    } else {
-      multiplier *= 1.25; // Lowered generic fallback to prevent skewing
+      // 🏎️ Force MHEV for Suzuki and performance engines
+      const forceMHEV = hybridType === 'MHEV' || estimatedCC > 2500 || (weight < 1100 && vehicleType === 'car');
+      
+      if (forceMHEV && hybridType !== 'PHEV') {
+        multiplier *= 1.03; // MHEV adds almost nothing to actual fuel economy
+      } else if (hybridType === 'HEV' || !hybridType) {
+        // ⚙️ HEV BALANCE: רכבי SUV היברידיים מאבדים יותר יעילות במהירויות גבוהות
+        multiplier *= isActualSUV ? 1.02 : 1.08; 
+      } else if (hybridType === 'PHEV') {
+        multiplier *= 1.25;
+      }
+    }
+
+  // 🏎️ THE MICRO-CAR PENALTY: Small NA engines work hard at highway speeds
+  if (vehicleType === 'car' && weight < 1180) {
+    const isModernTurbo = year && year >= 2018 && estimatedCC <= 1200;
+    
+    if (!isModernTurbo) {
+      if (estimatedCC <= 1300) {
+        multiplier *= 0.81; // 🏎️ MICRO-CAR PENALTY: הוחמר מ-0.88 ל-0.81 כדי לתקן את האופטימיות בפיקנטו
+      } else if (estimatedCC <= 1500) {
+        multiplier *= 0.92; // Soften the blow for older Swifts/Ibizas
+      }
     }
   }
 
-  return multiplier * getEngineDisplacementFactor(estimatedCC);
+  let finalMultiplier = multiplier * getEngineDisplacementFactor(estimatedCC);
+
+  // 🛡️ PREVENT DOUBLE PENALTY: רצפת הגנה שמונעת התרסקות עקב ענישה מצטברת
+  if (vehicleType === 'car') {
+      const isSmallOldEngine = estimatedCC <= 1600 && weight < 1250;
+      const floorLimit = isSmallOldEngine ? 0.82 : 0.75;
+      
+      if (finalMultiplier < floorLimit) {
+          finalMultiplier = floorLimit; 
+      }
+  }
+
+  return finalMultiplier;
 
   }
 
@@ -696,7 +748,14 @@
 
   // 🛡️ THE HALLUCINATION SHIELD (Global Physics Override)
   if (vehicleType === 'car') {
-    // Protect Corolla from commercial truck weights & fake SUV tags
+    // 1. הגנה על רכבי שטח ענקיים (Wagoneer, Land Rover) מפני משקל ונפח שגויים מה-API
+    if (['JEEP', 'LAND ROVER'].some(b => (params.brand || '').toUpperCase().includes(b)) || modelUpper.includes('WAGONEER')) {
+      safeSUV = true;
+      if (!safeGrossWeight || safeGrossWeight < 2500) safeGrossWeight = 2800; // כפיית משקל ריאלי למפלצות כאלו
+      if (safeCC && safeCC < 3000) safeCC = 4700; // כפיית מנוע ענק התואם למשקל
+    }
+
+    // 2. Protect Corolla from commercial truck weights & fake SUV tags
     if (modelUpper.includes('COROLLA') && !modelUpper.includes('CROSS')) {
       safeSUV = false; 
       if (safeGrossWeight && safeGrossWeight > 1900) safeGrossWeight = 1760; // Max realistic Gross Weight
@@ -728,11 +787,57 @@
   const aero = getAeroParams(vehicleType, isActualSUV, weight, estimatedCC);
 
     // 4. Energy Demand
-    const totalEnergyMJ = calculateEnergyDemands(vehicleType, weight, aero, isActualSUV);
+    let totalEnergyMJ = calculateEnergyDemands(vehicleType, weight, aero, isActualSUV);
+
+    const brandUpper = (params.brand || '').toUpperCase();
+    // 🛡️ BILINGUAL SHIELD: Catch the brand even if the API sends raw Hebrew
+    const isToyotaOrLexus = brandUpper.includes('TOYOTA') || brandUpper.includes('LEXUS') || brandUpper.includes('טויוטה') || brandUpper.includes('לקסוס');
+    const isSuzuki = brandUpper.includes('SUZUKI') || brandUpper.includes('סוזוקי');
+
+    // ⚡ THE HYBRID FIX: Regenerative Braking Energy Recovery
+    if (params.isHybrid && vehicleType === 'car') {
+      // תופס MHEV "מזויף" שה-API פספס (סוזוקי או רכבים קלים מאוד) כדי שלא יקבלו בונוס רגנרציה של פול-הייבריד
+      const isActuallyMHEV = params.hybridType === 'MHEV' || isSuzuki || (weight < 1100);
+
+      if (!isActuallyMHEV) {
+        totalEnergyMJ *= isToyotaOrLexus ? 0.65 : 0.78; 
+      }
+    }
 
     // 5. & 6. Efficiency Calculation
     const baseEfficiency = getThermalEfficiency(params.year, fuelType);
-  const totalMultiplier = calculateEfficiencyMultiplier(vehicleType, weight, estimatedCC, isActualSUV, params.year, params.isHybrid, params.hybridType);  const finalEfficiency = baseEfficiency * totalMultiplier;
+    let totalMultiplier = calculateEfficiencyMultiplier(vehicleType, weight, estimatedCC, isActualSUV, params.year, params.isHybrid, params.hybridType);  
+    
+    // תיקון ספציפי 1: ענישת אווירודינמיקה ויחסי העברה קצרים לדאצ'יה דאסטר
+    if (brandUpper.includes('DACIA') || modelUpper.includes('DUSTER')) {
+        totalMultiplier *= 0.82; 
+    }
+
+    let finalEfficiency = baseEfficiency * totalMultiplier;
+
+    // 🏔️ AWD PENALTY: Subaru's full-time symmetrical AWD creates drivetrain drag
+    if (brandUpper.includes('SUBARU') || brandUpper.includes('סובארו')) {
+        finalEfficiency *= 0.94; 
+    }
+
+    // 🛡️ HSD Synergy Fix: בונוס חכם למערכות ההיברידיות של טויוטה/לקסוס
+    if (params.isHybrid && isToyotaOrLexus && params.hybridType !== 'MHEV') {
+        if (weight <= 1450 && estimatedCC <= 1600) {
+            // 🚀 פצצת חסכון: רכבים קטנים (יאריס, יאריס קרוס) מקבלים בונוס מוגדל (1.26 במקום 1.15)
+            // כדי לפצות על קנס ה-SUV המובנה ולקלוע בול ל-21 ק"מ/ל'
+            finalEfficiency *= 1.26; 
+        } else {
+            // 🚙 רכבים גדולים/כבדים (ראב 4, לקסוס, פריוס) הבסיס נשאר מתון
+            finalEfficiency *= 1.03; 
+            
+            // ☀️ THE ISRAELI SUMMER & LUXURY PENALTY:
+            // רכבי פרימיום כבדים או משפחתיות היברידיות ישנות סובלים מירידה ריאלית חדה
+            // עקב מזגן שטוחן את הסוללה (מדחס חשמלי) ובלאי טבעי של התאים
+            if (params.year && params.year <= 2019) {
+                finalEfficiency *= 0.84; // מנחית את הלקסוס והפריוס בול למציאות
+            }
+        }
+    }
 
     // 7. Fuel Consumption
     const fuelEnergyMJ = FUEL_ENERGY_MJ[fuelType.toLowerCase()];

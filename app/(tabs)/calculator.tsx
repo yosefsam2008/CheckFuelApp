@@ -1,18 +1,43 @@
 // calculator.tsx - Travel Cost Calculator with Integrated Google Ads
-import { 
-  Share2, RefreshCw, Car, Bus, MapPin, 
-  Zap, Droplets, TrendingUp, CircleDollarSign, 
-  Info, AlertTriangle, ChevronRight, Leaf, Lock,
-  Building, Navigation, Compass, Wind, Sun, CloudOff, Fuel,
-  Plus, Calculator, Gem, Shuffle, Route, User, Users,
-  Calendar, Wrench, Globe, PartyPopper, Film, Heart, Snowflake
-} from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-const PremiumUnlockAd = Platform.OS === 'web' ? () => null : require('../../components/PremiumUnlockAd').default;
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from "expo-router";
+import {
+  AlertTriangle,
+  Building,
+  Bus,
+  Calculator,
+  Calendar,
+  Car,
+  CircleDollarSign,
+  CloudOff,
+  Compass,
+  Droplets,
+  Film,
+  Fuel,
+  Gem,
+  Globe,
+  Heart,
+  Info,
+  Leaf, Lock,
+  MapPin,
+  Navigation,
+  PartyPopper,
+  Plus,
+  RefreshCw,
+  Route,
+  Share2,
+  Shuffle,
+  Snowflake,
+  Sun,
+  TrendingUp,
+  User, Users,
+  Wrench,
+  Zap,
+  Map
+} from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,24 +50,26 @@ import {
   Pressable,
   ScrollView,
   Share,
+  StyleProp,
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   TouchableOpacity,
   View,
-  StyleProp,
   ViewStyle,
-  TextStyle,
+  Linking,
 } from "react-native";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 import {
-  calculateVehicleAge,
-  calculateAdjustedConsumption
+  calculateAdjustedConsumption,
+  calculateVehicleAge
 } from '../../lib/data/fuelConsumptionAdjustments';
+const PremiumUnlockAd = Platform.OS === 'web' ? () => null : require('../../components/PremiumUnlockAd').default;
 
 // Conditional imports for ads - only load on native platforms
 const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
-const VideoAd = Platform.OS === 'web' ? () => null : require('../../components/VideoAd').default;
+const InterstitialAd = Platform.OS === 'web' ? () => null : require('../../components/InterstitialAd').default;
 
 // ============================================
 // TYPES
@@ -138,7 +165,7 @@ const DEFAULT_BATTERY_CAPACITY = 50;
 const ELECTRICITY_PRICE_PER_KWH = 0.6;
 const DEFAULT_FUEL_TANK_CAPACITY = 60; 
   
-const DISTANCE_PRESETS = [10, 50, 100, 200];
+const DISTANCE_PRESETS = [10, 50, 100];
 
 const TAXI_COST_PER_KM = 6.5;
 
@@ -155,7 +182,7 @@ const CO2_PER_LITER_GASOLINE = 2.31;
 const CO2_PER_LITER_DIESEL = 2.68;
 
 const STEPS = ["distance", "vehicle", "drivingPreferences", "fuelPrice", "results"] as const;
-const STEP_LABELS = ["מרחק", "רכב", "העדפות", "מחיר", "תוצאות"];
+const STEP_LABELS = ["לאן נוסעים?", "עם מה?", "איך?", "כמה עולה?", "תוצאות!"];
 
 // ============================================
 // COLORS
@@ -395,7 +422,7 @@ const ComparisonCard: React.FC<ComparisonCardProps> = ({ iconNode, title, cost, 
           styles.comparisonBadgeText,
           isCheaper ? styles.comparisonBadgeTextSavings : styles.comparisonBadgeTextNeutral,
         ]}>
-          {isCheaper ? `חיסכון ₪${savings.toFixed(0)}` : `ברכב יקר ב-₪${Math.abs(savings).toFixed(0)}`}
+          {isCheaper ? `חיסכון ₪${savings.toFixed(0)}` : `יקר יותר ב-₪${Math.abs(savings).toFixed(0)}`}
         </BlurredValue>
       </View>
     </View>
@@ -593,7 +620,7 @@ export default function CalculatorScreen() {
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
   const [showPriceHelper, setShowPriceHelper] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [showVideoAd, setShowVideoAd] = useState(false);
+  const [showInterstitialAd, setShowInterstitialAd] = useState(false);
   const [isPremiumUnlocked, setIsPremiumUnlocked] = useState(false);
   const [showUnlockAd, setShowUnlockAd] = useState(false);
 
@@ -798,7 +825,7 @@ export default function CalculatorScreen() {
 
     const baseConsumptionForAdjustment = vehicle.fueltype === "Electric"
       ? avgConsumption * 100  
-      : avgConsumption;       
+      : avgConsumption;        
 
     const adjustmentResult = calculateAdjustedConsumption(
       baseConsumptionForAdjustment,
@@ -865,7 +892,7 @@ export default function CalculatorScreen() {
         await AsyncStorage.setItem("calculationCount", nextCount.toString());
 
         if (nextCount % 2 === 0) {
-          setShowVideoAd(true);
+          setShowInterstitialAd(true);
         } else {
           handleAdComplete(); 
         }
@@ -881,7 +908,7 @@ export default function CalculatorScreen() {
   // AD COMPLETE HANDLER
   // ============================================
   const handleAdComplete = () => {
-    setShowVideoAd(false);
+    setShowInterstitialAd(false);
     setShowCelebration(true);
     setTimeout(() => setShowCelebration(false), 1000);
 
@@ -1031,9 +1058,10 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
           <GlassCard style={styles.stepCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
               <MapPin size={24} color={COLORS.textPrimary} />
-              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>מה המרחק?</Text>
-            </View>
-            <Text style={styles.questionSubtitle}>הכנס מרחק בקילומטרים (עד 5000)</Text>
+            <Text style={[styles.questionTitle, { marginBottom: 0 }]}>
+              {'כמה ק"מ נסענו?'}
+            </Text>            </View>
+            <Text style={styles.questionSubtitle}>{'הכנס מרחק ב-ק"מ (עד 5000)'}</Text>
 
             <View style={styles.presetsContainer}>
               <Text style={styles.presetsLabel}>בחירה מהירה:</Text>
@@ -1077,12 +1105,18 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
               </View>
             )}
 
-            <View style={styles.tipContainer}>
-              <Info size={16} color="#0369A1" />
-              <Text style={[styles.tipText, { color: '#0369A1' }]}>
-                אפשר לבדוק מרחק מדויק דרך Waze או Google Maps
-              </Text>
-            </View>
+                {/* 📍 WAZE BUTTON ONLY (Redesigned) */}
+              <View style={styles.mapButtonsContainer}>
+                <Text style={styles.mapButtonsTitle}>לא בטוח כמה המרחק? 📍</Text>
+                <TouchableOpacity 
+                  style={styles.mapBtnWaze} 
+                  onPress={() => Linking.openURL('https://waze.com/ul')}
+                  activeOpacity={0.7}
+                >
+                  <Map size={20} color={COLORS.accent} />
+                  <Text style={styles.mapBtnText}>פתח Waze לבדיקה</Text>
+                </TouchableOpacity>
+              </View>
 
             <View style={styles.actionButtons}>
               <TouchableOpacity
@@ -1106,7 +1140,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
           </GlassCard>
         );
 
-      // ========================================
+       // ========================================
       // STEP 2: VEHICLE
       // ========================================
       case "vehicle":
@@ -1114,7 +1148,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
           <GlassCard style={styles.stepCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
               <Car size={24} color={COLORS.primary} />
-              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>בחר רכב</Text>
+              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>איזה רכב לוקחים?</Text>
             </View>
             <Text style={styles.questionSubtitle}>בחר את הרכב שלך מהרשימה</Text>
 
@@ -1129,7 +1163,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                 <Text style={styles.emptyText}>אין רכבים שמורים</Text>
                 <TouchableOpacity
                   style={[styles.addVehicleButton, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}
-                  onPress={() => router.push("/addVehicle")}
+                  onPress={() => router.push("/(tabs)/vehicles")}
                 >
                   <Plus size={18} color={COLORS.primary} />
                   <Text style={styles.addVehicleButtonText}>הוסף רכב חדש</Text>
@@ -1281,7 +1315,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
           <GlassCard style={styles.stepCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
               <Compass size={24} color={COLORS.textPrimary} />
-              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>העדפות נהיגה</Text>
+              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>איך אתה נוהג? 🏎️</Text>
             </View>
             <Text style={styles.questionSubtitle}>
               ספר לנו על הרגלי הנהיגה שלך לחישוב מדויק יותר
@@ -1304,10 +1338,10 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     styles.preferenceCardTitle,
                     drivingStyle === 'eco' && styles.preferenceCardTitleActive,
                   ]}>
-                    חסכוני
+                    רגוע
                   </Text>
                   <Text style={styles.preferenceCardDesc}>
-                    האצה רכה, נהיגה רגועה
+                    האצה רכה, חסכוני
                   </Text>
                 </TouchableOpacity>
 
@@ -1349,7 +1383,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     ספורט
                   </Text>
                   <Text style={styles.preferenceCardDesc}>
-                    האצה מהירה, נהיגה דינמית
+                    האצה מהירה
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1375,7 +1409,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     עיר
                   </Text>
                   <Text style={styles.preferenceCardDesc}>
-                    בעיקר נסיעות עירוניות
+                    בעיקר עירוניות
                   </Text>
                   {tripType === 'city' && (
                     <Text style={styles.preferenceCardCheck}>✓</Text>
@@ -1420,10 +1454,10 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     styles.preferenceCardTitle,
                     tripType === 'highway' && styles.preferenceCardTitleActive,
                   ]}>
-                    כביש מהיר
+                    מהיר
                   </Text>
                   <Text style={styles.preferenceCardDesc}>
-                    בעיקר נסיעות בין-עירוניות
+                    בינעירוני
                   </Text>
                   {tripType === 'highway' && (
                     <Text style={styles.preferenceCardCheck}>✓</Text>
@@ -1433,7 +1467,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             </View>
 
             <View style={styles.preferenceSection}>
-              <Text style={styles.preferenceSectionTitle}>שימוש במיזוג אוויר</Text>
+              <Text style={styles.preferenceSectionTitle}>מזגן?</Text>
               <View style={styles.preferenceGrid}>
                 <TouchableOpacity
                   style={[
@@ -1449,10 +1483,10 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     styles.preferenceCardTitle,
                     acUsage === 'always' && styles.preferenceCardTitleActive,
                   ]}>
-                    כמעט תמיד
+                    תמיד
                   </Text>
                   <Text style={styles.preferenceCardDesc}>
-                    מיזוג פועל רוב הזמן
+                    חם פה!
                   </Text>
                   {acUsage === 'always' && (
                     <Text style={styles.preferenceCardCheck}>✓</Text>
@@ -1476,7 +1510,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     לפעמים
                   </Text>
                   <Text style={styles.preferenceCardDesc}>
-                    רק בימים חמים
+                    כשצריך
                   </Text>
                   {acUsage === 'sometimes' && (
                     <Text style={styles.preferenceCardCheck}>✓</Text>
@@ -1497,10 +1531,10 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     styles.preferenceCardTitle,
                     acUsage === 'rarely' && styles.preferenceCardTitleActive,
                   ]}>
-                    כמעט אף פעם
+                    כמעט ולא
                   </Text>
                   <Text style={styles.preferenceCardDesc}>
-                    מעדיף חלונות פתוחים
+                    חלונות פתוחים
                   </Text>
                   {acUsage === 'rarely' && (
                     <Text style={styles.preferenceCardCheck}>✓</Text>
@@ -1538,7 +1572,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
               {isElectric ? <Zap size={24} color={COLORS.primary} /> : <Fuel size={24} color={COLORS.primary} />}
               <Text style={[styles.questionTitle, { marginBottom: 0 }]}>
-                מחיר {priceType}
+                כמה עולה {priceType}? 💸
               </Text>
             </View>   
             <Text style={styles.questionSubtitle}>
@@ -1652,7 +1686,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Calculator size={20} color="#FFF" />
-                  <Text style={styles.calculateButtonText}>חשב עלות</Text>
+                  <Text style={styles.calculateButtonText}>חשב תוצאה</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -1696,7 +1730,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             <View style={styles.premiumDashboardCard}>
               
               <View style={styles.totalCostHeader}>
-                <Text style={styles.totalCostLabel}>עלות הנסיעה שלך</Text>
+                <Text style={styles.totalCostLabel}>שורה תחתונה 💰</Text>
                 <AnimatedNumber
                   value={result.totalCost}
                   prefix="₪"
@@ -1739,18 +1773,18 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             <View style={[styles.bottomActionsContainer, { marginTop: 24, marginBottom: 16 }]}>
               <TouchableOpacity style={styles.primaryActionButton} onPress={handleReset}>
                 <RefreshCw size={20} color="#FFF" />
-                <Text style={styles.primaryActionText}>שמור והתחל מחדש</Text>
+                <Text style={styles.primaryActionText}>שמור וחשב מחדש</Text>
               </TouchableOpacity>
               
               <View style={styles.secondaryActionsRow}>
                 <TouchableOpacity style={styles.secondaryActionButton} onPress={shareResults}>
                   <Share2 size={18} color={COLORS.primary} />
-                  <Text style={styles.secondaryActionText}>שתף תוצאות</Text>
+                  <Text style={styles.secondaryActionText}>שתף בוואטסאפ</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.secondaryActionButton} onPress={() => router.push("/vehicles")}>
                   <Car size={18} color={COLORS.primary} />
-                  <Text style={styles.secondaryActionText}>הרכבים שלי</Text>
+                  <Text style={styles.secondaryActionText}>החניה שלי</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1785,7 +1819,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                 </View>
 
                 {/* Carpool Splitter */}
-                <Text style={styles.premiumSectionSubTitle}>חלוקת תשלום (קארפול)</Text>
+                <Text style={styles.premiumSectionSubTitle}>מי מעביר בביט? (קארפול) 📱</Text>
                 <View style={styles.carpoolContainer}>
                   <View style={styles.carpoolBox}>
                     <View style={{ marginBottom: 6 }}>
@@ -1837,7 +1871,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.premiumGridValue}>
                       ₪{trueCost.toFixed(0)}
                     </BlurredValue>
-                    <Text style={styles.premiumGridSub}>כולל בלאי, פחת וטיפולים</Text>
+                    <Text style={styles.premiumGridSub}>כולל בלאי וטיפולים</Text>
                   </View>
                 </View>
 
@@ -1906,7 +1940,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
     );
   }
 
-  if (showVideoAd) {
+  if (showInterstitialAd) {
     return (
       <View style={styles.adLoadingContainer}>
         <View style={styles.adLoadingContent}>
@@ -1929,7 +1963,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
           </View>
         </View>
         
-        <VideoAd
+        <InterstitialAd
           onAdComplete={handleAdComplete}
           onAdError={(error: any) => {
             if (__DEV__) { console.log('Ad error:', error); }
@@ -1951,7 +1985,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
       >
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
           <Calculator size={28} color={COLORS.textOnPrimary} />
-          <Text style={[styles.headerTitle, { marginTop: 0 }]}>מחשבון עלות נסיעה</Text>
+          <Text style={[styles.headerTitle, { marginTop: 0 }]}>מחשבון נסיעה</Text>
         </View>
       </LinearGradient>
 
@@ -1965,18 +1999,18 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
 
       <ScrollView 
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 120 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 40 }} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {renderStep()}
-      </ScrollView>
 
-      {Platform.OS !== 'web' && !showVideoAd && step < STEPS.length - 1 && (
-        <View style={{ paddingBottom: Platform.OS === 'ios' ? 6 : 3, paddingTop: 1, alignItems: 'center' }}>
-          <BannerAd key={`banner-step-${step}`} />
-        </View>
-      )}
+        {Platform.OS !== 'web' && !showInterstitialAd && step < STEPS.length - 1 && (
+          <View style={{ marginTop: 24, paddingBottom: Platform.OS === 'ios' ? 24 : 16, alignItems: 'center' }}>
+            <BannerAd key={`banner-step-${step}`} />
+          </View>
+        )}
+      </ScrollView>
 
       {toastMessage && (
         <Toast
@@ -2275,22 +2309,53 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     writingDirection: "rtl",
   },
-  tipContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  mapButtonsContainer: {
     marginTop: 16,
-    padding: 12,
-    backgroundColor: "#FEF9E7",
-    borderRadius: 12,
-    gap: 10,
+    padding: 16,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
   },
-  tipText: {
-    flex: 1,
+  mapButtonsTitle: {
     fontSize: 14,
-    color: "#92400E",
-    textAlign: "left", 
-    lineHeight: 20,
-    writingDirection: "rtl",
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 12,
+    writingDirection: 'rtl'
+  },
+  mapBtnRow: {
+    flexDirection: 'row-reverse',
+    gap: 12,
+    width: '100%',
+    justifyContent: 'center'
+  },
+  mapBtnWaze: {
+    width: '80%',
+    flex: 1,
+    backgroundColor: '#33CCFF',
+    flexDirection: 'row',
+    gap: 9,
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 11,
+    alignItems: 'center'
+  },
+  mapBtnGoogle: {
+    flex: 1,
+    backgroundColor: '#34A853',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+  mapBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 14
   },
   actionButtons: {
     flexDirection: "row",

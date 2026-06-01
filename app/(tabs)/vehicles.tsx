@@ -434,10 +434,8 @@ export default function VehiclesScreen() {
               <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noVehicles}</Text>
               <Text style={styles.emptyText}>{LEGAL_UI_STRINGS.empty.addFirst}</Text>
               
-              {/* התוספת שלנו: פרסומת מלבנית גדולה */}
               {Platform.OS !== 'web' && (
                 <View style={styles.emptyAdWrapper}>
-                  <Text style={styles.adTagSmall}>פרסומת</Text>
                   <AdBanner size="MEDIUM_RECTANGLE" />
                 </View>
               )}

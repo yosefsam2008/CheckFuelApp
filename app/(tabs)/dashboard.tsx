@@ -29,6 +29,7 @@ import {
   Scale,
   Fuel,
   ChevronRight,
+  Wallet,
 } from 'lucide-react-native';
 import BannerAd from '../../components/BannerAd';
 import LegalScreen from '../LegalScreen';
@@ -201,15 +202,15 @@ const RecentTripCard = React.memo(function RecentTripCard({ trip }: { trip: Trip
       <View style={styles.tripDetails}>
         <View style={styles.tripDetail}>
           <Text style={styles.tripDetailLabel}>מרחק</Text>
-          <Text style={styles.tripDetailValue}>{trip.distance} km</Text>
+          <Text style={styles.tripDetailValue}>{trip.distance} ק״מ</Text>
         </View>
         <View style={styles.tripDetail}>
           <Text style={styles.tripDetailLabel}>עלות</Text>
-          <Text style={styles.tripDetailValue}>₪{trip.totalCost.toFixed(2)}</Text>
+          <Text style={styles.tripDetailValue}>₪{trip.totalCost.toFixed(0)}</Text>
         </View>
         <View style={styles.tripDetail}>
           <Text style={styles.tripDetailLabel}>ממוצע</Text>
-          <Text style={styles.tripDetailValue}>₪{trip.costPerKm.toFixed(2)}/km</Text>
+          <Text style={styles.tripDetailValue}>₪{trip.costPerKm.toFixed(2)}/ק״מ</Text>
         </View>
       </View>
     </View>
@@ -228,9 +229,18 @@ export default function Dashboard() {
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [userName, setUserName] = useState<string>(''); // For personalized greeting
 
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
+
+  // 1. Personalized Greeting based on time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'בוקר טוב';
+    if (hour < 18) return 'צהריים טובים';
+    return 'ערב טוב';
+  };
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
@@ -244,14 +254,41 @@ export default function Dashboard() {
         ).start();
       }
     });
+
+    // Try to load user profile/name if you have one saved
+    const loadUserName = async () => {
+        try {
+            const name = await AsyncStorage.getItem('userName');
+            if (name) setUserName(name);
+        } catch (e) {
+            // ignore
+        }
+    }
+    loadUserName();
   }, [floatAnim]);
 
-  const stats: DashboardStats = useMemo(() => {
+  // 3. Focus on Monthly Budget instead of All-Time stats
+  const currentMonthStats: DashboardStats = useMemo(() => {
     if (!allTrips.length) return { totalTrips: 0, totalDistance: 0, totalCost: 0, avgCostPerKm: 0 };
-    const totalTrips = allTrips.length;
-    const totalDistance = allTrips.reduce((s, t) => s + t.distance, 0);
-    const totalCost = allTrips.reduce((s, t) => s + t.totalCost, 0);
-    return { totalTrips, totalDistance, totalCost, avgCostPerKm: totalDistance > 0 ? totalCost / totalDistance : 0 };
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const monthlyTrips = allTrips.filter(trip => {
+        const tripDate = new Date(trip.timestamp);
+        return tripDate.getMonth() === currentMonth && tripDate.getFullYear() === currentYear;
+    });
+
+    const totalTrips = monthlyTrips.length;
+    const totalDistance = monthlyTrips.reduce((s, t) => s + t.distance, 0);
+    const totalCost = monthlyTrips.reduce((s, t) => s + t.totalCost, 0);
+    return { 
+        totalTrips, 
+        totalDistance, 
+        totalCost, 
+        avgCostPerKm: totalDistance > 0 ? totalCost / totalDistance : 0 
+    };
   }, [allTrips]);
 
   const recentTrips = useMemo(
@@ -287,10 +324,8 @@ export default function Dashboard() {
     setRefreshing(true);
     await loadDashboardData();
     setRefreshing(false);
-    showToast('✓ נתונים עודכנו');
+    showToast('✓ הנתונים רעננים!');
   }, [loadDashboardData, showToast]);
-
-  const heroGreeting = 'ברוך הבא!';
 
   return (
     <View style={styles.container}>
@@ -310,18 +345,18 @@ export default function Dashboard() {
             style={[styles.heroContent, { transform: [{ translateY: reduceMotion ? 0 : floatAnim }] }]}
           >
             <View style={styles.heroIconContainer}>
-              <MaterialCommunityIcons name="gas-station" size={48} color="#fff" />
+              <MaterialCommunityIcons name="steering" size={48} color="#fff" />
             </View>
-            <Text style={Typography.h1}>{heroGreeting}</Text>
-            <Text style={styles.heroSubtitle}>מחשבון חכם לניהול עלויות הדלק שלך</Text>
+            {/* Updated greeting */}
+            <Text style={Typography.h1}>{`${getGreeting()}${userName ? ` ${userName}` : ''}! 👋`}</Text>
+            <Text style={styles.heroSubtitle}>לאן נוסעים היום?</Text>
           </Animated.View>
         </LinearGradient>
 
-        <View style={styles.bannerAdContainer}><BannerAd /></View>
-        
         <View style={styles.content}>
           <View style={styles.sectionTitleWrapper}>
-            <Text style={styles.sectionTitleLarge}>📊 סיכום כולל</Text>
+            {/* Updated section title */}
+            <Text style={styles.sectionTitleLarge}>מצב הארנק שלי החודש 💸</Text>
           </View>
 
           {isLoading ? (
@@ -331,27 +366,27 @@ export default function Dashboard() {
           ) : (
             <View style={styles.statsContainer}>
               <StatCard
-                iconNode={<TrendingUp size={28} color={Colors.primary} />}
-                label="נסיעות" value={stats.totalTrips}
+                iconNode={<Wallet size={28} color={Colors.primary} />}
+                label="הוצאות דלק החודש" value={`₪${currentMonthStats.totalCost.toFixed(0)}`}
                 variant="featured"
-                accessibilityLabel={`סך הכל ${stats.totalTrips} נסיעות`}
+                accessibilityLabel={`עלות כוללת ${currentMonthStats.totalCost.toFixed(0)} שקלים`}
               />
-              <StatCard
-                iconNode={<CircleDollarSign size={28} color={Colors.primary} />}
-                label="עלות כוללת" value={`₪${stats.totalCost.toFixed(0)}`}
-                variant="featured"
-                accessibilityLabel={`עלות כוללת ${stats.totalCost.toFixed(0)} שקלים`}
-              />
-              <StatCard
-                iconNode={<Route size={24} color={Colors.primary} />}
-                label="מרחק" value={stats.totalDistance.toFixed(0)} unit="km"
-                accessibilityLabel={`מרחק כולל ${stats.totalDistance.toFixed(0)} קילומטרים`}
-              />
-              <StatCard
-                iconNode={<Target size={24} color={Colors.primary} />}
-                label="ממוצע לק״מ" value={`₪${stats.avgCostPerKm.toFixed(2)}`}
-                accessibilityLabel={`ממוצע לקילומטר ${stats.avgCostPerKm.toFixed(2)} שקלים`}
-              />
+               <View style={styles.statsGrid}>
+                  <View style={styles.statsColumn}>
+                     <StatCard
+                        iconNode={<Route size={24} color={Colors.primary} />}
+                        label="נסעתי החודש" value={currentMonthStats.totalDistance.toFixed(0)} unit=" ק״מ"
+                        accessibilityLabel={`מרחק כולל ${currentMonthStats.totalDistance.toFixed(0)} קילומטרים`}
+                      />
+                  </View>
+                  <View style={styles.statsColumn}>
+                      <StatCard
+                        iconNode={<Target size={24} color={Colors.primary} />}
+                        label="עלות ממוצעת" value={`₪${currentMonthStats.avgCostPerKm.toFixed(2)}`} unit="/ק״מ"
+                        accessibilityLabel={`ממוצע לקילומטר ${currentMonthStats.avgCostPerKm.toFixed(2)} שקלים`}
+                      />
+                  </View>
+               </View>
             </View>
           )}
 
@@ -364,7 +399,7 @@ export default function Dashboard() {
           >
             <LinearGradient colors={[Colors.primary, Colors.primaryDark]} style={styles.primaryButtonGradient}>
               <ChevronRight size={24} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.primaryButtonText}>חישוב נסיעה חדשה</Text>
+              <Text style={styles.primaryButtonText}>חשב נסיעה חדשה 🚀</Text>
               <View style={styles.primaryButtonIcon}>
                 <Fuel size={28} color="#fff" />
               </View>
@@ -372,13 +407,14 @@ export default function Dashboard() {
           </TouchableOpacity>
 
           <View style={styles.sectionTitleWrapper}>
-            <Text style={styles.sectionTitleSmall}>פעולות מהירות</Text>
+            {/* Updated section title */}
+            <Text style={styles.sectionTitleSmall}>מה עושים עכשיו? ⚡</Text>
           </View>
 
           <View style={styles.actionsGrid}>
             <ActionButton
               iconNode={<Car size={30} color={Colors.primary} />}
-              label="הרכבים שלי"
+              label="החניה שלי"
               onPress={() => router.push('./vehicles')}
               featured
               accessibilityLabel="נווט לרשימת הרכבים שלי"
@@ -391,19 +427,21 @@ export default function Dashboard() {
             />
             <ActionButton
               iconNode={<HelpCircle size={30} color={Colors.primary} />}
-              label="מדריך שימוש"
+              label="איך זה עובד?"
               onPress={() => setShowUserGuide(true)}
               accessibilityLabel="פתח מדריך שימוש"
             />
+             {/* Note: Legal screen button might be better placed elsewhere for this audience, 
+                 but kept here for now per your original code structure. Consider moving to a settings screen later. */}
             <ActionButton
               iconNode={<Scale size={30} color={Colors.primary} />}
-              label="מדיניות ומשפט"
+              label="חוקים ופרטיות"
               onPress={() => setShowLegalModal(true)}
               accessibilityLabel="פתח מדיניות פרטיות ותנאים משפטיים"
             />
           </View>
 
-          <View style={styles.bannerAdContainer}><BannerAd /></View>
+          <BannerAd style={{ marginVertical: 12 }} />
 
           {!isLoading && recentTrips.length > 0 && (
             <>
@@ -413,9 +451,9 @@ export default function Dashboard() {
                   accessibilityRole="button"
                   accessibilityLabel="הצג את כל הנסיעות"
                 >
-                  <Text style={styles.viewAllLink}>{ChevronBack} הצג הכל</Text>
+                  <Text style={styles.viewAllLink}>{ChevronBack} בא לי לראות הכל</Text>
                 </TouchableOpacity>
-                <Text style={styles.sectionTitleSmall}>נסיעות אחרונות</Text>
+                <Text style={styles.sectionTitleSmall}>נסיעות אחרונות 🕒</Text>
               </View>
               {recentTrips.map((trip) => (
                 <RecentTripCard key={trip.id} trip={trip} />
@@ -423,9 +461,6 @@ export default function Dashboard() {
             </>
           )}
 
-          {recentTrips.length > 3 && (
-            <View style={styles.bannerAdContainer}><BannerAd /></View>
-          )}
         </View>
       </Animated.ScrollView>
 
@@ -461,7 +496,7 @@ const styles = StyleSheet.create({
   heroContent: { alignItems: 'center' },
   heroIconContainer: { width: 90, height: 90, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   heroIcon: { fontSize: 48 },
-  heroSubtitle: { fontSize: 16, color: Colors.textLight, fontWeight: '500', fontFamily: HEB_FONT, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
+  heroSubtitle: { fontSize: 18, color: Colors.textLight, fontWeight: '600', fontFamily: HEB_FONT, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
 
   content: {
     padding: 20,
@@ -469,7 +504,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitleWrapper: {
-    marginBottom: 25,
+    marginBottom: 20,
     marginTop: 5,
     width: '100%',
     alignItems: I18nManager.isRTL ? 'flex-start' : 'flex-end',
@@ -514,7 +549,7 @@ const styles = StyleSheet.create({
   statCard: {
     backgroundColor: Colors.card,
     borderRadius: 24,
-    padding: 20,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.03)',
@@ -530,23 +565,23 @@ const styles = StyleSheet.create({
   },
   statLabel: { ...Typography.caption, marginBottom: 6 },
   statValueContainer: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  statValue: { fontSize: 26, fontWeight: '800', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl' as const },
-  statUnit: { ...Typography.caption },
+  statValue: { fontSize: 24, fontWeight: '800', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl' as const },
+  statUnit: { ...Typography.caption, fontSize: 14, fontWeight: '700' },
 
   statCardFeatured: {
-    backgroundColor: Colors.card,
-    borderRadius: 24,
-    padding: 22,
-    flexDirection: 'row', 
-    alignItems: 'center',
-    marginBottom: 12,
-    ...sharedShadow,
-    shadowOpacity: 0.08,
-  },
+    backgroundColor: Colors.card,
+    borderRadius: 24,
+    padding: 22,
+    flexDirection: 'row', 
+    alignItems: 'center',
+    marginBottom: 4,
+    ...sharedShadow,
+    shadowOpacity: 0.08,
+  },
   statIconFeatured: { fontSize: 36 },
   statFeaturedText: { flex: 1, alignItems: 'flex-start' },
-  statLabelFeatured: { ...Typography.caption, marginBottom: 4 },
-  statValueFeatured: { fontSize: 30, fontWeight: '800', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl' as const, textAlign: 'right' as const },
+  statLabelFeatured: { ...Typography.caption, marginBottom: 4, fontSize: 14 },
+  statValueFeatured: { fontSize: 36, fontWeight: '900', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl' as const, textAlign: 'right' as const },
 
   primaryButton: {
     marginBottom: 28,
@@ -565,7 +600,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   primaryButtonIcon: { width: 52, height: 52, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  primaryButtonText: { flex: 1, fontSize: 19, fontWeight: '700', color: '#fff', fontFamily: HEB_FONT_BOLD, textAlign: 'right', writingDirection: 'rtl', marginRight: 12 },
+  primaryButtonText: { flex: 1, fontSize: 19, fontWeight: '800', color: '#fff', fontFamily: HEB_FONT_BOLD, textAlign: 'right', writingDirection: 'rtl', marginRight: 12 },
   primaryButtonArrow: { fontSize: 28, color: '#fff', opacity: 0.8 },
 
   actionsGrid: {
@@ -594,7 +629,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   actionIcon: { fontSize: 30 },
-  actionLabel: { ...Typography.body, fontWeight: '600', textAlign: 'center', writingDirection: 'rtl' },
+  actionLabel: { ...Typography.body, fontWeight: '700', textAlign: 'center', writingDirection: 'rtl' },
 
   recentHeader: {
     flexDirection: 'row-reverse',
@@ -603,7 +638,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 16,
   },
-  viewAllLink: { fontSize: 14, fontWeight: '600', color: Colors.primary, fontFamily: HEB_FONT, textAlign: 'left' },
+  viewAllLink: { fontSize: 15, fontWeight: '700', color: Colors.primary, fontFamily: HEB_FONT, textAlign: 'left' },
   
   tripCard: {
     backgroundColor: Colors.card,
@@ -626,7 +661,7 @@ const styles = StyleSheet.create({
   tripDetails: { flexDirection: 'row', justifyContent: 'space-between' },
   tripDetail: { alignItems: 'center', flex: 1 },
   tripDetailLabel: { ...Typography.caption, marginBottom: 4, textAlign: 'center' },
-  tripDetailValue: { fontSize: 15, fontWeight: '700', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl', textAlign: 'center' },
+  tripDetailValue: { fontSize: 16, fontWeight: '800', color: Colors.primary, fontFamily: HEB_FONT_BOLD, writingDirection: 'rtl', textAlign: 'center' },
 
   toast: {
     position: 'absolute',

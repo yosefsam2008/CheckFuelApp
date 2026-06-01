@@ -28,9 +28,7 @@ import {
   Info
 } from "lucide-react-native";
 
-// Conditional import for ads
-const VehicleRewardedAd = Platform.OS === "web" ? () => null : require("../components/VehicleRewardedAd").default;
-const AdBanner = Platform.OS === "web" ? () => null : require("../components/BannerAd").default;
+// No ad imports needed for manual entry screen
 
 const manufacturers = [
   "Toyota", "Kia", "Hyundai", "Mazda", "Honda", "Nissan",
@@ -56,9 +54,7 @@ export default function AddVehicle() {
   const [toastMessage, setToastMessage] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
   
-  // Ad and pending state
-  const [showAd, setShowAd] = useState(false);
-  const [pendingVehicle, setPendingVehicle] = useState<Vehicle | null>(null);
+  // No ad pending state needed
 
   const handleManufacturerChange = (text: string) => {
     setManufacturer(text);
@@ -135,25 +131,7 @@ export default function AddVehicle() {
       year: year ? parseInt(year) : new Date().getFullYear(),
     };
 
-    setPendingVehicle(newVehicle);
-
-    if (Platform.OS === "web") {
-      saveVehicleToStorage(newVehicle);
-      return;
-    }
-
-    setShowAd(true);
-  };
-
-  const handleAdComplete = () => {
-    setShowAd(false);
-    if (pendingVehicle) {
-      saveVehicleToStorage(pendingVehicle);
-    }
-  };
-
-  const handleAdError = (error: any) => {
-    console.error("Ad error:", error);
+    saveVehicleToStorage(newVehicle);
   };
 
   const avgPlaceholder = fuelType === "Electric" ? "לדוגמה: 0.15 (kWh/ק״מ)" : "לדוגמה: 16.5 (km/l)";
@@ -182,12 +160,6 @@ export default function AddVehicle() {
           </View>
         </View>
 
-        {/* Banner Ad Section*/}
-        {Platform.OS !== "web" ? (
-          <View style={styles.bannerWrapper}>
-            <AdBanner />
-          </View>
-        ) : null}
 
         {/* Form Container */}
         <View style={styles.formContainer}>
@@ -430,13 +402,6 @@ export default function AddVehicle() {
         {/* Toast */}
         {showToast && <Toast message={toastMessage || "אנא מלא את השדות הנדרשים"} />}
 
-        {/* Rewarded Interstitial Ad */}
-        {showAd && (
-          <VehicleRewardedAd
-            onAdComplete={handleAdComplete}
-            onAdError={handleAdError}
-          />
-        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -381,11 +381,10 @@ export default function HistoryScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* פרסומת מלבן גדול - צמודה לתחתית באופן מוחלט */}
+          {/* Fixed Ad pinned to the bottom, but using standard BANNER size */}
           {Platform.OS !== 'web' && (
             <View style={styles.emptyAdAbsolute}>
-              <Text style={styles.adTagSmall}>פרסומת</Text>
-              <AdBanner size="MEDIUM_RECTANGLE" />
+              <AdBanner size="BANNER" />
             </View>
           )}
         </>
@@ -422,12 +421,6 @@ export default function HistoryScreen() {
         </>
       )}
 
-      {/* 🚀 הבאנר החדש שצמוד תמיד לתחתית המסך */}
-      {Platform.OS !== 'web' && history.length > 0 && (
-        <View style={styles.stickyBottomAd}>
-          <AdBanner />
-        </View>
-      )}
 
       {/* Trip Details Modal */}
       <Modal
@@ -714,15 +707,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-    paddingBottom: 220, 
+    paddingBottom: 80, // Just enough space for the smaller banner ad
   },
   emptyAdAbsolute: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 30 : 10,
+    bottom: Platform.OS === 'ios' ? 20 : 0,
     left: 0,
     right: 0,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#f5f7fa', // Matches the screen background perfectly
     zIndex: 10,
   },
   emptyCircle: {
@@ -780,7 +775,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 120,
+    paddingBottom: 120, // This 120px gap allows the last card to scroll completely above the red button
   },
   tripCard: {
     height: 160,
@@ -900,7 +895,7 @@ const styles = StyleSheet.create({
 
   clearAllButton: {
     position: "absolute",
-    bottom: 95, 
+    bottom: Platform.OS === "ios" ? 30 : 20, // Sticks nicely to the bottom
     left: 20,
     right: 20,
     height: 56,
@@ -914,6 +909,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     overflow: "hidden",
+    zIndex: 100, // Ensures it ALWAYS stays on top of the cards
   },
   stickyBottomAd: {
     position: "absolute",

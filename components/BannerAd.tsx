@@ -3,10 +3,12 @@ import React, { useState } from 'react';
 import { View, Platform, StyleSheet, Text, ViewStyle } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
-// Automatic selection between test and production IDs
+// Automatic selection between test and production IDs per platform
 const AD_UNIT_ID = __DEV__ 
   ? TestIds.BANNER 
-  : 'ca-app-pub-6526080198496101/4914580281';
+  : Platform.OS === 'ios'
+    ? 'ca-app-pub-6526080198496101/5290907587' // המזהה החדש של iOS
+    : 'ca-app-pub-6526080198496101/4914580281'; // המזהה של אנדרואיד
 
 interface AdBannerProps {
   style?: ViewStyle;

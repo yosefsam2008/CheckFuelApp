@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "./Toast";
 import { Vehicle } from "../lib/data/vehiclesData";
 
@@ -41,6 +42,8 @@ type FuelType = "Gasoline" | "Diesel" | "Electric" | "";
 
 export default function AddVehicle() {
   const router = useRouter();
+  const insets = useSafeAreaInsets(); // שואב את מידות ה"שטח הבטוח" של המסך
+
   const [manufacturer, setManufacturer] = useState("");
   const [filteredManufacturers, setFilteredManufacturers] = useState<string[]>([]);
   const [plate, setPlate] = useState("");
@@ -142,7 +145,13 @@ export default function AddVehicle() {
       style={styles.container}
     >
       <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: Math.max(insets.top, 20), // מרחיק אוטומטית מהשעון למעלה
+            paddingBottom: Math.max(insets.bottom + 20, 40) // מרחיק אוטומטית מהפס למטה
+          }
+        ]} 
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -413,8 +422,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFB",
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20, // שינינו ל-Horizontal כי ה-Top וה-Bottom מחושבים דינאמית למעלה
   },
   header: {
     marginBottom: 20,

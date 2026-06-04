@@ -30,6 +30,7 @@ import {
   Fuel,
   ChevronRight,
   Wallet,
+  Zap,
 } from 'lucide-react-native';
 import BannerAd from '../../components/BannerAd';
 import LegalScreen from '../LegalScreen';
@@ -127,8 +128,6 @@ const sharedShadow = Platform.select({
   },
   android: { elevation: 4 },
 });
-
-const ChevronBack = I18nManager.isRTL ? '›' : '‹';
 
 // --- Sub-components ---
 const StatCard = React.memo(function StatCard({
@@ -335,150 +334,159 @@ export default function Dashboard() {
         }
         contentContainerStyle={styles.scrollContent}
       >
-        <LinearGradient
-          colors={[Colors.primary, Colors.primaryLight]}
-          style={[styles.heroSection, { paddingTop: insets.top + 20 }]}
-        >
-          <View style={styles.heroDecoration1} />
-          <View style={styles.heroDecoration2} />
-          <Animated.View
-            style={[styles.heroContent, { transform: [{ translateY: reduceMotion ? 0 : floatAnim }] }]}
+          <LinearGradient
+            colors={[Colors.primary, Colors.primaryLight]}
+            style={[styles.heroSection, { paddingTop: insets.top + 20 }]}
           >
-            <View style={styles.heroIconContainer}>
-              <MaterialCommunityIcons name="steering" size={48} color="#fff" />
-            </View>
-            {/* Updated greeting */}
-            <Text style={Typography.h1}>{`${getGreeting()}${userName ? ` ${userName}` : ''}! 👋`}</Text>
-            <Text style={styles.heroSubtitle}>לאן נוסעים היום?</Text>
-          </Animated.View>
-        </LinearGradient>
+            <View style={styles.heroDecoration1} />
+            <View style={styles.heroDecoration2} />
+            <Animated.View
+              style={[styles.heroContent, { transform: [{ translateY: reduceMotion ? 0 : floatAnim }] }]}
+            >
+              <View style={styles.heroIconContainer}>
+                <MaterialCommunityIcons name="steering" size={48} color="#fff" />
+              </View>
+              {/* Updated greeting */}
+              <Text style={Typography.h1}>{`${getGreeting()}${userName ? ` ${userName}` : ''}!`}</Text>
+              <Text style={styles.heroSubtitle}>לאן נוסעים היום?</Text>
+            </Animated.View>
+          </LinearGradient>
 
-        <View style={styles.content}>
-          <View style={styles.sectionTitleWrapper}>
-            {/* Updated section title */}
-            <Text style={styles.sectionTitleLarge}>מצב הארנק שלי החודש 💸</Text>
-          </View>
-
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.primary} />
+          <View style={styles.content}>
+              <View style={styles.sectionTitleWrapper}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Wallet size={24} color={Colors.primary} />
+                <Text style={styles.sectionTitleLarge}>מצב הארנק שלי החודש</Text>
+              </View>
             </View>
-          ) : (
-            <View style={styles.statsContainer}>
-              <StatCard
-                iconNode={<Wallet size={28} color={Colors.primary} />}
-                label="הוצאות דלק החודש" value={`₪${currentMonthStats.totalCost.toFixed(0)}`}
-                variant="featured"
-                accessibilityLabel={`עלות כוללת ${currentMonthStats.totalCost.toFixed(0)} שקלים`}
-              />
-               <View style={styles.statsGrid}>
-                  <View style={styles.statsColumn}>
-                     <StatCard
-                        iconNode={<Route size={24} color={Colors.primary} />}
-                        label="נסעתי החודש" value={currentMonthStats.totalDistance.toFixed(0)} unit=" ק״מ"
-                        accessibilityLabel={`מרחק כולל ${currentMonthStats.totalDistance.toFixed(0)} קילומטרים`}
-                      />
-                  </View>
-                  <View style={styles.statsColumn}>
+
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+              </View>
+            ) : (
+              <View style={styles.statsContainer}>
+                <StatCard
+                  iconNode={<Wallet size={28} color={Colors.primary} />}
+                  label="הוצאות דלק החודש" value={`₪${currentMonthStats.totalCost.toFixed(0)}`}
+                  variant="featured"
+                  accessibilityLabel={`עלות כוללת ${currentMonthStats.totalCost.toFixed(0)} שקלים`}
+                />
+                <View style={styles.statsGrid}>
+                    <View style={styles.statsColumn}>
                       <StatCard
-                        iconNode={<Target size={24} color={Colors.primary} />}
-                        label="עלות ממוצעת" value={`₪${currentMonthStats.avgCostPerKm.toFixed(2)}`} unit="/ק״מ"
-                        accessibilityLabel={`ממוצע לקילומטר ${currentMonthStats.avgCostPerKm.toFixed(2)} שקלים`}
-                      />
-                  </View>
-               </View>
+                          iconNode={<Route size={24} color={Colors.primary} />}
+                          label="נסעתי החודש" value={currentMonthStats.totalDistance.toFixed(0)} unit=" ק״מ"
+                          accessibilityLabel={`מרחק כולל ${currentMonthStats.totalDistance.toFixed(0)} קילומטרים`}
+                        />
+                    </View>
+                    <View style={styles.statsColumn}>
+                        <StatCard
+                          iconNode={<Target size={24} color={Colors.primary} />}
+                          label="עלות ממוצעת" value={`₪${currentMonthStats.avgCostPerKm.toFixed(2)}`} unit="/ק״מ"
+                          accessibilityLabel={`ממוצע לקילומטר ${currentMonthStats.avgCostPerKm.toFixed(2)} שקלים`}
+                        />
+                    </View>
+                </View>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.primaryButton]}
+              onPress={() => router.push('./calculator')}
+              activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel="חישוב נסיעה חדשה"
+            >
+              <LinearGradient colors={[Colors.primary, Colors.primaryDark]} style={styles.primaryButtonGradient}>
+                <ChevronRight size={24} color="rgba(255,255,255,0.8)" />
+                <Text style={[styles.primaryButtonText, { flex: 1, textAlign: 'right', paddingRight: 12 }]}>
+                  חשב נסיעה חדשה
+                </Text>
+                <View style={styles.primaryButtonIcon}>
+                  <Fuel size={28} color="#fff" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+
+             <View style={styles.sectionTitleWrapper}>
+            {/* הוחלף האימוג'י באייקון מקצועי של ברק */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Zap size={20} color={Colors.primary} />
+              <Text style={styles.sectionTitleSmall}>מה עושים עכשיו?</Text>
             </View>
-          )}
-
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => router.push('./calculator')}
-            activeOpacity={0.9}
-            accessibilityRole="button"
-            accessibilityLabel="חישוב נסיעה חדשה"
-          >
-            <LinearGradient colors={[Colors.primary, Colors.primaryDark]} style={styles.primaryButtonGradient}>
-              <ChevronRight size={24} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.primaryButtonText}>חשב נסיעה חדשה 🚀</Text>
-              <View style={styles.primaryButtonIcon}>
-                <Fuel size={28} color="#fff" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <View style={styles.sectionTitleWrapper}>
-            {/* Updated section title */}
-            <Text style={styles.sectionTitleSmall}>מה עושים עכשיו? ⚡</Text>
           </View>
 
-          <View style={styles.actionsGrid}>
-            <ActionButton
-              iconNode={<Car size={30} color={Colors.primary} />}
-              label="החניה שלי"
-              onPress={() => router.push('./vehicles')}
-              featured
-              accessibilityLabel="נווט לרשימת הרכבים שלי"
-            />
-            <ActionButton
-              iconNode={<BarChart2 size={30} color={Colors.primary} />}
-              label="היסטוריה"
+            <View style={styles.actionsGrid}>
+              <ActionButton
+                iconNode={<Car size={30} color={Colors.primary} />}
+                label="החניה שלי"
+                onPress={() => router.push('./vehicles')}
+                featured
+                accessibilityLabel="נווט לרשימת הרכבים שלי"
+              />
+              <ActionButton
+                iconNode={<BarChart2 size={30} color={Colors.primary} />}
+                label="היסטוריה"
+                onPress={() => router.push('./history')}
+                accessibilityLabel="נווט להיסטוריית הנסיעות"
+              />
+              <ActionButton
+                iconNode={<HelpCircle size={30} color={Colors.primary} />}
+                label="איך זה עובד?"
+                onPress={() => setShowUserGuide(true)}
+                accessibilityLabel="פתח מדריך שימוש"
+              />
+              {/* Note: Legal screen button might be better placed elsewhere for this audience, 
+                  but kept here for now per your original code structure. Consider moving to a settings screen later. */}
+              <ActionButton
+                iconNode={<Scale size={30} color={Colors.primary} />}
+                label="חוקים ופרטיות"
+                onPress={() => setShowLegalModal(true)}
+                accessibilityLabel="פתח מדיניות פרטיות ותנאים משפטיים"
+              />
+            </View>
+
+            <BannerAd style={{ marginVertical: 12 }} />
+
+            {!isLoading && recentTrips.length > 0 && (
+              <>
+                <View style={styles.recentHeader}>
+            <Text style={styles.sectionTitleSmall}>נסיעות אחרונות</Text>
+            <TouchableOpacity
               onPress={() => router.push('./history')}
-              accessibilityLabel="נווט להיסטוריית הנסיעות"
-            />
-            <ActionButton
-              iconNode={<HelpCircle size={30} color={Colors.primary} />}
-              label="איך זה עובד?"
-              onPress={() => setShowUserGuide(true)}
-              accessibilityLabel="פתח מדריך שימוש"
-            />
-             {/* Note: Legal screen button might be better placed elsewhere for this audience, 
-                 but kept here for now per your original code structure. Consider moving to a settings screen later. */}
-            <ActionButton
-              iconNode={<Scale size={30} color={Colors.primary} />}
-              label="חוקים ופרטיות"
-              onPress={() => setShowLegalModal(true)}
-              accessibilityLabel="פתח מדיניות פרטיות ותנאים משפטיים"
-            />
+              accessibilityRole="button"
+              accessibilityLabel="הצג את כל הנסיעות"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Text style={styles.viewAllLink}>בא לי לראות הכל</Text>
+              <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.primary} />
+            </TouchableOpacity>
           </View>
-
-          <BannerAd style={{ marginVertical: 12 }} />
-
-          {!isLoading && recentTrips.length > 0 && (
-            <>
-              <View style={styles.recentHeader}>
-                <TouchableOpacity
-                  onPress={() => router.push('./history')}
-                  accessibilityRole="button"
-                  accessibilityLabel="הצג את כל הנסיעות"
-                >
-                  <Text style={styles.viewAllLink}>{ChevronBack} בא לי לראות הכל</Text>
-                </TouchableOpacity>
-                <Text style={styles.sectionTitleSmall}>נסיעות אחרונות 🕒</Text>
-              </View>
               {recentTrips.map((trip) => (
                 <RecentTripCard key={trip.id} trip={trip} />
               ))}
             </>
           )}
 
-        </View>
-      </Animated.ScrollView>
+          </View>
+        </Animated.ScrollView>
 
-      {toastMessage && (
-        <Animated.View style={[styles.toast, { opacity: toastOpacity }]}>
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </Animated.View>
-      )}
+        {toastMessage && (
+          <Animated.View style={[styles.toast, { opacity: toastOpacity }]}>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </Animated.View>
+        )}
 
-      <Modal visible={showLegalModal} animationType="slide" onRequestClose={() => setShowLegalModal(false)}>
-        <LegalScreen onClose={() => setShowLegalModal(false)} />
-      </Modal>
-      <Modal visible={showUserGuide} animationType="slide" onRequestClose={() => setShowUserGuide(false)}>
-        <UserGuideScreen onClose={() => setShowUserGuide(false)} />
-      </Modal>
-    </View>
-  );
-}
+        <Modal visible={showLegalModal} animationType="slide" onRequestClose={() => setShowLegalModal(false)}>
+          <LegalScreen onClose={() => setShowLegalModal(false)} />
+        </Modal>
+        <Modal visible={showUserGuide} animationType="slide" onRequestClose={() => setShowUserGuide(false)}>
+          <UserGuideScreen onClose={() => setShowUserGuide(false)} />
+        </Modal>
+      </View>
+    );
+  }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },

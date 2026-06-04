@@ -731,7 +731,8 @@ export default function VehiclesScreen() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <Text style={styles.plateContinueButtonText}>פתח זיהוי אוטומטי</Text>
-                    <ChevronLeft size={16} color="#fff" />
+                    <ChevronLeft size={13} color="#fff" style={{ marginRight: 8 }} />
+                    
                   </View>
                 </TouchableOpacity>
               </View>

@@ -3,8 +3,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
-const INTERSTITIAL_AD_ID = 'ca-app-pub-6526080198496101/6661960899';
-
 interface InterstitialAdProps {
   onAdComplete?: () => void;
   onAdError?: (error: any) => void;
@@ -44,9 +42,12 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({
         const admob = await import('react-native-google-mobile-ads');
         const { InterstitialAd: AdMobInterstitialAd, TestIds, AdEventType } = admob;
 
+        // בחירה חכמה של המזהה לפי הפלטפורמה (iOS או אנדרואיד) ומצב הפיתוח
         const adUnitId = __DEV__
           ? TestIds.INTERSTITIAL
-          : INTERSTITIAL_AD_ID;
+          : Platform.OS === 'ios'
+            ? 'ca-app-pub-6526080198496101/4281078249' // המזהה החדש של iOS
+            : 'ca-app-pub-6526080198496101/6661960899'; // המזהה הקיים של אנדרואיד
 
         const ad = AdMobInterstitialAd.createForAdRequest(adUnitId, {
           requestNonPersonalizedAdsOnly: true,

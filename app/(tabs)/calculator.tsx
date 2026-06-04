@@ -22,6 +22,7 @@ import {
   Heart,
   Info,
   Leaf, Lock,
+  Map,
   MapPin,
   Navigation,
   PartyPopper,
@@ -35,8 +36,7 @@ import {
   TrendingUp,
   User, Users,
   Wrench,
-  Zap,
-  Map
+  Zap
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -45,6 +45,7 @@ import {
   Easing,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -58,7 +59,6 @@ import {
   TouchableOpacity,
   View,
   ViewStyle,
-  Linking,
 } from "react-native";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 import {
@@ -1060,7 +1060,8 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
               <MapPin size={24} color={COLORS.textPrimary} />
             <Text style={[styles.questionTitle, { marginBottom: 0 }]}>
               {'כמה ק"מ נסענו?'}
-            </Text>            </View>
+            </Text> 
+            </View>
             <Text style={styles.questionSubtitle}>{'הכנס מרחק ב-ק"מ (עד 5000)'}</Text>
 
             <View style={styles.presetsContainer}>
@@ -1098,12 +1099,12 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
               </View>
             </Animated.View>
 
-            {getDistanceError(distance) && (
-              <View style={styles.errorContainer}>
-                <AlertTriangle size={16} color={COLORS.error} />
-                <Text style={styles.errorText}>{getDistanceError(distance)}</Text>
-              </View>
-            )}
+            {!!getDistanceError(distance) && (
+            <View style={styles.errorContainer}>
+              <AlertTriangle size={16} color={COLORS.error} />
+              <Text style={styles.errorText}>{getDistanceError(distance)}</Text>
+            </View>
+          )}
 
                 {/* 📍 WAZE BUTTON ONLY (Redesigned) */}
               <View style={styles.mapButtonsContainer}>
@@ -1202,7 +1203,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                   )}
                 </TouchableOpacity>
 
-                {vehicle?.avgConsumption && distance && (
+                {vehicle?.avgConsumption && distance !== "" && (
                   <View style={styles.consumptionPreview}>
                     <View style={{ marginRight: 8 }}>
                       {vehicle.fueltype === "Electric" ? (
@@ -1315,7 +1316,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
           <GlassCard style={styles.stepCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
               <Compass size={24} color={COLORS.textPrimary} />
-              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>איך אתה נוהג? 🏎️</Text>
+              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>איך אתה נוהג? </Text>
             </View>
             <Text style={styles.questionSubtitle}>
               ספר לנו על הרגלי הנהיגה שלך לחישוב מדויק יותר
@@ -1572,7 +1573,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
               {isElectric ? <Zap size={24} color={COLORS.primary} /> : <Fuel size={24} color={COLORS.primary} />}
               <Text style={[styles.questionTitle, { marginBottom: 0 }]}>
-                כמה עולה {priceType}? 💸
+                כמה עולה {priceType}? 
               </Text>
             </View>   
             <Text style={styles.questionSubtitle}>
@@ -1796,7 +1797,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             {/* ======================================= */}
             <View style={styles.premiumSectionContainer}>
               <Text style={styles.sectionTitle}>תובנות מתקדמות (Premium)</Text>
-
+          <Text style={styles.premiumSectionSubTitle}>כמה יעלה אם אסע ב... </Text>
               <View style={[styles.premiumContent, !isPremiumUnlocked && styles.premiumContentLocked]}>
                 
                 {/* Comparisons */}
@@ -1819,7 +1820,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                 </View>
 
                 {/* Carpool Splitter */}
-                <Text style={styles.premiumSectionSubTitle}>מי מעביר בביט? (קארפול) 📱</Text>
+                <Text style={styles.premiumSectionSubTitle}>מי מעביר ביט? </Text>
                 <View style={styles.carpoolContainer}>
                   <View style={styles.carpoolBox}>
                     <View style={{ marginBottom: 6 }}>
@@ -1843,35 +1844,38 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                     <View style={{ marginBottom: 6 }}>
                       <Users size={24} color={COLORS.textPrimary} />
                     </View>
-                    <Text style={styles.carpoolLabel}>4 נוסעים</Text>
+                    <Text style={styles.carpoolLabel}>5 נוסעים</Text>
                     <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.carpoolValue}>
-                      ₪{(result.totalCost / 4).toFixed(1)}
+                      ₪{(result.totalCost / 5).toFixed(1)}
                     </BlurredValue>
                   </View>
                 </View>
 
-                {/* Deep Financial Insights */}
-                <Text style={styles.premiumSectionSubTitle}>תחזיות ובלאי רכב</Text>
+              {/* Deep Financial Insights */}
+                <Text style={styles.premiumSectionSubTitle}>מה יקרה אם אסע ככה באופן קבוע?</Text>
                 <View style={styles.premiumGrid}>
+                  {/* קובייה ראשונה: 20 ימים בחודש */}
                   <View style={styles.premiumGridItem}>
                     <View style={{ marginBottom: 8 }}>
                       <Calendar size={24} color={COLORS.textPrimary} />
                     </View>
-                    <Text style={styles.premiumGridTitle}>תחזית שנתית</Text>
+                    <Text style={styles.premiumGridTitle}>חודש (20 ימים)</Text>
                     <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.premiumGridValue}>
-                      ₪{yearlyProjection.toFixed(0)}
+                      ₪{(result.totalCost * 20).toFixed(0)}
                     </BlurredValue>
-                    <Text style={styles.premiumGridSub}>לפי 20 נסיעות בחודש</Text>
+                    <Text style={styles.premiumGridSub}>הוצאה חודשית משוערת</Text>
                   </View>
+
+                  {/* קובייה שנייה: שנה שלמה */}
                   <View style={styles.premiumGridItem}>
                     <View style={{ marginBottom: 8 }}>
-                      <Wrench size={24} color={COLORS.textPrimary} />
+                      <TrendingUp size={24} color={COLORS.textPrimary} />
                     </View>
-                    <Text style={styles.premiumGridTitle}>עלות חודשית</Text>
+                    <Text style={styles.premiumGridTitle}>שנה שלמה</Text>
                     <BlurredValue isUnlocked={isPremiumUnlocked} textStyle={styles.premiumGridValue}>
-                      ₪{trueCost.toFixed(0)}
+                      ₪{(result.totalCost * 240).toFixed(0)}
                     </BlurredValue>
-                    <Text style={styles.premiumGridSub}>כולל בלאי וטיפולים</Text>
+                    <Text style={styles.premiumGridSub}>לפי 20 ימים בחודש</Text>
                   </View>
                 </View>
 

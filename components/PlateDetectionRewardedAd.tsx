@@ -1,4 +1,4 @@
-//componets/PlateDetectionRewardedAd.tsx
+// componets/PlateDetectionRewardedAd.tsx
 // קומפוננטה זו אחראית על הצגת פרסומת מסוג RewardedAd לפני זיהוי לוחית הרישוי.
 import React, { useEffect, useState } from 'react';
 import { Platform, ActivityIndicator, View, Text, StyleSheet } from 'react-native';
@@ -14,10 +14,12 @@ interface PlateDetectionRewardedAdProps {
   onAdError?: (error: any) => void;
 }
 
-// הגדרת מזהה הפרסומת מחוץ לקומפוננטה (מונע יצירה מחדש בכל רינדור)
+// בחירת מזהה פרסומת חכמה לפי סביבת פיתוח ופלטפורמה (iOS / Android)
 const AD_UNIT_ID = __DEV__
   ? ''
-  : 'ca-app-pub-6526080198496101/8151818415';
+  : Platform.OS === 'ios'
+    ? 'ca-app-pub-6526080198496101/2529012875' // המזהה החדש של iOS
+    : 'ca-app-pub-6526080198496101/8151818415'; // המזהה הקיים של אנדרואיד
 
 const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
   onAdComplete,
@@ -31,7 +33,6 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
       onAdComplete?.();
       return;
     }
-
 
     // יצירת מופע הפרסומת
     const rewardedAd = RewardedAd.createForAdRequest(AD_UNIT_ID, {

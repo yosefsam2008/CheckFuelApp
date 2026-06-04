@@ -83,7 +83,6 @@
   - `@react-navigation/native` — Core navigation primitives
 
 ### **Platform-Specific Libraries**
-- **expo-location** `~19.0.8` — GPS and location services
 - **react-native-google-mobile-ads** `^16.3.0` — AdMob integration
 - **react-native-maps** `1.20.1` — Map display (optional feature support)
 - **expo-linear-gradient** `^15.0.8` — Gradient backgrounds

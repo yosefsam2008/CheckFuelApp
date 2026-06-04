@@ -15,10 +15,12 @@ import {
   AdEventType
 } from 'react-native-google-mobile-ads';
 
+// בחירת מזהה פרסומת חכמה לפי סביבת פיתוח ופלטפורמה (iOS / Android)
 const AD_UNIT_ID = __DEV__
   ? TestIds.REWARDED_INTERSTITIAL 
-  // שים כאן את המזהה האמיתי שלך לפרסומת הפרימיום כשתהיה מוכן
-  : 'ca-app-pub-6526080198496101/2899491732';
+  : Platform.OS === 'ios'
+    ? 'ca-app-pub-6526080198496101/3310925745' // המזהה החדש של iOS
+    : 'ca-app-pub-6526080198496101/2899491732'; // המזהה הקיים של אנדרואיד
 
 interface PremiumUnlockAdProps {
   onRewardEarned?: () => void;

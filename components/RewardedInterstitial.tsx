@@ -2,8 +2,19 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import {
+  RewardedInterstitialAd,
+  TestIds,
+  AdEventType,
+  RewardedAdEventType
+} from 'react-native-google-mobile-ads';
 
-const REWARDED_INTERSTITIAL_ID = 'ca-app-pub-6526080198496101/2899491732';
+// בחירת מזהה פרסומת חכמה לפי סביבת פיתוח ופלטפורמה (iOS / Android)
+const AD_UNIT_ID = __DEV__
+  ? TestIds.REWARDED_INTERSTITIAL
+  : Platform.OS === 'ios'
+    ? 'ca-app-pub-6526080198496101/3310925745' // המזהה החדש של iOS
+    : 'ca-app-pub-6526080198496101/2899491732'; // המזהה הקיים של אנדרואיד
 
 interface RewardedInterstitialProps {
   onAdComplete?: () => void;
@@ -42,23 +53,14 @@ const RewardedInterstitial: React.FC<RewardedInterstitialProps> = ({
       return;
     }
 
-    // העברנו את הפונקציה אל תוך ה-useEffect כדי לשמור על סקופ נקי
     const loadAndShowAd = async () => {
       try {
-        const admob = await import('react-native-google-mobile-ads');
-        const { RewardedInterstitialAd, TestIds, AdEventType, RewardedAdEventType } = admob;
-
-        const adUnitId = __DEV__
-          ? TestIds.REWARDED_INTERSTITIAL
-          : REWARDED_INTERSTITIAL_ID;
-
-        const ad = RewardedInterstitialAd.createForAdRequest(adUnitId, {
+        const ad = RewardedInterstitialAd.createForAdRequest(AD_UNIT_ID, {
           requestNonPersonalizedAdsOnly: true,
         });
 
-        // תיקון: שימוש ב-RewardedAdEventType לאירועים ספציפיים (עם fallback)
         const unsubLoaded = ad.addAdEventListener(
-          RewardedAdEventType?.LOADED || AdEventType.LOADED,
+          RewardedAdEventType.LOADED,
           () => {
             console.log('RewardedInterstitial: Ad loaded');
             ad.show();
@@ -66,7 +68,7 @@ const RewardedInterstitial: React.FC<RewardedInterstitialProps> = ({
         );
 
         const unsubEarned = ad.addAdEventListener(
-          RewardedAdEventType?.EARNED_REWARD || 'earned_reward',
+          RewardedAdEventType.EARNED_REWARD,
           (reward: any) => {
             console.log('RewardedInterstitial: Reward earned', reward);
             rewardEarnedRef.current = true;
@@ -91,7 +93,6 @@ const RewardedInterstitial: React.FC<RewardedInterstitialProps> = ({
           (error: any) => {
             console.log('RewardedInterstitial: Ad error', error);
             safeError(error);
-            // הסרנו את הקריאה ל-safeComplete כדי למנוע לוגיקה כפולה וקריסות בקומפוננטת האב
             cleanup();
           }
         );
@@ -101,8 +102,8 @@ const RewardedInterstitial: React.FC<RewardedInterstitialProps> = ({
         ad.load();
 
       } catch (error) {
-        console.log('RewardedInterstitial: Module unavailable (Expo Go?)', error);
-        safeComplete(); // במקרה של שגיאת ייבוא (כמו ב-Expo Go), אנחנו מעבירים את המשתמש הלאה כדי שלא ייתקע
+        console.log('RewardedInterstitial: Error:', error);
+        safeComplete();
       }
     };
 
@@ -112,7 +113,7 @@ const RewardedInterstitial: React.FC<RewardedInterstitialProps> = ({
       mountedRef.current = false;
       cleanup();
     };
-  }, [onAdComplete, onAdError, requireReward]); // הוספת הפרופס למערך התלויות
+  }, [onAdComplete, onAdError, requireReward]);
 
   return null;
 };

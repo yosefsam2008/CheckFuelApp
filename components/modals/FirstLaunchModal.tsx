@@ -2,6 +2,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Modal,
   ScrollView,
@@ -73,6 +74,22 @@ export const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({
       onAccept();
     } catch (error) {
       console.error("Failed to save acceptance:", error);
+      // FIXED: Show error alert with retry option to prevent being stuck on modal
+      Alert.alert(
+        "שגיאה בשמירה",
+        "לא הצלחנו לשמור את האישור. אנא נסה שוב.",
+        [
+          {
+            text: "נסה שוב",
+            onPress: handleAccept,
+          },
+          {
+            text: "המשך בכל זאת",
+            onPress: onAccept,
+            style: "destructive",
+          },
+        ]
+      );
     }
   };
 

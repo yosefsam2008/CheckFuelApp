@@ -13,6 +13,12 @@
 
 ### 🚗 Vehicle Management
 - **Add Vehicles by Manual Entry** or **License Plate Lookup** (powered by FuelEconomy.gov database)
+- **🔍 Smart License Plate Recognition**: 
+  - Instantly retrieve vehicle specifications directly from license plate
+  - AI-powered plate detection technology (available via rewarded ad view)
+  - Automatically populates vehicle data including make, model, year, and fuel economy metrics
+  - Saves time and eliminates manual data entry errors
+  - Works across all three vehicle fuel types (Gasoline, Diesel, Electric)
 - **Multi-Fuel Support**: Gasoline, Diesel, and Electric vehicles
 - **Comprehensive Vehicle Data**: Store plate number, model, engine specs, manufacturing year, fuel type, and average consumption metrics
 - **Local Data Persistence**: Vehicle details are saved securely on the user's device using **AsyncStorage** (client-side only, no remote server required)
@@ -293,7 +299,3 @@ FuelEconomy.gov for vehicle data
 React Native community
 
 Radix UI for accessible components
-
-Last Updated: May 2026
-
-Version: 1.1.0

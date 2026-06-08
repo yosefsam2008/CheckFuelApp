@@ -674,13 +674,12 @@ export default function CalculatorScreen() {
 
   useEffect(() => {
     if (step >= 4) return; 
-    
     const timeoutId = setTimeout(() => {
       saveProgress();
-    }, 500);
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [step, distance, vehicle, fuelPrice, drivingStyle, tripType, acUsage, saveProgress]);
+  }, [step, distance, vehicle, fuelPrice, drivingStyle, tripType, acUsage]);
 
   // ============================================
   // LOAD VEHICLES
@@ -904,7 +903,7 @@ export default function CalculatorScreen() {
     }
   };
 
-  // ============================================
+   // ============================================
   // AD COMPLETE HANDLER
   // ============================================
   const handleAdComplete = () => {
@@ -912,7 +911,11 @@ export default function CalculatorScreen() {
     setShowCelebration(true);
     setTimeout(() => setShowCelebration(false), 1000);
 
-    AsyncStorage.removeItem("calculatorProgress");
+    
+    AsyncStorage.removeItem("calculatorProgress").catch((error) => {
+      console.error("Failed to remove calculator progress:", error);
+    });
+    
     next(); 
   };
 

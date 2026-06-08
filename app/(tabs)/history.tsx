@@ -220,8 +220,15 @@ export default function HistoryScreen() {
   const TripCard = ({ item, index }: { item: TripRecord; index: number }) => {
     const isElectric = item.energyType === "electricity";
     const cardAnim = cardAnimations[item.id] || new Animated.Value(1);
+
+    const animRef = useRef(cardAnim || new Animated.Value(1)).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
+    if (!cardAnimations[item.id]) {
+    console.warn(`Missing animation for trip ${item.id}`);
+    cardAnimations[item.id] = animRef;
+  }
+  
     const handlePressIn = () => {
       Animated.spring(scaleAnim, {
         toValue: 0.96,

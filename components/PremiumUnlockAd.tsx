@@ -35,8 +35,11 @@ const PremiumUnlockAd: React.FC<PremiumUnlockAdProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true); // מעקב אחרי מחזור החיים של הקומפוננטה
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     // ב-Web אנחנו מדלגים ישר להצלחה כי אין תמיכה ב-AdMob
     if (Platform.OS === 'web') {
       onRewardEarned?.();
@@ -50,6 +53,7 @@ const PremiumUnlockAd: React.FC<PremiumUnlockAdProps> = ({
 
     // מנגנון הגנה: אם הפרסומת לא נטענה תוך 8 שניות, נפתח את הנתונים בכל מקרה
     timeoutRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return; // מניעת עדכון אם הקומפוננטה הוסרה
       console.log('⏳ Ad Load Timeout - Unlocking anyway');
       setIsLoading(false);
       onAdComplete?.(); 
@@ -58,6 +62,7 @@ const PremiumUnlockAd: React.FC<PremiumUnlockAdProps> = ({
     const unsubscribeLoaded = rewardedInterstitial.addAdEventListener(
       RewardedAdEventType.LOADED,
       () => {
+        if (!isMountedRef.current) return; // מניעת עדכון אם הקומפוננטה הוסרה
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         console.log('✅ Premium Ad Loaded');
         setIsLoading(false);
@@ -67,7 +72,8 @@ const PremiumUnlockAd: React.FC<PremiumUnlockAdProps> = ({
 
     const unsubscribeEarned = rewardedInterstitial.addAdEventListener(
       RewardedAdEventType.EARNED_REWARD,
-      () => {
+      (reward: any) => {
+        if (!isMountedRef.current) return; // מניעת עדכון אם הקומפוננטה הוסרה
         console.log('🎁 Premium Reward Earned');
         onRewardEarned?.();
       }
@@ -75,7 +81,8 @@ const PremiumUnlockAd: React.FC<PremiumUnlockAdProps> = ({
 
     const unsubscribeError = rewardedInterstitial.addAdEventListener(
       AdEventType.ERROR,
-      (error) => {
+      (error: Error) => {
+        if (!isMountedRef.current) return; // מניעת עדכון אם הקומפוננטה הוסרה
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         console.log('❌ Ad Error:', error.message);
         setIsLoading(false);
@@ -87,6 +94,7 @@ const PremiumUnlockAd: React.FC<PremiumUnlockAdProps> = ({
     const unsubscribeClosed = rewardedInterstitial.addAdEventListener(
       AdEventType.CLOSED,
       () => {
+        if (!isMountedRef.current) return; // מניעת קריסה אם הוסרה
         onAdComplete?.();
       }
     );
@@ -94,18 +102,20 @@ const PremiumUnlockAd: React.FC<PremiumUnlockAdProps> = ({
     try {
       rewardedInterstitial.load();
     } catch (error) {
+      if (!isMountedRef.current) return; // מניעת קריסה
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       onAdComplete?.();
     }
 
     return () => {
+      isMountedRef.current = false; // סימון שהקומפוננטה הוסרה
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       unsubscribeLoaded();
       unsubscribeEarned();
       unsubscribeError();
       unsubscribeClosed();
     };
-  }, []);
+  }, [onRewardEarned, onAdComplete, onAdError]); // הוספת תלויות נכונות
 
   if (!isLoading) return null;
 

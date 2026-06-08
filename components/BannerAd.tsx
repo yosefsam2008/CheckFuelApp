@@ -1,6 +1,6 @@
 // components/BannerAd.tsx
 import React, { useState } from 'react';
-import { View, Platform, StyleSheet, Text, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 // Automatic selection between test and production IDs per platform
@@ -18,8 +18,14 @@ interface AdBannerProps {
 export default function AdBanner({ style, size = BannerAdSize.ANCHORED_ADAPTIVE_BANNER }: AdBannerProps) {
   const [adLoaded, setAdLoaded] = useState(false);
 
-  // Skip elegantly on web to avoid crashes
+  // FIXED: Skip elegantly on web and add explicit check for BannerAd component availability
   if (Platform.OS === 'web') {
+    return null;
+  }
+
+  // Guard against missing BannerAd component (can happen in Expo Go or build issues)
+  if (typeof BannerAd === 'undefined') {
+    console.warn('⚠️ BannerAd component not available on this platform');
     return null;
   }
 

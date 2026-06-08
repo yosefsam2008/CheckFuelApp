@@ -1,6 +1,6 @@
-// componets/PlateDetectionRewardedAd.tsx
+// components/PlateDetectionRewardedAd.tsx
 // קומפוננטה זו אחראית על הצגת פרסומת מסוג RewardedAd לפני זיהוי לוחית הרישוי.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Platform, ActivityIndicator, View, Text, StyleSheet } from 'react-native';
 import { 
   TestIds, 
@@ -16,7 +16,7 @@ interface PlateDetectionRewardedAdProps {
 
 // בחירת מזהה פרסומת חכמה לפי סביבת פיתוח ופלטפורמה (iOS / Android)
 const AD_UNIT_ID = __DEV__
-  ? ''
+  ? TestIds.REWARDED // שימוש במזהה טסטים בסביבת פיתוח
   : Platform.OS === 'ios'
     ? 'ca-app-pub-6526080198496101/2529012875' // המזהה החדש של iOS
     : 'ca-app-pub-6526080198496101/8151818415'; // המזהה הקיים של אנדרואיד
@@ -26,70 +26,88 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
   onAdError
 }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(true); // מעקב אחרי מחזור החיים של הקומפוננטה
 
   useEffect(() => {
+    isMountedRef.current = true;
+    let rewardedAd: any = null;
+    const unsubscribers: Array<() => void> = [];
+
     // דילוג על פרסומות בסביבת Web
     if (Platform.OS === 'web') {
       onAdComplete?.();
       return;
     }
 
-    // יצירת מופע הפרסומת
-    const rewardedAd = RewardedAd.createForAdRequest(AD_UNIT_ID, {
-      requestNonPersonalizedAdsOnly: true,
-    });
+    const setupAd = () => {
+      // יצירת מופע הפרסומת
+      rewardedAd = RewardedAd.createForAdRequest(AD_UNIT_ID, {
+        requestNonPersonalizedAdsOnly: true,
+      });
 
-    // הרשמה למאזינים
-    const unsubscribeLoaded = rewardedAd.addAdEventListener(
-      RewardedAdEventType.LOADED,
-      () => {
-        console.log('✅ Ad Loaded');
-        setIsLoading(false);
-        rewardedAd.show();
+      // הרשמה למאזינים
+      const unsubscribeLoaded = rewardedAd.addAdEventListener(
+        RewardedAdEventType.LOADED,
+        () => {
+          if (!isMountedRef.current) return; // מניעת הפעלה אם הקומפוננטה הוסרה
+          console.log('✅ Ad Loaded');
+          setIsLoading(false);
+          rewardedAd.show();
+        }
+      );
+
+      // תיקון TypeScript: הוספת סוג Error
+      const unsubscribeError = rewardedAd.addAdEventListener(
+        AdEventType.ERROR,
+        (error: Error) => {
+          if (!isMountedRef.current) return; // מניעת הפעלה אם הקומפוננטה הוסרה
+          console.log('❌ Ad Error:', error.message);
+          setIsLoading(false);
+          onAdError?.(error);
+          onAdComplete?.(); // ממשיכים הלאה כדי לא לתקוע את המשתמש
+        }
+      );
+
+      const unsubscribeClosed = rewardedAd.addAdEventListener(
+        AdEventType.CLOSED,
+        () => {
+          if (!isMountedRef.current) return; // מניעת הפעלה אם הקומפוננטה הוסרה
+          console.log('📴 Ad Closed');
+          onAdComplete?.();
+        }
+      );
+
+      // תיקון TypeScript: הוספת סוג any
+      const unsubscribeEarned = rewardedAd.addAdEventListener(
+        RewardedAdEventType.EARNED_REWARD,
+        (reward: any) => {
+          if (!isMountedRef.current) return; // מניעת הפעלה אם הקומפוננטה הוסרה
+          console.log('🎁 Reward Earned:', reward);
+        }
+      );
+
+      unsubscribers.push(unsubscribeLoaded, unsubscribeError, unsubscribeClosed, unsubscribeEarned);
+
+      // טעינת הפרסומת
+      try {
+        rewardedAd.load();
+      } catch (error) {
+        console.error('Fatal error in ad loading:', error);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+          onAdComplete?.();
+        }
       }
-    );
+    };
 
-    const unsubscribeError = rewardedAd.addAdEventListener(
-      AdEventType.ERROR,
-      (error) => {
-        console.log('❌ Ad Error:', error.message);
-        setIsLoading(false);
-        onAdError?.(error);
-        onAdComplete?.(); // ממשיכים הלאה כדי לא לתקוע את המשתמש
-      }
-    );
-
-    const unsubscribeClosed = rewardedAd.addAdEventListener(
-      AdEventType.CLOSED,
-      () => {
-        console.log('📴 Ad Closed');
-        onAdComplete?.();
-      }
-    );
-
-    const unsubscribeEarned = rewardedAd.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      (reward) => {
-        console.log('🎁 Reward Earned:', reward);
-      }
-    );
-
-    // טעינת הפרסומת
-    try {
-      rewardedAd.load();
-    } catch (error) {
-      console.error('Fatal error in ad loading:', error);
-      onAdComplete?.();
-    }
+    setupAd();
 
     // פונקציית ניקוי - React תקרא לה אוטומטית כשהקומפוננטה יורדת מהמסך
     return () => {
-      unsubscribeLoaded();
-      unsubscribeError();
-      unsubscribeClosed();
-      unsubscribeEarned();
+      isMountedRef.current = false; // סימון שהקומפוננטה הוסרה
+      unsubscribers.forEach(unsubscribe => unsubscribe()); // ניקוי כל המאזינים
     };
-  }, []); // מערך תלויות ריק מבטיח שזה ירוץ פעם אחת בטעינה
+  }, [onAdComplete, onAdError]); 
 
   if (!isLoading) return null;
 

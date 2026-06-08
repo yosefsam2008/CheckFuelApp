@@ -13,9 +13,12 @@ import {
   AdEventType
 } from 'react-native-google-mobile-ads';
 
+// בחירת מזהה פרסומת חכמה לפי סביבת פיתוח ופלטפורמה (iOS / Android)
 const AD_UNIT_ID = __DEV__
   ? TestIds.REWARDED_INTERSTITIAL 
-  : 'ca-app-pub-6526080198496101/2899491732';
+  : Platform.OS === 'ios'
+    ? 'ca-app-pub-6526080198496101/3310925745' // המזהה החדש של iOS
+    : 'ca-app-pub-6526080198496101/2899491732'; // המזהה הקיים של אנדרואיד
 
 interface VehicleRewardedAdProps {
   onRewardEarned?: () => void;
@@ -29,7 +32,8 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
   onAdError,
 }) => {
   const [isLoading, setIsLoading] = useState(true);
-const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (Platform.OS === 'web') {
       onRewardEarned?.();

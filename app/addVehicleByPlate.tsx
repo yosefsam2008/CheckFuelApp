@@ -2,7 +2,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import 'expo-router/entry';
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -34,13 +34,13 @@ import Toast from "./Toast";
 
 // Unified Lucide Icons
 import {
+  Activity,
   Car,
   ChevronLeft,
-  Sparkles,
   Search,
-  Zap,
-  Activity,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  Zap
 } from "lucide-react-native";
 
 // Conditional import for ads - only load on native platforms
@@ -441,18 +441,22 @@ export default function AddVehicleByPlate() {
   const [focusAnim] = useState(new Animated.Value(0));
   const [pulseAnim] = useState(new Animated.Value(1));
   const router = useRouter();
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
     const showSubscription = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      () => { if (isMountedRef.current) setKeyboardVisible(true); }
     );
     const hideSubscription = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
+      () => { if (isMountedRef.current) setKeyboardVisible(false); }
     );
 
     return () => {
+      isMountedRef.current = false; 
       showSubscription.remove();
       hideSubscription.remove();
     };
@@ -506,6 +510,8 @@ export default function AddVehicleByPlate() {
 
     try {
       const existing = await AsyncStorage.getItem("vehicles");
+      if (!isMountedRef.current) return;
+
       const vehicles: Vehicle[] = existing ? JSON.parse(existing) : [];
       
       const isDuplicate = vehicles.some(
@@ -664,14 +670,24 @@ export default function AddVehicleByPlate() {
 
         await saveVehicle(newVehicle);
 
-        setToastMessage(`${newVehicle.name} (${newVehicle.plate}) נוסף בהצלחה — סוג דלק: ${newVehicle.fueltype} — דגם: ${newVehicle.model}`);
-        setTimeout(() => router.back(), 1400);
+        
+        if (isMountedRef.current) {
+          setToastMessage(`${newVehicle.name} (${newVehicle.plate}) נוסף בהצלחה — סוג דלק: ${newVehicle.fueltype} — דגם: ${newVehicle.model}`);
+          setTimeout(() => {
+            if (isMountedRef.current) router.back();
+          }, 1400);
+        }
 
     } catch (error) {
       console.error('\n❌ ERROR in AddVehicleByPlate:', error);
-      setToastMessage("אירעה שגיאה בעת הוספת הרכב");
+      if (isMountedRef.current) {
+        setToastMessage("אירעה שגיאה בעת הוספת הרכב");
+      }
     } finally {
-      setLoading(false);
+  
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 

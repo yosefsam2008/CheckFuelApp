@@ -1,8 +1,21 @@
 // app/(tabs)/dashboard.tsx
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import {
+  BarChart2,
+  Car,
+  ChevronRight,
+  Fuel,
+  HelpCircle,
+  Route,
+  Scale,
+  Target,
+  Wallet,
+  Zap
+} from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -18,24 +31,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  TrendingUp,
-  CircleDollarSign,
-  Route,
-  Target,
-  Car,
-  BarChart2,
-  HelpCircle,
-  Scale,
-  Fuel,
-  ChevronRight,
-  Wallet,
-  Zap,
-} from 'lucide-react-native';
 import BannerAd from '../../components/BannerAd';
 import LegalScreen from '../LegalScreen';
 import UserGuideScreen from '../UserGuideScreen';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // --- Types ---
 interface TripRecord {
@@ -295,14 +293,17 @@ export default function Dashboard() {
     [allTrips]
   );
 
+  // FIXED: Wrap showToast to ensure cleanup of timeouts
   const showToast = useCallback((message: string, duration = 2000) => {
     setToastMessage(message);
-    Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start(() => {
-      setTimeout(() => {
-        Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true })
-          .start(() => setToastMessage(null));
-      }, duration);
-    });
+    Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    
+    const timer = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true })
+        .start(() => setToastMessage(null));
+    }, duration);
+    
+    return () => clearTimeout(timer);
   }, [toastOpacity]);
 
   const loadDashboardData = useCallback(async () => {
@@ -315,7 +316,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [showToast]);
+  }, [showToast]); // FIXED: Properly depends on showToast
 
   useFocusEffect(useCallback(() => { loadDashboardData(); }, [loadDashboardData]));
 

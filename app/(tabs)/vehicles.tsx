@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
     shadowRadius: 30,
     elevation: 24,
     maxHeight: "85%",
-    direction: "rtl", 
+    writingDirection: "rtl", 
   },
   modalHeader: {
     alignItems: "center",
@@ -1292,10 +1292,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 9999,
     elevation: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
+    boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.3)", // ל-Web ו-iOS
     ...(IS_WEB && {
       maxWidth: MAX_WIDTH,
       alignSelf: "center",
@@ -1324,12 +1321,9 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 32,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
+    boxShadow: "0px 20px 30px rgba(0, 0, 0, 0.3)",
     elevation: 24,
-    direction: "rtl",
+    writingDirection: "rtl",
   },
   plateModalTitle: {
     fontSize: 22,
@@ -1393,10 +1387,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#009688",
     alignItems: "center",
-    shadowColor: "#009688",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: "0px 4px 8px rgba(0, 150, 136, 0.3)",
     elevation: 5,
   },
   plateContinueButtonText: {
@@ -1432,7 +1423,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 30,
     elevation: 24,
-    direction: "rtl",
+    writingDirection: "rtl",
   },
   deleteModalTitle: {
     fontSize: 22,

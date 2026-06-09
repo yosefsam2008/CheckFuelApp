@@ -2037,7 +2037,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    direction: "rtl", 
+    writingDirection: "rtl", 
   },
   content: {
     flex: 1,
@@ -2561,7 +2561,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: Platform.OS === "ios" ? 70 : 50,
     maxHeight: "80%",
-    direction: "rtl", 
+    writingDirection: "rtl", 
   },
   modalHandle: {
     width: 40,

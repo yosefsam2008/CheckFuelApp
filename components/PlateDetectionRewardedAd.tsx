@@ -2,6 +2,7 @@
 // קומפוננטה זו אחראית על הצגת פרסומת מסוג RewardedAd לפני זיהוי לוחית הרישוי.
 import React, { useEffect, useState, useRef } from 'react';
 import { Platform, ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+import { adsAllowed } from '../lib/ads/initAds';
 import { 
   TestIds, 
   RewardedAd, 
@@ -34,7 +35,7 @@ const PlateDetectionRewardedAd: React.FC<PlateDetectionRewardedAdProps> = ({
     const unsubscribers: Array<() => void> = [];
 
     // דילוג על פרסומות בסביבת Web
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || !adsAllowed()) {
       onAdComplete?.();
       return;
     }

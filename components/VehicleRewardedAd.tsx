@@ -12,6 +12,7 @@ import {
   RewardedAdEventType,
   AdEventType
 } from 'react-native-google-mobile-ads';
+import { adsAllowed } from '../lib/ads/initAds';
 
 // בחירת מזהה פרסומת חכמה לפי סביבת פיתוח ופלטפורמה (iOS / Android)
 const AD_UNIT_ID = __DEV__
@@ -35,7 +36,7 @@ const VehicleRewardedAd: React.FC<VehicleRewardedAdProps> = ({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || !adsAllowed()) {
       onRewardEarned?.();
       onAdComplete?.();
       return;

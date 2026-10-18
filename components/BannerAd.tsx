@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { useAdsAllowed } from '../lib/ads/initAds';
 
 // Automatic selection between test and production IDs per platform
 const AD_UNIT_ID = __DEV__ 
@@ -17,9 +18,10 @@ interface AdBannerProps {
 
 export default function AdBanner({ style, size = BannerAdSize.ANCHORED_ADAPTIVE_BANNER }: AdBannerProps) {
   const [adLoaded, setAdLoaded] = useState(false);
+  const allowed = useAdsAllowed();
 
   // FIXED: Skip elegantly on web and add explicit check for BannerAd component availability
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || !allowed) {
     return null;
   }
 

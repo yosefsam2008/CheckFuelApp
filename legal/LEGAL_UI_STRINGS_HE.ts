@@ -1,6 +1,8 @@
 // UI Text Strings - Hebrew
 // Copy and paste these strings into your app for in-app legal disclosures
 //app/legal/LEGAL_UI_STRINGS_HE.ts
+export const PRIVACY_POLICY_URL = 'https://sites.google.com/view/checkfuelpolicy/home';
+
 export const LEGAL_UI_STRINGS = {
   // Calculator Screen Disclaimer
   calculator: {

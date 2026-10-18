@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar, Platform, I18nManager } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
-import mobileAds from 'react-native-google-mobile-ads';
+import { initAds } from '../lib/ads/initAds';
 import { runAutoMigration } from '../lib/utils/evDataMigration';
 import * as Updates from 'expo-updates';
 
@@ -20,15 +20,8 @@ export default function RootLayout() {
           }
         }
 
-        // 2. אתחול פרסומות (התיקון)
-        // קודם מגדירים (סינכרוני)
-        mobileAds().setRequestConfiguration({
-          testDeviceIdentifiers: ['EMULATOR'], 
-        });
-        
-        // אחר כך מאתחולים (אסינכרוני)
-        await mobileAds().initialize();
-        console.log('✅ Google Ads initialized successfully');
+        // 2. פרסומות: הסכמה (UMP) ואז אתחול יחיד
+        await initAds();
 
         // 3. הגדרות עיצוב לאנדרואיד
         if (Platform.OS === 'android') {

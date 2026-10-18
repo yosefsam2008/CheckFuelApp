@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import { adsAllowed } from '../lib/ads/initAds';
 
 interface InterstitialAdProps {
   onAdComplete?: () => void;
@@ -31,8 +32,8 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({
   useEffect(() => {
     mountedRef.current = true;
 
-    if (Platform.OS === 'web') {
-      console.log('InterstitialAd: Skipping ad on web');
+    if (Platform.OS === 'web' || !adsAllowed()) {
+      console.log('InterstitialAd: Skipping ad (web or no ad consent)');
       safeComplete();
       return;
     }

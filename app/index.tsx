@@ -1,11 +1,9 @@
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Index() {
   const [isReady, setIsReady] = useState(false);
-  const [targetRoute, setTargetRoute] = useState("/dashboard"); // ברירת המחדל
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -27,26 +25,8 @@ export default function Index() {
         console.error('❌ AdMob error bypassed:', error);
       }
 
-      // 2. בדיקת סוג המשתמש (חדש או חוזר)
-      try {
-        const storedVehicles = await AsyncStorage.getItem('vehicles');
-        const vehicles = storedVehicles ? JSON.parse(storedVehicles) : [];
-
-        if (vehicles.length === 0) {
-          // משתמש חדש לגמרי - נשלח אותו ישירות למחשבון
-          setTargetRoute("/calculator");
-        } else {
-          // משתמש קיים (יש לו רכב) - נשלח ללוח הבקרה
-          setTargetRoute("/dashboard");
-        }
-      } catch (error) {
-        console.error('❌ Error reading AsyncStorage:', error);
-        // במקרה של שגיאה, ברירת המחדל היא Dashboard
-        setTargetRoute("/dashboard");
-      } finally {
-        // מסמנים שהאפליקציה סיימה לטעון את הבדיקות
-        setIsReady(true);
-      }
+      // כולם נכנסים למחשבון
+      setIsReady(true);
     };
 
     initializeApp();
@@ -61,6 +41,5 @@ export default function Index() {
     );
   }
   
-  // מעבר חכם למסך המתאים לפי החלטת הלוגיקה
-  return <Redirect href={targetRoute as any} />;
+  return <Redirect href="/calculator" />;
 }

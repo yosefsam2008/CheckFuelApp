@@ -12,6 +12,7 @@ import {
   Calendar,
   Car,
   CircleDollarSign,
+  Cloud,
   CloudOff,
   Compass,
   Droplets,
@@ -59,6 +60,7 @@ import {
   TouchableOpacity,
   View,
   ViewStyle,
+  ActionSheetIOS,
 } from "react-native";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 import {
@@ -74,6 +76,11 @@ const InterstitialAd = Platform.OS === 'web' ? () => null : require('../../compo
 // ============================================
 // TYPES
 // ============================================
+interface LivePrices {
+  Gasoline: number;
+  Diesel: number;
+  Electric: number;
+}
 interface Vehicle {
   id: string;
   name: string;
@@ -624,9 +631,50 @@ export default function CalculatorScreen() {
   const [isPremiumUnlocked, setIsPremiumUnlocked] = useState(false);
   const [showUnlockAd, setShowUnlockAd] = useState(false);
 
+  // Live fuel prices fetched from remote endpoint
+  const [livePrices, setLivePrices] = useState<LivePrices | null>(null);
+  const [isPricesLoading, setIsPricesLoading] = useState(false);
+  const [pricesError, setPricesError] = useState(false);
+
+  // Derived: effective prices (live when available, fallback to defaults)
+  const effectivePrices: LivePrices = {
+    Gasoline: livePrices?.Gasoline ?? DEFAULT_FUEL_PRICES.Gasoline,
+    Diesel:   livePrices?.Diesel   ?? DEFAULT_FUEL_PRICES.Diesel,
+    Electric: livePrices?.Electric ?? DEFAULT_FUEL_PRICES.Electric,
+  };
+
   const [drivingStyle, setDrivingStyle] = useState<'eco' | 'normal' | 'aggressive'>('normal');
   const [tripType, setTripType] = useState<'city' | 'highway' | 'mixed'>('mixed');
   const [acUsage, setAcUsage] = useState<'always' | 'sometimes' | 'rarely'>('always');
+
+  // ============================================
+  // FETCH LIVE FUEL PRICES
+  // ============================================
+  useEffect(() => {
+    let cancelled = false;
+    const fetchPrices = async () => {
+      setIsPricesLoading(true);
+      setPricesError(false);
+      try {
+        const response = await fetch('https://checkfuel-data.vercel.app/prices.json');
+        if (!response.ok) throw new Error('Network response not ok');
+        const data = await response.json();
+        if (!cancelled) {
+          setLivePrices({
+            Gasoline: parseFloat(data.Gasoline),
+            Diesel:   parseFloat(data.Diesel),
+            Electric: parseFloat(data.Electric),
+          });
+        }
+      } catch {
+        if (!cancelled) setPricesError(true);
+      } finally {
+        if (!cancelled) setIsPricesLoading(false);
+      }
+    };
+    fetchPrices();
+    return () => { cancelled = true; };
+  }, []);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -716,6 +764,14 @@ export default function CalculatorScreen() {
     }
   }, [vehicles, loadProgress]);
 
+  // Preselect the last-used vehicle (or the first) so the happy path skips the picker
+  useEffect(() => {
+    if (vehicle || vehicles.length === 0) return;
+    AsyncStorage.getItem("lastVehicleId")
+      .then((id) => setVehicle(vehicles.find((v) => v.id === id) ?? vehicles[0]))
+      .catch(() => setVehicle(vehicles[0]));
+  }, [vehicle, vehicles]);
+
   // ============================================
   // FUEL PRICE AUTO-FILL
   // ============================================
@@ -723,24 +779,26 @@ export default function CalculatorScreen() {
     if (!vehicle) return;
 
     if (vehicle.fueltype === "Electric") {
-      setElectricityPrice(ELECTRICITY_PRICE_PER_KWH.toString());
-      setFuelPrice(ELECTRICITY_PRICE_PER_KWH.toString());
+      const elec = effectivePrices.Electric;
+      setElectricityPrice(elec.toString());
+      setFuelPrice(elec.toString());
       return;
     }
 
-    let guessed = DEFAULT_FUEL_PRICES.Gasoline;
+    let guessed = effectivePrices.Gasoline;
     if (vehicle.fueltype === "Diesel") {
-      guessed = DEFAULT_FUEL_PRICES.Diesel;
+      guessed = effectivePrices.Diesel;
     } else {
       if (vehicle.type) {
         const t = vehicle.type.toLowerCase();
         if (t.includes("truck") || t.includes("lorry")) {
-          guessed = DEFAULT_FUEL_PRICES.Diesel;
+          guessed = effectivePrices.Diesel;
         }
       }
     }
     setFuelPrice(guessed.toFixed(2));
-  }, [vehicle]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicle, livePrices]);
 
   // ============================================
   // NAVIGATION
@@ -1046,6 +1104,14 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
     }
   };
 
+const openWaze = () => {
+  Linking.openURL('https://waze.com/ul');
+};
+
+const openAppleMaps = () => {
+  Linking.openURL('http://maps.apple.com/');
+};
+
   // ============================================
   // RENDER STEP CONTENT
   // ============================================
@@ -1109,18 +1175,38 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             </View>
           )}
 
-                {/* 📍 WAZE BUTTON ONLY (Redesigned) */}
-              <View style={styles.mapButtonsContainer}>
-                <Text style={styles.mapButtonsTitle}>לא בטוח כמה המרחק? 📍</Text>
-                <TouchableOpacity 
-                  style={styles.mapBtnWaze} 
-                  onPress={() => Linking.openURL('https://waze.com/ul')}
-                  activeOpacity={0.7}
-                >
-                  <Map size={20} color={COLORS.accent} />
-                  <Text style={styles.mapBtnText}>פתח Waze לבדיקה</Text>
-                </TouchableOpacity>
-              </View>
+               <View style={styles.mapCard}>
+  <View style={styles.mapCardHeader}>
+    <MapPin size={18} color={COLORS.primary} />
+    <Text style={styles.mapCardTitle}>
+      לא בטוח כמה ק״מ נסעת?
+    </Text>
+  </View>
+
+  <View style={styles.mapButtonsRow}>
+    <TouchableOpacity
+      style={styles.appleMapsButton}
+      onPress={openAppleMaps}
+      activeOpacity={0.85}
+    >
+      <MapPin size={20} color="#FFFFFF" />
+      <Text style={styles.mapButtonText}>
+        Apple Maps
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.wazeButton}
+      onPress={openWaze}
+      activeOpacity={0.85}
+    >
+      <Navigation size={20} color="#FFFFFF" />
+      <Text style={styles.mapButtonText}>
+        Waze
+      </Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
             <View style={styles.actionButtons}>
               <TouchableOpacity
@@ -1167,7 +1253,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                 <Text style={styles.emptyText}>אין רכבים שמורים</Text>
                 <TouchableOpacity
                   style={[styles.addVehicleButton, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}
-                  onPress={() => router.push("/(tabs)/vehicles")}
+                  onPress={() => router.push("/addVehicleByPlate")}
                 >
                   <Plus size={18} color={COLORS.primary} />
                   <Text style={styles.addVehicleButtonText}>הוסף רכב חדש</Text>
@@ -1254,6 +1340,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                             ]}
                             onPress={() => {
                               setVehicle(item);
+                              AsyncStorage.setItem("lastVehicleId", item.id).catch(() => {});
                               setShowVehicleModal(false);
                             }}
                           >
@@ -1279,6 +1366,15 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                         contentContainerStyle={styles.vehicleList}
                       />
                       
+                      <TouchableOpacity
+                        style={styles.modalCloseButton}
+                        onPress={() => {
+                          setShowVehicleModal(false);
+                          router.push("/vehicles");
+                        }}
+                      >
+                        <Text style={styles.modalCloseText}>ניהול רכבים</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.modalCloseButton}
                         onPress={() => setShowVehicleModal(false)}
@@ -1566,71 +1662,98 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
       // ========================================
       // STEP 4: FUEL PRICE
       // ========================================
-      case "fuelPrice":
+      case "fuelPrice": {
         const isElectric = vehicle?.fueltype === "Electric";
         const priceType = isElectric ? "חשמל" : "דלק";
         const priceUnit = isElectric ? "kWh" : "ליטר";
-        
+        const gasolineStr = effectivePrices.Gasoline.toFixed(2);
+        const dieselStr   = effectivePrices.Diesel.toFixed(2);
+        const electricStr = effectivePrices.Electric.toFixed(2);
+
         return (
           <GlassCard style={styles.stepCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
               {isElectric ? <Zap size={24} color={COLORS.primary} /> : <Fuel size={24} color={COLORS.primary} />}
-              <Text style={[styles.questionTitle, { marginBottom: 0 }]}>
-                כמה עולה {priceType}? 
+              <Text style={[styles.questionTitle, { marginBottom: 0, flex: 1 }]}>
+                כמה עולה {priceType}?
               </Text>
-            </View>   
-            <Text style={styles.questionSubtitle}>
-              הכנס מחיר ל{priceUnit}
-            </Text>
+              {/* Live data badge */}
+              {isPricesLoading ? (
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              ) : pricesError ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <CloudOff size={14} color={COLORS.textTertiary} />
+                  <Text style={{ fontSize: 11, color: COLORS.textTertiary }}>ברירת מחדל</Text>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Cloud size={14} color={COLORS.primary} />
+                  <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>עדכני</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.questionSubtitle}>הכנס מחיר ל{priceUnit}</Text>
 
+            {/* Live Prices Panel */}
             <TouchableOpacity
               style={styles.priceHelperButton}
               onPress={() => setShowPriceHelper(!showPriceHelper)}
             >
               <Info size={16} color={COLORS.primary} style={{ marginLeft: 4 }} />
-              <Text style={styles.priceHelperText}>
-                מחירים ממוצעים בישראל
-              </Text>
-              <Text style={styles.priceHelperArrow}>
-                {showPriceHelper ? "▲" : "▼"}
-              </Text>
+              <Text style={styles.priceHelperText}>מחירים עדכניים בישראל</Text>
+              <Text style={styles.priceHelperArrow}>{showPriceHelper ? '▲' : '▼'}</Text>
             </TouchableOpacity>
 
             {showPriceHelper && (
               <View style={styles.priceHelperPanel}>
+                {/* Gasoline row */}
                 <View style={styles.priceHelperRow}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Fuel size={16} color={COLORS.primary} />
+                    <Fuel size={16} color={COLORS.fuel} />
                     <Text style={styles.priceHelperLabel}>בנזין 95:</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setFuelPrice("7.36")}>
-                    <Text style={styles.priceHelperValue}>₪7.36</Text>
+                  <TouchableOpacity
+                    onPress={() => setFuelPrice(gasolineStr)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  >
+                    <Text style={[styles.priceHelperValue, { color: COLORS.primary }]}>₪{gasolineStr}</Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Diesel row */}
                 <View style={styles.priceHelperRow}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Droplets size={16} color={COLORS.primary} />
+                    <Droplets size={16} color={COLORS.diesel} />
                     <Text style={styles.priceHelperLabel}>סולר:</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setFuelPrice("9.58")}>
-                    <Text style={styles.priceHelperValue}>₪9.58</Text>
+                  <TouchableOpacity
+                    onPress={() => setFuelPrice(dieselStr)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  >
+                    <Text style={[styles.priceHelperValue, { color: COLORS.primary }]}>₪{dieselStr}</Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Electric row */}
                 <View style={styles.priceHelperRow}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Zap size={16} color={COLORS.primary} />
+                    <Zap size={16} color={COLORS.electric} />
                     <Text style={styles.priceHelperLabel}>חשמל:</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setFuelPrice("0.60")}>
-                    <Text style={styles.priceHelperValue}>₪0.60/kWh</Text>
+                  <TouchableOpacity
+                    onPress={() => setFuelPrice(electricStr)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  >
+                    <Text style={[styles.priceHelperValue, { color: COLORS.primary }]}>₪{electricStr}/kWh</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.priceHelperNote}>
-                  לחץ על מחיר להזנה אוטומטית
-                </Text>
+
+                <Text style={styles.priceHelperNote}>לחץ על מחיר להזנה אוטומטית</Text>
               </View>
             )}
 
+            {/* Manual input */}
             <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
               <View style={styles.inputContainer}>
                 <CircleDollarSign size={20} color={COLORS.primary} style={{ marginLeft: 4 }} />
@@ -1638,10 +1761,10 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
                   style={styles.input}
                   placeholder={
                     isElectric
-                      ? DEFAULT_FUEL_PRICES.Electric.toString()
-                      : vehicle?.fueltype === "Diesel"
-                      ? DEFAULT_FUEL_PRICES.Diesel.toString()
-                      : DEFAULT_FUEL_PRICES.Gasoline.toString()
+                      ? electricStr
+                      : vehicle?.fueltype === 'Diesel'
+                      ? dieselStr
+                      : gasolineStr
                   }
                   keyboardType="numeric"
                   inputMode="numeric"
@@ -1655,26 +1778,28 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
               </View>
             </Animated.View>
 
+            {/* Quick Chips (non-electric only) */}
             {!isElectric && (
               <View style={styles.presetsContainer}>
                 <Text style={styles.presetsLabel}>בחירה מהירה:</Text>
                 <View style={styles.presetsRow}>
                   <QuickChip
-                    label="₪7.36"
-                    iconNode={<Fuel size={16} color={fuelPrice === "7.36" ? COLORS.primary : COLORS.textSecondary} />}
-                    onPress={() => setFuelPrice("7.36")}
-                    isActive={fuelPrice === "7.36"}
+                    label={`₪${gasolineStr}`}
+                    iconNode={<Fuel size={16} color={fuelPrice === gasolineStr ? COLORS.primary : COLORS.textSecondary} />}
+                    onPress={() => setFuelPrice(gasolineStr)}
+                    isActive={fuelPrice === gasolineStr}
                   />
                   <QuickChip
-                    label="₪9.58"
-                    iconNode={<Droplets size={16} color={fuelPrice === "9.58" ? COLORS.primary : COLORS.textSecondary} />}
-                    onPress={() => setFuelPrice("9.58")}
-                    isActive={fuelPrice === "9.58"}
+                    label={`₪${dieselStr}`}
+                    iconNode={<Droplets size={16} color={fuelPrice === dieselStr ? COLORS.primary : COLORS.textSecondary} />}
+                    onPress={() => setFuelPrice(dieselStr)}
+                    isActive={fuelPrice === dieselStr}
                   />
                 </View>
               </View>
             )}
 
+            {/* Actions */}
             <View style={styles.actionButtons}>
               <TouchableOpacity style={styles.secondaryButton} onPress={prev}>
                 <Text style={styles.buttonArrowBack}>→</Text>
@@ -1683,7 +1808,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
               <TouchableOpacity
                 style={[
                   styles.calculateButton,
-                  (!validateFuelPrice(fuelPrice)) && styles.primaryButtonDisabled,
+                  !validateFuelPrice(fuelPrice) && styles.primaryButtonDisabled,
                 ]}
                 onPress={handleCalculate}
                 disabled={!validateFuelPrice(fuelPrice)}
@@ -1696,6 +1821,7 @@ ${result.energyType === "electricity" ? `⚡ צריכת חשמל: ${result.fuelC
             </View>
           </GlassCard>
         );
+      }
 
       // ========================================
       // STEP 5: RESULTS (Premium UI)
@@ -2052,7 +2178,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingTop: 16, // the navigation header already covers the status bar
     paddingBottom: 20,
     paddingHorizontal: 20,
     backgroundColor: COLORS.primary,
@@ -2316,54 +2442,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     writingDirection: "rtl",
   },
-  mapButtonsContainer: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0'
-  },
-  mapButtonsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: 12,
-    writingDirection: 'rtl'
-  },
-  mapBtnRow: {
-    flexDirection: 'row-reverse',
-    gap: 12,
-    width: '100%',
-    justifyContent: 'center'
-  },
-  mapBtnWaze: {
-    width: '80%',
-    flex: 1,
-    backgroundColor: '#33CCFF',
-    flexDirection: 'row',
-    gap: 9,
-    justifyContent: 'center',
-    paddingVertical: 11,
-    borderRadius: 11,
-    alignItems: 'center'
-  },
-  mapBtnGoogle: {
-    flex: 1,
-    backgroundColor: '#34A853',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center'
-  },
-  mapBtnText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 14
-  },
   actionButtons: {
     flexDirection: "row",
     gap: 12,
@@ -2384,6 +2462,77 @@ const styles = StyleSheet.create({
     elevation: 5,
     gap: 8,
   },
+  mapCard: {
+  marginTop: 18,
+  padding: 18,
+  backgroundColor: "#FFFFFF",
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: "#E2E8F0",
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 3,
+  },
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  elevation: 3,
+},
+
+mapCardHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+},
+
+mapCardTitle: {
+  fontSize: 16,
+  fontWeight: "700",
+  color: COLORS.textPrimary,
+},
+
+mapCardSubtitle: {
+  marginTop: 8,
+  textAlign: "center",
+  color: COLORS.textSecondary,
+  fontSize: 13,
+  lineHeight: 20,
+},
+
+mapButtonsRow: {
+  flexDirection: "row",
+  gap: 10,
+  marginTop: 16,
+},
+
+appleMapsButton: {
+  flex: 1,
+  height: 52,
+  backgroundColor: "#007AFF",
+  borderRadius: 14,
+  justifyContent: "center",
+  alignItems: "center",
+  flexDirection: "row",
+  gap: 8,
+},
+
+wazeButton: {
+  flex: 1,
+  height: 52,
+  backgroundColor: "#33CCFF",
+  borderRadius: 14,
+  justifyContent: "center",
+  alignItems: "center",
+  flexDirection: "row",
+  gap: 8,
+},
+
+mapButtonText: {
+  color: "#FFFFFF",
+  fontWeight: "700",
+  fontSize: 14,
+},
   primaryButtonDisabled: {
     backgroundColor: COLORS.textTertiary,
     shadowOpacity: 0,

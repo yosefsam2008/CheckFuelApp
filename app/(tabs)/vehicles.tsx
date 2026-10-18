@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
+  FlatList,
   Modal,
   Platform,
   StatusBar,
@@ -35,22 +36,11 @@ import {
   Activity,
   ChevronLeft,
   Scan,
-  CheckCircle,
-  Gift,
   X,
-  PlaySquare,
   Trash2,
   Edit2,
-  Plus,
   Check
 } from "lucide-react-native";
-
-// Conditional import for ads - only load on native platforms
-const PlateDetectionRewardedAd =
-  Platform.OS === "web"
-    ? () => null
-    : require("../../components/PlateDetectionRewardedAd").default;
-const AdBanner = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 
 const IS_WEB = Platform.OS === "web";
 const MAX_WIDTH = 600;
@@ -126,20 +116,12 @@ export default function VehiclesScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   
-  // Plate detection states
-  const [showPlateDetectionModal, setShowPlateDetectionModal] = useState(false);
-  const [showPlateDetectionAd, setShowPlateDetectionAd] = useState(false);
-
   // Form State
   const [name, setName] = useState("");
-  const [model, setModel] = useState("");
-  const [engine, setEngine] = useState("");
-  const [manufactureYear, setManufactureYear] = useState("");
   const [avgConsumption, setAvgConsumption] = useState("");
   const [fuelType, setFuelType] = useState<FuelType>("Gasoline");
 
   // Animations
-  const scrollY = useRef(new Animated.Value(0)).current;
   const modalScale = useRef(new Animated.Value(0)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -196,13 +178,10 @@ export default function VehiclesScreen() {
   const openDetails = (item: Vehicle) => {
     setSelected(item);
     setName(item.name);
-    setModel(item.model);
-    setEngine(item.engine);
     setAvgConsumption(item.avgConsumption ? String(item.avgConsumption) : "");
     const safeFuelType = item.fueltype || "Unknown";
     const isValidFuel = Object.keys(FUEL_CONFIG).includes(safeFuelType);
-    setFuelType(isValidFuel ? (safeFuelType as FuelType) : "Unknown");    
-    setManufactureYear(item.year ? String(item.year) : "");
+    setFuelType(isValidFuel ? (safeFuelType as FuelType) : "Unknown");
     setEditMode(false);
     setShowModal(true);
 
@@ -246,10 +225,7 @@ export default function VehiclesScreen() {
       const updated: Vehicle = {
         ...selected,
         name: name.trim() || selected.name,
-        model: model.trim() || selected.model,
-        engine: engine.trim() || selected.engine,
         avgConsumption: avgConsumption ? parseFloat(avgConsumption) : selected.avgConsumption,
-        year: manufactureYear ? parseInt(manufactureYear) : selected.year,
         fueltype: fuelType,
       };
 
@@ -292,46 +268,10 @@ export default function VehiclesScreen() {
 
   const handleDeleteCancelled = () => setShowDeleteConfirm(false);
 
-  const handleShowPlateAd = () => {
-    setShowPlateDetectionModal(false);
-    if (Platform.OS === "web") {
-      router.push("/addVehicleByPlate");
-      return;
-    }
-    setShowPlateDetectionAd(true);
-  };
-
-  const onPlateAdComplete = () => {
-    setShowPlateDetectionAd(false);
-    router.push("/addVehicleByPlate");
-    showToast("זיהוי אוטומטי זמין!");
-  };
-
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [1, 0.9],
-    extrapolate: "clamp",
-  });
-
-  const headerTranslateY = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [0, -10],
-    extrapolate: "clamp",
-  });
-
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.innerContainer}>
-        {/* Animated Header */}
-        <Animated.View
-          style={[
-            styles.header,
-            {
-              opacity: headerOpacity,
-              transform: [{ translateY: headerTranslateY }],
-            },
-          ]}
-        >
+        <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={{ marginRight: 12 }}>
               <Car size={32} color="#009688" />
@@ -343,7 +283,7 @@ export default function VehiclesScreen() {
               ? "התחל להוסיף רכבים"
               : `${vehicles.length} רכב${vehicles.length === 1 ? "" : "ים"} שמור${vehicles.length === 1 ? "" : "ים"}`}
           </Text>
-        </Animated.View>
+        </View>
 
         {/* Toast */}
         {toastMessage && (
@@ -367,17 +307,13 @@ export default function VehiclesScreen() {
           </Animated.View>
         )}
 
-        <Animated.FlatList
+        <FlatList
           data={vehicles}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.listContent,
             IS_WEB && { alignSelf: "center", width: "100%", maxWidth: MAX_WIDTH },
           ]}
-          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-            useNativeDriver: true,
-          })}
-          scrollEventThrottle={16}
           renderItem={({ item }) => {
             const fuelData = getFuelData(item.fueltype);
             return (
@@ -433,12 +369,6 @@ export default function VehiclesScreen() {
               </View>
               <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noVehicles}</Text>
               <Text style={styles.emptyText}>{LEGAL_UI_STRINGS.empty.addFirst}</Text>
-              
-              {Platform.OS !== 'web' && (
-                <View style={styles.emptyAdWrapper}>
-                  <AdBanner size="MEDIUM_RECTANGLE" />
-                </View>
-              )}
             </View>
           }
         />
@@ -448,25 +378,13 @@ export default function VehiclesScreen() {
           <TouchableOpacity
             style={[styles.addBtn, styles.addBtnPrimary]}
             activeOpacity={0.8}
-            onPress={() => setShowPlateDetectionModal(true)}
+            onPress={() => router.push("/addVehicleByPlate")}
             testID="btn-add-by-plate"
           >
             <View style={styles.btnGradient}>
               <Scan size={28} color="#fff" style={{ marginBottom: 6 }} />
-              <Text style={styles.addBtnTextPrimary}>הוסף לפי לוחית רישוי</Text>
-              <Text style={styles.addBtnSubtext}>זיהוי אוטומטי מהיר</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.addBtn, styles.addBtnSecondary]}
-            activeOpacity={0.8}
-            onPress={() => router.push("/addVehicle")}
-            testID="btn-add-manual"
-          >
-            <View style={styles.btnGradientSecondary}>
-              <Plus size={26} color="#fff" style={{ marginBottom: 4 }} />
-              <Text style={styles.addBtnTextSecondary}>הוסף ידני</Text>
+              <Text style={styles.addBtnTextPrimary}>הוסף רכב</Text>
+              <Text style={styles.addBtnSubtext}>לפי לוחית רישוי</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -538,41 +456,6 @@ export default function VehiclesScreen() {
                       value={name}
                       onChangeText={setName}
                       placeholder="הזן שם רכב"
-                      placeholderTextColor="#999"
-                      textAlign="right"
-                    />
-                  </View>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>דגם</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={model}
-                      onChangeText={setModel}
-                      placeholder="לדוגמה: טויוטה קורולה"
-                      placeholderTextColor="#999"
-                      textAlign="right"
-                    />
-                  </View>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>מנוע</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={engine}
-                      onChangeText={setEngine}
-                      placeholder="לדוגמה: 1.6L"
-                      placeholderTextColor="#999"
-                      textAlign="right"
-                    />
-                  </View>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>שנת ייצור</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={manufactureYear}
-                      onChangeText={setManufactureYear}
-                      placeholder="לדוגמה: 2020"
-                      keyboardType="numeric"
-                      returnKeyType="done"
                       placeholderTextColor="#999"
                       textAlign="right"
                     />
@@ -678,79 +561,6 @@ export default function VehiclesScreen() {
           </Animated.View>
         </View>
       </Modal>
-
-      {/* Plate Detection Info Modal */}
-      {showPlateDetectionModal && (
-        <Modal
-          visible={showPlateDetectionModal}
-          animationType="fade"
-          transparent
-          onRequestClose={() => setShowPlateDetectionModal(false)}
-        >
-          <View style={styles.plateModalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => setShowPlateDetectionModal(false)}
-            />
-            <View style={styles.plateModalContent}>
-              <View style={{ marginBottom: 16 }}>
-                <PlaySquare size={56} color="#009688" />
-              </View>
-              <Text style={styles.plateModalTitle}>זיהוי אוטומטי לפי לוחית רישוי</Text>
-              <Text style={styles.plateModalDescription}>
-                כדי לזהות את הרכב שלך אוטומטית,{'\n'}צפה בפרסומת קצרה של 15-30 שניות
-              </Text>
-
-              <View style={styles.plateBenefits}>
-                <View style={styles.plateBenefit}>
-                  <Zap size={32} color="#F59E0B" style={{ marginBottom: 8 }} />
-                  <Text style={styles.plateBenefitText}>זיהוי מיידי</Text>
-                </View>
-                <View style={styles.plateBenefit}>
-                  <CheckCircle size={32} color="#10B981" style={{ marginBottom: 8 }} />
-                  <Text style={styles.plateBenefitText}>נתונים מדויקים</Text>
-                </View>
-                <View style={styles.plateBenefit}>
-                  <Gift size={32} color="#3B82F6" style={{ marginBottom: 8 }} />
-                  <Text style={styles.plateBenefitText}>שירות חינמי</Text>
-                </View>
-              </View>
-
-              <View style={styles.plateModalActions}>
-                <TouchableOpacity
-                  style={styles.plateCancelButton}
-                  onPress={() => setShowPlateDetectionModal(false)}
-                >
-                  <Text style={styles.plateCancelButtonText}>ביטול</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.plateContinueButton}
-                  onPress={handleShowPlateAd}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <Text style={styles.plateContinueButtonText}>פתח זיהוי אוטומטי</Text>
-                    <ChevronLeft size={13} color="#fff" style={{ marginRight: 8 }} />
-                    
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Rewarded Ad Container */}
-      {showPlateDetectionAd && (
-        <PlateDetectionRewardedAd
-          onAdComplete={onPlateAdComplete}
-          onAdError={(error: Error) => {
-            console.error("Plate detection ad error:", error);
-            onPlateAdComplete(); // Fallback
-          }}
-        />
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

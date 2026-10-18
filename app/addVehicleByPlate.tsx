@@ -802,6 +802,17 @@ export default function AddVehicleByPlate() {
                 )}
               </TouchableOpacity>
 
+              <TouchableOpacity
+                onPress={() => router.replace("/addVehicle")}
+                disabled={loading}
+                accessibilityRole="link"
+                style={{ alignItems: "center", paddingVertical: 12 }}
+              >
+                <Text style={[styles.inputHint, { textDecorationLine: "underline" }]}>
+                  אין לוחית או לא נמצא? הזנה ידנית
+                </Text>
+              </TouchableOpacity>
+
               {/* Features List */}
               <View style={styles.featuresContainer}>
                 <FeatureItem iconNode={<Search size={20} color="#009688" />} text="זיהוי מיידי מבסיס נתונים ממשלתי" />

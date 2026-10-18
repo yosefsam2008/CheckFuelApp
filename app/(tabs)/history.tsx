@@ -325,6 +325,14 @@ export default function HistoryScreen() {
     );
   };
 
+  const now = new Date();
+  const monthCost = history
+    .filter((t) => {
+      const d = new Date(t.timestamp);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, t) => sum + t.totalCost, 0);
+
   // Policy-compliant Feed Banner Ad
   const FeedBannerAd = () => (
     <View style={styles.feedAdContainer}>
@@ -340,7 +348,9 @@ export default function HistoryScreen() {
         <View style={styles.headerGradient} />
         <Text style={styles.title}>היסטוריית נסיעות</Text>
         <Text style={styles.subtitle}>
-          {history.length > 0 ? `${history.length} נסיעות שמורות` : "התחל לחשב"}
+          {history.length > 0
+            ? `${history.length} נסיעות שמורות${monthCost > 0 ? ` • החודש: ₪${monthCost.toFixed(0)}` : ""}`
+            : "התחל לחשב"}
         </Text>
       </View>
 
@@ -676,7 +686,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f7fa",
   },
   header: {
-    paddingTop: Platform.OS === "ios" ? 60 : 50,
+    paddingTop: 16, // the navigation header already covers the status bar
     paddingBottom: 24,
     paddingHorizontal: 20,
     position: "relative",

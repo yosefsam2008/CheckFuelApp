@@ -1,0 +1,375 @@
+<title>CheckFuel Design Directions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700;900&family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+/* Layout concept: a reviewer's board. Two direction sections, each = two phone previews + a spec column. */
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --fg:#14181D; --muted:#4D5662; --line:#D5DAE0; --chip:#E7EBEF; --pick:#14181D; --on-pick:#FFFFFF;
+  --f-ui:'Assistant','Heebo',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1317; --surface:#181D23; --fg:#E9EDF1; --muted:#A3ADB8; --line:#2B333C; --chip:#222A32; --pick:#E9EDF1; --on-pick:#0F1317; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1317; --surface:#181D23; --fg:#E9EDF1; --muted:#A3ADB8; --line:#2B333C; --chip:#222A32; --pick:#E9EDF1; --on-pick:#0F1317; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--f-ui);padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:32px 72px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0 0 8px;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:26px;line-height:1.15;margin:0;text-wrap:balance}
+h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px;color:var(--muted)}
+p{margin:0;max-width:64ch}
+.lede{color:var(--muted);max-width:68ch}
+.top{display:flex;flex-direction:column;gap:20px}
+.bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{font:inherit;font-size:14px;padding:8px 14px;border:0;background:transparent;color:var(--fg);cursor:pointer;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--pick);color:var(--on-pick)}
+.seg button:focus-visible{outline:3px solid var(--fg);outline-offset:-3px}
+.rec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:12px}
+.rec ul{margin:0;padding-inline-start:20px;display:grid;gap:6px;max-width:80ch}
+.tag{display:inline-block;justify-self:start;width:fit-content;align-self:flex-start;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--pick);color:var(--on-pick)}
+.dir{display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
+.dirhead{display:flex;flex-direction:column;gap:6px}
+.stage{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.fig{margin:0;display:flex;flex-direction:column;gap:10px;align-items:center}
+.fig figcaption{font-size:13px;color:var(--muted)}
+.spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:8px;align-content:start;min-width:0}
+.card p,.card li{font-size:14.5px}
+.card ul{margin:0;padding-inline-start:18px;display:grid;gap:4px}
+.sw{display:flex;flex-wrap:wrap;gap:6px}
+.sw span{display:flex;align-items:flex-end;width:62px;height:46px;border-radius:8px;padding:4px 5px;font-size:10px;font-family:ui-monospace,Menlo,monospace;border:1px solid rgba(128,128,128,.35)}
+.num-t{font-variant-numeric:tabular-nums}
+.small{font-size:13px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{text-align:start;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.tw{overflow-x:auto}
+hr{border:0;border-top:1px solid var(--line);width:100%}
+
+/* ---------- Phone frame ---------- */
+.phone{width:332px;height:716px;border-radius:44px;border:9px solid #0b0c0e;overflow:hidden;position:relative;flex:none;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.app{height:100%;display:flex;flex-direction:column;background:var(--g);color:var(--ink);font-family:var(--fb);font-size:15px;line-height:1.35}
+.app *{box-sizing:border-box}
+.sb{height:30px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:6px 22px 0;font:600 12px/1 var(--fb);direction:ltr}
+.sb i{display:block;width:26px;height:10px;border:1.5px solid currentColor;border-radius:3px;opacity:.8}
+.abar{height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.brand{font:var(--bw) 17px/1 var(--fd);letter-spacing:-.01em;direction:ltr}
+.ib{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--ink2)}
+.ib svg,.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.scr{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:6px 16px 12px}
+.q{margin:2px 0 0;font:var(--hw) 24px/1.15 var(--fd);letter-spacing:-.015em}
+.chips{display:flex;gap:8px}
+.chip{flex:1;text-align:center;padding:10px 0;border-radius:var(--r1);background:var(--s2);color:var(--ink);font:600 14px/1 var(--fb);min-height:40px;display:grid;place-items:center}
+.chip.on{background:var(--ink);color:var(--g)}
+.rows{display:flex;flex-direction:column;border-radius:var(--r2);background:var(--s1);overflow:hidden}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;min-height:52px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row small{display:block;color:var(--ink2);font-size:12px;line-height:1.2}
+.row b{font-weight:600;font-size:15px}
+.row .act{color:var(--link);font-weight:600;font-size:14px}
+.stepper{display:flex;align-items:center;gap:10px;direction:ltr;font-variant-numeric:tabular-nums}
+.stepper i{width:32px;height:32px;border-radius:50%;background:var(--s2);display:grid;place-items:center;font-style:normal;font-weight:700}
+.cta{margin-top:auto;min-height:56px;border-radius:var(--r2);display:grid;place-items:center;font:700 18px/1 var(--fd);background:var(--cta);color:var(--ctaT)}
+.tabs{flex:none;height:66px;display:flex;border-top:1px solid var(--line);background:var(--s1);padding:6px 8px 12px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--ink2)}
+.tab.on{color:var(--tabOn)}
+.tab.on svg{fill:currentColor;fill-opacity:.16}
+.ad{height:46px;border-radius:var(--r1);border:1px dashed var(--line);display:grid;place-items:center;color:var(--ink2);font-size:11.5px}
+.rcpt{display:flex;flex-direction:column;border-radius:var(--r2);background:var(--s1);padding:2px 14px}
+.rcpt .row{padding:0;min-height:42px;border-bottom:1px dashed var(--line)}
+.rcpt .row:last-child{border-bottom:0}
+.btns{display:flex;gap:10px;margin-top:auto}
+.btn{min-height:52px;border-radius:var(--r2);display:grid;place-items:center;font:700 16px/1 var(--fd);padding:0 16px}
+.btn.p{flex:1;background:var(--cta);color:var(--ctaT)}
+.btn.s{background:var(--s2);color:var(--ink)}
+.split{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:var(--r2);background:var(--s2)}
+.split b{font:700 20px/1 var(--fd);font-variant-numeric:tabular-nums}
+.split small{display:block;font-size:12px;color:var(--ink2)}
+.good{color:var(--good)}
+
+/* ---------- Direction A: Plate (dark-first) ---------- */
+.app[data-dir="a"]{--fd:'Heebo',system-ui,sans-serif;--fb:'Heebo',system-ui,sans-serif;--hw:800;--bw:900;--r1:10px;--r2:16px;--r3:22px}
+.app[data-dir="a"][data-mode="dark"]{--g:#0D0F12;--s1:#171A20;--s2:#1F232B;--line:#2A2F39;--ink:#F4F1E8;--ink2:#A9AEB9;--link:#FFD21F;--cta:#FFD21F;--ctaT:#0D0F12;--tabOn:#FFD21F;--good:#4ADE80;--plate:#FFD21F;--plateInk:#0D0F12}
+.app[data-dir="a"][data-mode="light"]{--g:#FBF8EF;--s1:#FFFFFF;--s2:#F1EDE0;--line:#E4DFCF;--ink:#14161A;--ink2:#565B66;--link:#14161A;--cta:#FFD21F;--ctaT:#14161A;--tabOn:#14161A;--good:#12794A;--plate:#FFD21F;--plateInk:#14161A}
+.a .plate{direction:ltr;display:flex;border-radius:var(--r2);overflow:hidden;background:var(--plate);color:var(--plateInk);border:2px solid var(--plateInk);min-height:118px}
+.a .plate .strip{width:30px;background:#1D4ED8;color:#fff;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font:700 11px/1 var(--fb)}
+.a .plate .pb{flex:1;padding:12px 16px;display:flex;flex-direction:column;justify-content:center;direction:rtl}
+.a .plate label{font-size:13px;font-weight:700;opacity:.8}
+.a .plate .n{display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums;direction:rtl}
+.a .plate .n b{font:900 64px/1 var(--fd);letter-spacing:-.03em}
+.a .plate .n small{font:700 18px/1 var(--fb)}
+.a .plate.big{min-height:170px}
+.a .plate.big .n b{font-size:84px}
+.a .plate.big .pb{align-items:flex-start;gap:4px}
+.a .plate .sub{font:600 14px/1.2 var(--fb);opacity:.85}
+.a .cta{box-shadow:0 4px 0 rgba(255,210,31,.35);border:2px solid var(--ctaT)}
+.app[data-dir="a"][data-mode="light"] .cta{box-shadow:0 4px 0 #14161A}
+
+/* ---------- Direction B: Open Road (light-first) ---------- */
+.app[data-dir="b"]{--fd:'Rubik',system-ui,sans-serif;--fb:'Assistant','Rubik',system-ui,sans-serif;--hw:600;--bw:700;--r1:12px;--r2:20px;--r3:28px}
+.app[data-dir="b"][data-mode="light"]{--g:#F3F6F2;--s1:#FFFFFF;--s2:#E7EEE8;--line:#D6E0D8;--ink:#0E2A21;--ink2:#4A6157;--link:#0B6B4D;--cta:#FFB81C;--ctaT:#0E2A21;--tabOn:#0B6B4D;--good:#0B6B4D;--brand:#0B6B4D;--onBrand:#FFFFFF}
+.app[data-dir="b"][data-mode="dark"]{--g:#0A1612;--s1:#11221C;--s2:#183029;--line:#25403A;--ink:#EAF4EE;--ink2:#9DB5A9;--link:#3DCB93;--cta:#FFC845;--ctaT:#1A1200;--tabOn:#3DCB93;--good:#3DCB93;--brand:#3DCB93;--onBrand:#062018}
+.b .sign{border-radius:var(--r3);background:var(--brand);color:var(--onBrand);padding:6px}
+.b .sign .in{border:2px solid currentColor;border-radius:calc(var(--r3) - 8px);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.b .sign label{font-size:13px;font-weight:600;opacity:.92}
+.b .sign .n{display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
+.b .sign .n b{font:600 58px/1.05 var(--fd);letter-spacing:-.02em}
+.b .sign .n small{font:500 18px/1 var(--fb)}
+.b .sign.big .n b{font-size:76px}
+.b .sign .sub{font:600 14px/1.2 var(--fb);opacity:.92}
+.b .cta{box-shadow:none}
+.b .rows,.b .rcpt{border:1px solid var(--line)}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></symbol>
+  <symbol id="i-trips" viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 15l1.6-5.2A2 2 0 0 1 7.5 8.4h9a2 2 0 0 1 1.9 1.4L20 15v3.2a.8.8 0 0 1-.8.8h-1.4a.8.8 0 0 1-.8-.8V17H7v1.2a.8.8 0 0 1-.8.8H4.8a.8.8 0 0 1-.8-.8z"/><path d="M7.5 13h.01M16.5 13h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+</svg>
+
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>CheckFuel design directions</h1>
+    <p class="lede">Two ways to redesign the app, shown on the two screens that matter: the home screen and the result. Hebrew, right-to-left, sample data. Switch the preview between each direction's native look, light, and dark.</p>
+  </div>
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Preview mode">
+      <button type="button" aria-pressed="true" data-mode="default">Native</button>
+      <button type="button" aria-pressed="false" data-mode="light">Light</button>
+      <button type="button" aria-pressed="false" data-mode="dark">Dark</button>
+    </div>
+    <span class="small">All colours in the specs pass WCAG AA (measured). Sample numbers are illustrative.</span>
+  </div>
+
+  <div class="rec">
+    <span class="tag">Recommendation</span>
+    <h2>Go with A, Plate.</h2>
+    <ul>
+      <li><b>It is built to be shared.</b> The result is a yellow plate with one big number. A screenshot of it in a WhatsApp group chat is the app's advertising, and no other element on the screen needs to be more recognisable.</li>
+      <li><b>It fits the audience.</b> Teen and young drivers, mostly one phone, usually in the evening or in the car: dark-first, big thumb targets, one loud colour, zero reading.</li>
+      <li><b>It is cheap to build well.</b> One accent, two weights of one font family, tone-step depth. Fewer moving parts than B, and it replaces the five competing palettes with one.</li>
+      <li><b>B is the safer second.</b> If you want a calmer, broader, parent-friendly face, B is the one. Say so and I will build B instead; nothing below depends on the choice.</li>
+    </ul>
+    <hr>
+    <h3>Shared by both: structure</h3>
+    <ul>
+      <li><b>Navigation:</b> a native bottom tab bar with three tabs: Calculate, Trips, Vehicles. Three destinations, thumb reach, always visible, back swipe works, and it is what iOS and Android users expect. The hamburger menu goes. About, Legal and Guide move behind an info icon in the top bar.</li>
+      <li><b>One-screen calculator:</b> distance, vehicle, price and passengers on one screen, with a single "Calculate" button, instead of a five-step wizard. The last vehicle is preselected.</li>
+      <li><b>Ads off the happy path:</b> one small banner below the result, never between the question and the answer, and the full-screen ad only after "new calculation".</li>
+      <li><b>Cut or merged:</b> dashboard (already removed), the guide as a standalone screen, the second add-vehicle screen, the trip-details modal (expand in the list instead).</li>
+    </ul>
+  </div>
+</header>
+
+<!-- ================= DIRECTION A ================= -->
+<section class="dir a" id="a" aria-labelledby="a-h">
+  <div class="dirhead">
+    <span class="tag">A · Recommended</span>
+    <h2 id="a-h">Plate</h2>
+    <p class="lede">Loud, quick, shareable. Takes its look from the thing every Israeli driver reads daily: the licence plate. Dark by default, one yellow, huge numerals.</p>
+  </div>
+
+  <div class="stage">
+    <figure class="fig">
+      <div class="phone" role="img" aria-label="Plate direction, home screen: distance entered on a yellow plate, quick distance chips, vehicle, fuel price and passenger rows, and a yellow Calculate button">
+        <div class="app" data-dir="a" data-default="dark" data-mode="dark" dir="rtl" lang="he">
+          <div class="sb"><span>9:41</span><i></i></div>
+          <div class="abar"><span class="brand">CheckFuel</span><span class="ib"><svg><use href="#i-info"/></svg></span></div>
+          <div class="scr">
+            <h4 class="q">כמה תעלה הנסיעה?</h4>
+            <div class="plate"><span class="strip">IL</span><div class="pb"><label>מרחק</label><div class="n"><b>95</b><small>ק״מ</small></div></div></div>
+            <div class="chips"><span class="chip">20</span><span class="chip">50</span><span class="chip on">100</span><span class="chip">200</span></div>
+            <div class="rows">
+              <div class="row"><div><small>רכב</small><b>מזדה 3 · 6.8 ל׳ ל-100 ק״מ</b></div><span class="act">החלפה</span></div>
+              <div class="row"><div><small>מחיר דלק · מעודכן</small><b><bdi>₪7.42</bdi> לליטר</b></div><span class="act">עריכה</span></div>
+              <div class="row"><b>נוסעים</b><span class="stepper"><i>+</i><b>4</b><i>−</i></span></div>
+            </div>
+            <div class="cta">חשב עלות</div>
+          </div>
+          <div class="tabs"><span class="tab on"><svg><use href="#i-calc"/></svg>חישוב</span><span class="tab"><svg><use href="#i-trips"/></svg>נסיעות</span><span class="tab"><svg><use href="#i-car"/></svg>רכבים</span></div>
+        </div>
+      </div>
+      <figcaption>Home: one screen replaces the wizard</figcaption>
+    </figure>
+
+    <figure class="fig">
+      <div class="phone" role="img" aria-label="Plate direction, result screen: cost 47.9 shekels on a large yellow plate, receipt-style rows, split between four, a small ad slot, share and save buttons">
+        <div class="app" data-dir="a" data-default="dark" data-mode="dark" dir="rtl" lang="he">
+          <div class="sb"><span>9:41</span><i></i></div>
+          <div class="abar"><span class="brand">CheckFuel</span><span class="ib"><svg><use href="#i-info"/></svg></span></div>
+          <div class="scr">
+            <div class="plate big"><span class="strip">IL</span><div class="pb"><label>עלות הנסיעה</label><div class="n"><b><bdi>47.9</bdi></b><small>₪</small></div><span class="sub">95 ק״מ · 6.5 ליטר</span></div></div>
+            <div class="rcpt">
+              <div class="row"><span>עלות לק״מ</span><b><bdi>₪0.50</bdi></b></div>
+              <div class="row"><span>מחיר לליטר</span><b><bdi>₪7.42</bdi></b></div>
+            </div>
+            <div class="split"><div><small>חלוקה בין 4</small><b><bdi>₪12.0</bdi></b></div><span class="good" style="font-weight:700">לכל אחד</span></div>
+            <div class="ad">פרסומת</div>
+            <div class="btns"><span class="btn p">שיתוף החשבון</span><span class="btn s">שמירה</span></div>
+          </div>
+          <div class="tabs"><span class="tab on"><svg><use href="#i-calc"/></svg>חישוב</span><span class="tab"><svg><use href="#i-trips"/></svg>נסיעות</span><span class="tab"><svg><use href="#i-car"/></svg>רכבים</span></div>
+        </div>
+      </div>
+      <figcaption>Result: the plate is the share card</figcaption>
+    </figure>
+  </div>
+
+  <div class="spec">
+    <div class="card">
+      <h3>Mood and marketing</h3>
+      <p>Fast, a bit cheeky, trustworthy where it counts (the number). "Split it with friends" is the hook: the result is already formatted as a picture you would post.</p>
+      <p class="small">The blue strip nods at a plate; it is not a replica of any real plate.</p>
+    </div>
+    <div class="card">
+      <h3>Palette (dark / light)</h3>
+      <div class="sw">
+        <span style="background:#0D0F12;color:#F4F1E8">ground</span><span style="background:#171A20;color:#F4F1E8">surface</span><span style="background:#FFD21F;color:#0D0F12">plate</span><span style="background:#F4F1E8;color:#0D0F12">ink</span><span style="background:#4ADE80;color:#0D0F12">good</span><span style="background:#FF7A6B;color:#0D0F12">bad</span>
+      </div>
+      <div class="sw">
+        <span style="background:#FBF8EF;color:#14161A">ground</span><span style="background:#FFFFFF;color:#14161A">surface</span><span style="background:#14161A;color:#FBF8EF">ink</span><span style="background:#12794A;color:#fff">good</span><span style="background:#C2362B;color:#fff">bad</span>
+      </div>
+      <p class="small num-t">Measured: ink on ground 17.0:1 (dark), 17.1:1 (light); secondary text 7.8:1 / 6.4:1; text on yellow 13.2:1 / 12.5:1; borders 3.7:1 (dark), 3.2:1 (light).</p>
+    </div>
+    <div class="card">
+      <h3>Type</h3>
+      <p><b>Heebo</b> only, with Hebrew and Latin drawn together. Weight 900 for the plate numeral, 800 for headings, 500–700 for UI. Tabular figures on every amount. Respects the system text size.</p>
+    </div>
+    <div class="card">
+      <h3>Space, shape, depth</h3>
+      <ul><li>Spacing on a 4-point scale: 4 8 12 16 24 32</li><li>Radius 10 / 16 / 22</li><li>Depth from tone steps. The only shadow is a hard offset under the main button.</li><li>Targets 44 pt and up; the main button is 56.</li></ul>
+    </div>
+    <div class="card">
+      <h3>Motion</h3>
+      <p>"Snap": 120–200 ms ease-out. Press compresses the button's offset shadow. The cost counts up once (about 600 ms), then a light haptic. With Reduce Motion: a plain cross-fade, no count-up.</p>
+    </div>
+    <div class="card">
+      <h3>Trade-offs</h3>
+      <ul><li>Yellow is only ever a fill, never text on light.</li><li>Strong identity: harder to soften later.</li><li>Teen-leaning; parents may find it loud.</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ================= DIRECTION B ================= -->
+<section class="dir b" id="b" aria-labelledby="b-h">
+  <div class="dirhead">
+    <span class="tag" style="background:var(--chip);color:var(--fg)">B · Alternative</span>
+    <h2 id="b-h">Open Road</h2>
+    <p class="lede">Calm, clear, trustworthy. Takes its look from intercity road signs: deep sign green with a white inner border, a warm amber "go" button, light by default.</p>
+  </div>
+
+  <div class="stage">
+    <figure class="fig">
+      <div class="phone" role="img" aria-label="Open Road direction, home screen: distance on a green road-sign card, quick chips, vehicle, price and passengers rows, and an amber Calculate button">
+        <div class="app" data-dir="b" data-default="light" data-mode="light" dir="rtl" lang="he">
+          <div class="sb"><span>9:41</span><i></i></div>
+          <div class="abar"><span class="brand">CheckFuel</span><span class="ib"><svg><use href="#i-info"/></svg></span></div>
+          <div class="scr b">
+            <h4 class="q">כמה תעלה הנסיעה?</h4>
+            <div class="sign"><div class="in"><label>מרחק</label><div class="n"><b>95</b><small>ק״מ</small></div></div></div>
+            <div class="chips"><span class="chip">20</span><span class="chip">50</span><span class="chip on">100</span><span class="chip">200</span></div>
+            <div class="rows">
+              <div class="row"><div><small>רכב</small><b>מזדה 3 · 6.8 ל׳ ל-100 ק״מ</b></div><span class="act">החלפה</span></div>
+              <div class="row"><div><small>מחיר דלק · מעודכן</small><b><bdi>₪7.42</bdi> לליטר</b></div><span class="act">עריכה</span></div>
+              <div class="row"><b>נוסעים</b><span class="stepper"><i>+</i><b>4</b><i>−</i></span></div>
+            </div>
+            <div class="cta">חשב עלות</div>
+          </div>
+          <div class="tabs"><span class="tab on"><svg><use href="#i-calc"/></svg>חישוב</span><span class="tab"><svg><use href="#i-trips"/></svg>נסיעות</span><span class="tab"><svg><use href="#i-car"/></svg>רכבים</span></div>
+        </div>
+      </div>
+      <figcaption>Home: same structure, calmer skin</figcaption>
+    </figure>
+
+    <figure class="fig">
+      <div class="phone" role="img" aria-label="Open Road direction, result screen: cost 47.9 shekels on a large green sign card, metric rows, split between four, a small ad slot, share and save buttons">
+        <div class="app" data-dir="b" data-default="light" data-mode="light" dir="rtl" lang="he">
+          <div class="sb"><span>9:41</span><i></i></div>
+          <div class="abar"><span class="brand">CheckFuel</span><span class="ib"><svg><use href="#i-info"/></svg></span></div>
+          <div class="scr b">
+            <div class="sign big"><div class="in"><label>עלות הנסיעה</label><div class="n"><b><bdi>47.9</bdi></b><small>₪</small></div><span class="sub">95 ק״מ · 6.5 ליטר</span></div></div>
+            <div class="rcpt">
+              <div class="row"><span>עלות לק״מ</span><b><bdi>₪0.50</bdi></b></div>
+              <div class="row"><span>מחיר לליטר</span><b><bdi>₪7.42</bdi></b></div>
+            </div>
+            <div class="split"><div><small>חלוקה בין 4</small><b><bdi>₪12.0</bdi></b></div><span class="good" style="font-weight:700">לכל אחד</span></div>
+            <div class="ad">פרסומת</div>
+            <div class="btns"><span class="btn p">שיתוף החשבון</span><span class="btn s">שמירה</span></div>
+          </div>
+          <div class="tabs"><span class="tab on"><svg><use href="#i-calc"/></svg>חישוב</span><span class="tab"><svg><use href="#i-trips"/></svg>נסיעות</span><span class="tab"><svg><use href="#i-car"/></svg>רכבים</span></div>
+        </div>
+      </div>
+      <figcaption>Result: the sign card carries the number</figcaption>
+    </figure>
+  </div>
+
+  <div class="spec">
+    <div class="card">
+      <h3>Mood and marketing</h3>
+      <p>Clear, steady, helpful. Reads as a tool you can trust with money, so it travels better to parents and older drivers. Less thumb-stopping on a social feed.</p>
+    </div>
+    <div class="card">
+      <h3>Palette (light / dark)</h3>
+      <div class="sw">
+        <span style="background:#F3F6F2;color:#0E2A21">ground</span><span style="background:#FFFFFF;color:#0E2A21">surface</span><span style="background:#0B6B4D;color:#fff">sign</span><span style="background:#FFB81C;color:#0E2A21">go</span><span style="background:#B3261E;color:#fff">bad</span>
+      </div>
+      <div class="sw">
+        <span style="background:#0A1612;color:#EAF4EE">ground</span><span style="background:#11221C;color:#EAF4EE">surface</span><span style="background:#3DCB93;color:#062018">sign</span><span style="background:#FFC845;color:#1A1200">go</span><span style="background:#FF8A80;color:#0A1612">bad</span>
+      </div>
+      <p class="small num-t">Measured: ink on ground 14.1:1 / 16.4:1; secondary text 6.1:1 / 7.6:1; white on sign green 6.5:1; ink on amber 8.8:1; borders 3.3:1 (light), 4.2:1 (dark).</p>
+    </div>
+    <div class="card">
+      <h3>Type</h3>
+      <p><b>Rubik</b> for headings and numerals (rounded, friendly, full Hebrew), <b>Assistant</b> for body and UI. Weights 400–600. Tabular figures on amounts.</p>
+    </div>
+    <div class="card">
+      <h3>Space, shape, depth</h3>
+      <ul><li>4-point spacing scale, same as A</li><li>Radius 12 / 20 / 28</li><li>Depth from 1 px borders and tone steps; no shadows</li><li>Targets 44 pt and up; main button 56</li></ul>
+    </div>
+    <div class="card">
+      <h3>Motion</h3>
+      <p>"Glide": 220–320 ms, gentle springs. The sign card slides in, the number rolls once. Light haptic on success. With Reduce Motion: cross-fade only.</p>
+    </div>
+    <div class="card">
+      <h3>Trade-offs</h3>
+      <ul><li>Green plus amber sits close to many eco and finance apps.</li><li>Less distinctive on its own, relies on the sign-card detail.</li><li>Very safe; hard to get wrong.</li></ul>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="cmp-h" class="dir">
+  <h2 id="cmp-h">Side by side</h2>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>A · Plate</th><th>B · Open Road</th></tr></thead>
+    <tbody>
+      <tr><th>Feel</th><td>Bold, quick, playful</td><td>Calm, clear, trustworthy</td></tr>
+      <tr><th>Default mode</th><td>Dark</td><td>Light</td></tr>
+      <tr><th>Brand colour</th><td>Plate yellow, always as a fill</td><td>Sign green, with amber for the main action</td></tr>
+      <tr><th>Fonts</th><td>Heebo only</td><td>Rubik and Assistant</td></tr>
+      <tr><th>Shareability</th><td>High: the result is a postable card</td><td>Medium</td></tr>
+      <tr><th>Audience reach</th><td>Teens and young drivers first</td><td>All ages</td></tr>
+      <tr><th>Build effort</th><td>Lower: one family, one accent</td><td>Similar</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">Both replace the five separate colour palettes in the app with one set of named tokens, with light and dark defined together. Nothing in the app code is changed until you choose.</p>
+</section>
+</div>
+
+<script>
+(function(){
+  var apps=[].slice.call(document.querySelectorAll('.app'));
+  var btns=[].slice.call(document.querySelectorAll('.seg button'));
+  function setMode(m){
+    apps.forEach(function(a){a.setAttribute('data-mode', m==='default'?a.getAttribute('data-default'):m)});
+    btns.forEach(function(b){b.setAttribute('aria-pressed', String(b.getAttribute('data-mode')===m))});
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){setMode(b.getAttribute('data-mode'))})});
+})();
+</script>

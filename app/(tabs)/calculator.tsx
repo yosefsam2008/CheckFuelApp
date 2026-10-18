@@ -62,6 +62,7 @@ import {
   ViewStyle,
   ActionSheetIOS,
 } from "react-native";
+import { color } from "../../constants/theme";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 import {
   calculateAdjustedConsumption,
@@ -196,6 +197,7 @@ const STEP_LABELS = ["לאן נוסעים?", "עם מה?", "איך?", "כמה ע
 // ============================================
 const COLORS = {
   primary: "#34C759",
+  primaryStrong: color.brandGreenStrong, // fills that carry white text
   primaryDark: "#248A3D",
   primaryLight: "#A8E6CF",
   primaryGradientStart: "#34C759",
@@ -210,8 +212,8 @@ const COLORS = {
   card: "#FFFFFF",
   cardBorder: "rgba(0, 0, 0, 0.04)",
   textPrimary: "#000000",
-  textSecondary: "#8E8E93",
-  textTertiary: "#AEAEB2",
+  textSecondary: color.textSecondary,
+  textTertiary: color.textSecondary,
   textOnPrimary: "#FFFFFF",
   overlay: "rgba(0, 0, 0, 0.4)",
   shadow: "#000000",
@@ -2181,7 +2183,7 @@ const styles = StyleSheet.create({
     paddingTop: 16, // the navigation header already covers the status bar
     paddingBottom: 20,
     paddingHorizontal: 20,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
@@ -2452,7 +2454,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     paddingVertical: 16,
     borderRadius: 16,
     shadowColor: COLORS.primary,
@@ -2575,7 +2577,7 @@ mapButtonText: {
     flex: 1.5,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     paddingVertical: 16,
     borderRadius: 16,
     shadowColor: COLORS.primary,
@@ -3169,7 +3171,7 @@ mapButtonText: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     paddingVertical: 16,
     borderRadius: 16,
     gap: 8,

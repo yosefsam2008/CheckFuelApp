@@ -12,7 +12,9 @@ import { privacyOptionsRequired, showPrivacyOptions } from '../../lib/ads/initAd
 import LegalScreen from '../LegalScreen';
 import UserGuideScreen from '../UserGuideScreen';
 
-const TEAL = '#009688';
+import { color } from '../../constants/theme';
+
+const TEAL = color.brandTeal;
 
 type MenuView = 'menu' | 'legal' | 'guide';
 
@@ -146,8 +148,8 @@ export default function TabsLayout() {
             </TouchableOpacity>
           ),
           sceneStyle: { backgroundColor: '#f5f7fa' },
-          tabBarActiveTintColor: TEAL,
-          tabBarInactiveTintColor: '#999',
+          tabBarActiveTintColor: color.brandTealStrong,
+          tabBarInactiveTintColor: color.textSecondary,
           // גובה דינמי וריווח תחתון שמתחשב בפס הניווט של המערכת
           tabBarStyle: {
             height: 60 + insets.bottom,

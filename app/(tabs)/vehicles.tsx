@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Vehicle } from "../../lib/data/vehiclesData";
+import { color } from "../../constants/theme";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 
 // Unified Lucide Icons
@@ -456,7 +457,7 @@ export default function VehiclesScreen() {
                       value={name}
                       onChangeText={setName}
                       placeholder="הזן שם רכב"
-                      placeholderTextColor="#999"
+                      placeholderTextColor={color.textSecondary}
                       textAlign="right"
                     />
                   </View>
@@ -473,7 +474,7 @@ export default function VehiclesScreen() {
                     }
                     keyboardType="numeric"
                     returnKeyType="done"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={color.textSecondary}
                     textAlign="right"
                   />
                   </View>
@@ -767,7 +768,7 @@ const styles = StyleSheet.create({
   },
   adTagSmall: {
     fontSize: 10,
-    color: "#999",
+    color: color.textSecondary,
     marginBottom: 4,
     textAlign: "center",
   },

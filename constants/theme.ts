@@ -5,6 +5,11 @@
 
 import { Platform } from 'react-native';
 
+// Tokens live in tokens.ts (no react-native import, so scripts can run them in plain node).
+export * from './tokens';
+
+// shortcut: Colors/Fonts below are template leftovers used only by dead code, delete with it (plan 1.5)
+
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 

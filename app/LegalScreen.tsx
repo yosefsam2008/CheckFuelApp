@@ -16,6 +16,7 @@
  * ============================================================================
  */
 
+import { color } from '../constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useEffect, useRef, useState } from 'react';
@@ -47,7 +48,7 @@ const COLORS = {
   card: '#ffffff',
   text: '#212121',
   textSecondary: '#666666',
-  textLight: '#999999',
+  textLight: color.textSecondary,
   border: '#e0e0e0',
   success: '#4caf50',
   error: '#f44336',

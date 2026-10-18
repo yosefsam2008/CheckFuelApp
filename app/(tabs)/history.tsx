@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { color } from "../../constants/theme";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 
 // Import unified icons from Lucide
@@ -1232,7 +1233,7 @@ const styles = StyleSheet.create({
   },
   adTagSmall: {
     fontSize: 10,
-    color: "#999",
+    color: color.textSecondary,
     marginBottom: 4,
     writingDirection: "rtl",
   },

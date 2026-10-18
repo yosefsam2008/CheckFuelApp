@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "./Toast";
+import { color } from "../constants/theme";
 import { Vehicle } from "../lib/data/vehiclesData";
 
 // Unified Lucide Icons
@@ -195,7 +196,7 @@ export default function AddVehicle() {
                   focusedField === "manufacturer" && styles.inputFocused,
                 ]}
                 placeholder="חפש או הקלד יצרן..."
-                placeholderTextColor="#999"
+                placeholderTextColor={color.textSecondary}
                 value={manufacturer}
                 onChangeText={handleManufacturerChange}
                 onFocus={() => setFocusedField("manufacturer")}
@@ -294,7 +295,7 @@ export default function AddVehicle() {
                   focusedField === "consumption" && styles.inputFocused,
                 ]}
                 placeholder={avgPlaceholder}
-                placeholderTextColor="#999"
+                placeholderTextColor={color.textSecondary}
                 keyboardType="numeric"
                 inputMode="numeric"
                 returnKeyType="done"

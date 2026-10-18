@@ -1,9 +1,9 @@
 // app/(tabs)/_layout.tsx
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Tabs, usePathname, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FirstLaunchModal } from '../../components/modals/FirstLaunchModal';
 import LegalScreen from '../LegalScreen';
@@ -11,18 +11,10 @@ import UserGuideScreen from '../UserGuideScreen';
 
 const TEAL = '#009688';
 
-const MENU_ITEMS = [
-  { path: '/calculator', label: 'מחשבון דלק', icon: 'calculate' },
-  { path: '/vehicles', label: 'הרכבים שלי', icon: 'directions-car' },
-  { path: '/history', label: 'היסטוריה', icon: 'history' },
-] as const;
-
 type MenuView = 'menu' | 'legal' | 'guide';
 
-// Legal/guide render inside the same Modal: iOS can't present a second modal while the menu is dismissing
+// Info panel (guide, legal). Legal/guide render inside the same Modal: iOS can't present a second modal while the menu is dismissing
 function SideMenu({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<MenuView>('menu');
 
@@ -38,25 +30,7 @@ function SideMenu({ visible, onClose }: { visible: boolean; onClose: () => void 
       {view === 'menu' && (
         <View style={styles.overlay}>
           <View style={[styles.panel, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
-            <Text style={styles.brand}>CheckFuel</Text>
-            {MENU_ITEMS.map((item) => {
-              const active = pathname === item.path;
-              return (
-                <TouchableOpacity
-                  key={item.path}
-                  style={[styles.item, active && styles.itemActive]}
-                  onPress={() => {
-                    close();
-                    if (!active) router.navigate(item.path);
-                  }}
-                  accessibilityRole="button"
-                >
-                  <MaterialIcons name={item.icon} size={24} color={active ? TEAL : '#555'} />
-                  <Text style={[styles.itemText, active && styles.itemTextActive]}>{item.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-            <View style={styles.divider} />
+            <Text style={styles.brand}>מידע</Text>
             <TouchableOpacity style={styles.item} onPress={() => setView('guide')} accessibilityRole="button">
               <MaterialIcons name="help-outline" size={24} color="#555" />
               <Text style={styles.itemText}>מדריך למשתמש</Text>
@@ -66,7 +40,7 @@ function SideMenu({ visible, onClose }: { visible: boolean; onClose: () => void 
               <Text style={styles.itemText}>הצהרות משפטיות</Text>
             </TouchableOpacity>
           </View>
-          <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="סגור תפריט" />
+          <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="סגור" />
         </View>
       )}
     </Modal>
@@ -112,9 +86,7 @@ export default function TabsLayout() {
       <FirstLaunchModal visible={showFirstLaunch} onAccept={handleAccept} />
       <SideMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      {/* אין טאבים תחתונים: הניווט הוא התפריט בכותרת. הניווט נשאר מבוסס Tabs כדי לשמור על הנתיבים הקיימים. */}
       <Tabs
-        tabBar={() => null}
         screenOptions={{
           headerShown: true,
           headerTitle: 'CheckFuel',
@@ -126,15 +98,50 @@ export default function TabsLayout() {
               onPress={() => setMenuOpen(true)}
               style={styles.menuButton}
               accessibilityRole="button"
-              accessibilityLabel="תפריט"
+              accessibilityLabel="מידע ומסמכים משפטיים"
             >
-              <MaterialIcons name="menu" size={28} color={TEAL} />
+              <MaterialIcons name="info-outline" size={28} color={TEAL} />
             </TouchableOpacity>
           ),
-          // בלי הטאב-בר, פס הניווט של המערכת צריך ריווח תחתון משלו
-          sceneStyle: { paddingBottom: insets.bottom, backgroundColor: '#f5f7fa' },
+          sceneStyle: { backgroundColor: '#f5f7fa' },
+          tabBarActiveTintColor: TEAL,
+          tabBarInactiveTintColor: '#999',
+          // גובה דינמי וריווח תחתון שמתחשב בפס הניווט של המערכת
+          tabBarStyle: {
+            height: 60 + insets.bottom,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 5,
+            paddingTop: 5,
+            backgroundColor: '#ffffff',
+            borderTopWidth: 1,
+            borderTopColor: '#e0e0e0',
+          },
+          tabBarLabelStyle: { fontWeight: 'bold', fontSize: 12 },
+          tabBarItemStyle: { width: Platform.OS === 'ios' ? 80 : 70 },
+          tabBarHideOnKeyboard: true,
         }}
-      />
+      >
+        <Tabs.Screen
+          name="calculator"
+          options={{
+            tabBarLabel: 'מחשבון דלק',
+            tabBarIcon: ({ color, size }) => <MaterialIcons name="calculate" color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="history"
+          options={{
+            tabBarLabel: 'היסטוריה',
+            tabBarIcon: ({ color, size }) => <MaterialIcons name="history" color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="vehicles"
+          options={{
+            tabBarLabel: 'הרכבים שלי',
+            tabBarIcon: ({ color, size }) => <MaterialIcons name="directions-car" color={color} size={size} />,
+          }}
+        />
+      </Tabs>
     </>
   );
 }

@@ -60,3 +60,7 @@ export function dayLabel(ts: number, now: number): string {
   if (days === 1) return `אתמול · ${time}`;
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} · ${time}`;
 }
+
+const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+export const monthName = (key: number): string => MONTHS[((key % 12) + 12) % 12];
+export const monthYear = (key: number): number => Math.floor(key / 12);

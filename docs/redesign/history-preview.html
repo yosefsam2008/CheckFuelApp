@@ -1,0 +1,501 @@
+<title>CheckFuel History Screen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* Layout: the phone (the app, light only like the app) beside a notes column for approval.
+   App tokens are copied from constants/theme.ts; page chrome has its own light/dark tokens. */
+:root {
+  /* app (constants/theme.ts colors) */
+  --app-bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --text: #000000;
+  --muted: #8E8E93;
+  --divider: #E5E5EA;
+  --green: #34C759;
+  --teal: #00C7BE;
+  --sel-fill: #A8E6CF;
+  --sel-border: #34C759;
+  --sel-text: #248A3D;
+  --error: #FF3B30;
+  --white: #FFFFFF;
+  --white18: rgba(255,255,255,0.18);
+  --white80: rgba(255,255,255,0.80);
+  /* page chrome */
+  --page: #E9ECE8;
+  --ink: #1C1F1D;
+  --ink-2: #5A625C;
+  --line: #CDD3CE;
+  --panel: #F7F8F6;
+  --font: 'Heebo', 'Assistant', 'Arial Hebrew', Arial, sans-serif;
+  --r-card: 22px; --r-tile: 14px; --r-pill: 999px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #141715; --ink: #E8ECE9; --ink-2: #9BA49E; --line: #2E3430; --panel: #1C201E; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --page: #141715; --ink: #E8ECE9; --ink-2: #9BA49E; --line: #2E3430; --panel: #1C201E; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); margin: 0; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 375px minmax(0, 1fr); gap: 40px; align-items: start; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); justify-items: center; } .notes { justify-self: stretch; } }
+
+/* ---------- phone ---------- */
+.phone { width: 375px; max-width: 100%; height: 780px; border-radius: 44px; background: var(--app-bg); overflow: hidden; position: relative; box-shadow: 0 0 0 10px #101211, 0 24px 60px rgba(0,0,0,0.28); display: flex; flex-direction: column; color: var(--text); }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+.hero { background: linear-gradient(225deg, var(--green), var(--teal)); padding: 54px 20px 70px; position: relative; }
+.toprow { height: 44px; display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+.wordmark { font-weight: 800; font-size: 21px; color: var(--white); direction: ltr; }
+.wordmark span { opacity: .8; }
+.logo { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--white); border-inline-end-color: transparent; transform: rotate(-30deg); }
+.info { position: absolute; left: 24px; top: 54px; width: 44px; height: 44px; border-radius: 22px; background: var(--white18); display: grid; place-items: center; border: 0; cursor: pointer; }
+.info::before, .info::after { content: ""; position: absolute; border: 1.5px solid var(--white); border-radius: 50%; pointer-events: none; }
+.info::before { inset: -11px; opacity: .3; } .info::after { inset: -22px; opacity: .18; }
+.h1 { font-weight: 800; font-size: 30px; line-height: 38px; color: var(--white); margin: 0; }
+.sub { font-size: 14px; color: var(--white80); margin-top: 4px; }
+
+.cards { padding: 0 16px 32px; display: flex; flex-direction: column; gap: 24px; }
+.card { background: var(--surface); border-radius: var(--r-card); box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+.summary { margin-top: -44px; position: relative; z-index: 2; padding: 24px 24px 18px; }
+.eyebrow { font-size: 13px; font-weight: 500; color: var(--muted); }
+.amount-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.amount { font-weight: 900; font-size: 40px; line-height: 46px; direction: ltr; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+.amount small { font-size: 22px; font-weight: 800; margin-inline-end: 2px; }
+.delta { height: 28px; padding: 0 10px; border-radius: var(--r-pill); background: var(--app-bg); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.delta .num { direction: ltr; unicode-bidi: isolate; }
+.stats { font-size: 15px; color: var(--muted); margin-top: 8px; }
+.stats b { color: var(--text); font-weight: 700; }
+.ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+.proj { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+.chart { margin-top: 20px; border-top: 1px solid var(--divider); padding-top: 18px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.bar { cursor: pointer; }
+.bar .mark { fill: var(--sel-fill); transition: fill .15s; }
+.bar.on .mark { fill: var(--sel-text); }
+.bar:hover .mark { fill: #8FD9B8; } .bar.on:hover .mark { fill: var(--sel-text); }
+.bar:focus-visible { outline: none; } .bar:focus-visible rect.hit { stroke: var(--sel-text); stroke-width: 2; }
+.bar text.m { font-size: 12px; fill: var(--muted); font-family: var(--font); font-weight: 500; }
+.bar.on text.m { fill: var(--text); font-weight: 700; }
+.bar text.v { font-size: 12px; fill: var(--text); font-family: var(--font); font-weight: 700; }
+.grow { transform-box: fill-box; transform-origin: bottom; }
+@keyframes grow { from { transform: scaleY(0); } }
+
+.list { overflow: hidden; }
+.list-head { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 24px 10px; }
+.list-title { font-weight: 800; font-size: 17px; }
+.list-count { font-size: 13px; color: var(--muted); }
+.trip { position: relative; }
+.trip::before { content: ""; position: absolute; top: 0; inset-inline: 24px; border-top: 1px solid var(--divider); }
+.row-s .ltr { display: inline; }
+.row { width: 100%; min-height: 84px; display: flex; align-items: center; gap: 16px; padding: 20px 24px; background: none; border: 0; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.row:focus-visible { outline: 2px solid var(--sel-text); outline-offset: -2px; }
+.tile { width: 40px; height: 40px; border-radius: 12px; background: var(--app-bg); display: grid; place-items: center; flex: none; }
+.row-main { flex: 1; min-width: 0; }
+.row-t { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-s { font-size: 14px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-cost { font-weight: 800; font-size: 18px; direction: ltr; font-variant-numeric: tabular-nums; }
+.chev { flex: none; transition: transform .3s cubic-bezier(.33,1,.68,1); color: var(--muted); }
+.trip.open .chev { transform: rotate(180deg); }
+.detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.33,1,.68,1); }
+.trip.open .detail { grid-template-rows: 1fr; }
+.detail > div { overflow: hidden; }
+.dl { margin: 0 24px; padding: 6px 16px; background: var(--app-bg); border-radius: var(--r-tile); }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; font-size: 15px; border-top: 1px solid var(--divider); }
+.kv:first-child { border-top: 0; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-weight: 700; }
+.actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 24px 18px; min-height: 68px; }
+.btn { height: 44px; padding: 0 18px; border-radius: var(--r-pill); border: 0; font: 700 14px var(--font); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.btn:focus-visible { outline: 2px solid var(--sel-text); outline-offset: 2px; }
+.btn.ghost { background: var(--app-bg); color: var(--text); }
+.btn.danger-text { background: none; color: var(--error); padding: 0 4px; }
+.btn.danger { background: var(--error); color: var(--white); }
+.confirm-q { font-weight: 700; font-size: 14px; }
+.confirm-btns { display: flex; gap: 8px; }
+
+.clear { display: flex; justify-content: center; padding: 6px 0 2px; }
+.ad { height: 56px; border-radius: var(--r-tile); background: var(--divider); display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+
+.empty { padding: 28px 20px 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.empty .tile { width: 48px; height: 48px; border-radius: var(--r-tile); margin-bottom: 6px; }
+.empty-t { font-weight: 800; font-size: 17px; }
+.empty-s { font-size: 14px; color: var(--muted); }
+.cta { height: 44px; margin-top: 10px; padding: 0 20px; border-radius: var(--r-pill); background: var(--green); color: var(--white); border: 0; font: 700 14px var(--font); cursor: pointer; }
+
+.tabbar { height: 64px; padding-bottom: 0; display: flex; background: var(--surface); border-top: 1px solid var(--divider); position: relative; flex: none; margin-bottom: 18px; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 700 12px var(--font); color: var(--muted); position: relative; z-index: 1; }
+.tab.on { color: var(--sel-text); }
+.tab.on::before { content: ""; position: absolute; inset: 8px 10px; border-radius: 16px; background: var(--sel-fill); z-index: -1; }
+
+.toast { position: absolute; left: 16px; right: 16px; bottom: 98px; background: var(--text); color: var(--white); border-radius: var(--r-pill); padding: 12px 18px; font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; align-items: center; transition: opacity .2s, transform .3s; }
+.toast[hidden] { display: none !important; }
+.toast button { background: none; border: 0; color: var(--sel-fill); font: 700 14px var(--font); cursor: pointer; min-height: 32px; }
+
+/* entrance: 400ms fade + 10px rise, same as useEnter() in constants/motion.ts */
+.enter { animation: enter .4s cubic-bezier(.22,1,.36,1) both; }
+@keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+.slide-l { animation: slideL .3s cubic-bezier(.22,1,.36,1) both; } .slide-r { animation: slideR .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes slideL { from { opacity: 0; transform: translateX(-24px); } } @keyframes slideR { from { opacity: 0; transform: translateX(24px); } }
+.fade { animation: fade .2s ease-out both; } @keyframes fade { from { opacity: 0; } }
+/* sliding digits, like components/calculator/SlidingDigits.tsx */
+.amount { display: inline-flex; align-items: baseline; }
+.dg { display: inline-block; height: 46px; overflow: hidden; }
+.strip { display: flex; flex-direction: column; transition: transform .55s cubic-bezier(.22,1,.36,1); }
+.strip span { height: 46px; line-height: 46px; text-align: center; }
+/* press feedback, like PressableScale */
+.row, .btn { transition: transform .15s ease-out, background-color .15s; }
+.row:active { transform: scale(.985); background: #FAFAFC; }
+.btn:active { transform: scale(.96); }
+/* bars: the picked one lifts, and its value rises in */
+.bar .mark { transform-box: fill-box; transform-origin: bottom; }
+.bar.on .mark { animation: pick .3s cubic-bezier(.22,1,.36,1); }
+@keyframes pick { 40% { transform: scaleY(1.06); } }
+.bar .mark.grow { animation: grow .45s cubic-bezier(.22,1,.36,1) both; }
+.bar text.v { animation: valueIn .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes valueIn { from { opacity: 0; transform: translateY(6px); } }
+/* details open: each line follows the height by 30ms */
+.trip.open .kv, .trip.open .actions > * { animation: enter .3s cubic-bezier(.22,1,.36,1) both; }
+.trip.open .kv:nth-child(2) { animation-delay: 30ms; } .trip.open .kv:nth-child(3) { animation-delay: 60ms; }
+.trip.open .kv:nth-child(4) { animation-delay: 90ms; } .trip.open .kv:nth-child(5) { animation-delay: 120ms; }
+.trip.open .actions > * { animation-delay: 150ms; }
+.trip.removing { transition: opacity .3s, transform .3s cubic-bezier(.22,1,.36,1), height .3s cubic-bezier(.22,1,.36,1); opacity: 0; transform: translateX(-30px); overflow: hidden; }
+/* info halo breathes, like components/calculator/Halo.tsx */
+.info::before { animation: breathe 3.2s ease-in-out infinite; } .info::after { animation: breathe 3.2s ease-in-out 1.6s infinite; }
+@keyframes breathe { 50% { opacity: .42; transform: scale(1.04); } }
+.toast:not([hidden]) { animation: toastIn .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px); } }
+.reduce * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .phone * { animation: none !important; transition: none !important; } }
+
+/* ---------- notes ---------- */
+.notes { display: flex; flex-direction: column; gap: 24px; min-width: 0; max-width: 620px; }
+.notes h1 { font-weight: 800; font-size: 26px; margin: 0; text-wrap: balance; }
+.lead { color: var(--ink-2); font-size: 15px; line-height: 1.6; margin: 6px 0 0; max-width: 60ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 14px var(--font); cursor: pointer; }
+.toggle input { accent-color: var(--sel-text); width: 16px; height: 16px; margin: 0; }
+section h2 { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--ink-2); margin: 0 0 8px; }
+.decisions { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.decisions li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.55; }
+.decisions b { font-weight: 700; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: start; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 700; color: var(--ink-2); font-size: 13px; }
+td.n { direction: ltr; text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
+</style>
+
+<div class="wrap" dir="rtl">
+  <div class="phone" id="phone" aria-label="תצוגת מסך ההיסטוריה">
+    <div class="scroll" id="scroll">
+      <header class="hero">
+        <button class="info" aria-label="מידע">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        </button>
+        <div class="toprow"><div class="logo" aria-hidden="true"></div><div class="wordmark">Check<span>Fuel</span></div></div>
+        <h2 class="h1" id="h1">כמה הוצאתי על דלק?</h2>
+        <div class="sub" id="sub">כל שקל על הכביש, במבט אחד</div>
+      </header>
+
+      <div class="cards" id="cards"></div>
+    </div>
+
+    <div class="toast" id="toast" hidden role="status"><span>הנסיעה נמחקה</span><button id="undo">ביטול</button></div>
+
+    <nav class="tabbar" aria-label="ניווט">
+      <div class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M16 14v4M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>מחשבון דלק</div>
+      <div class="tab on" aria-current="page"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>היסטוריה</div>
+      <div class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>הרכבים שלי</div>
+    </nav>
+  </div>
+
+  <div class="notes">
+    <div>
+      <h1>מסך ההיסטוריה, לאישור</h1>
+      <p class="lead">אותה כותרת gradient, אותו כרטיס שעולה עליה ואותו סרגל טאבים כמו במחשבון. הנתונים לדוגמה בלבד. לחיצה על עמודה בגרף מחליפה חודש, ולחיצה על נסיעה פותחת את הפרטים בתוך השורה.</p>
+    </div>
+
+    <div class="controls">
+      <button class="toggle" id="replay" type="button">הפעל שוב את הכניסה</button>
+      <label class="toggle" for="t-empty"><input type="checkbox" id="t-empty"> בלי נסיעות</label>
+      <label class="toggle" for="t-reduce"><input type="checkbox" id="t-reduce"> Reduce Motion</label>
+      <label class="toggle" for="t-early"><input type="checkbox" id="t-early"> היום ה־3 בחודש</label>
+    </div>
+
+    <section>
+      <h2>מה צריך לאשר</h2>
+      <ul class="decisions">
+        <li><b>סיכום:</b> סכום החודש גדול, ומתחתיו ק״מ ומספר נסיעות. השינוי מהחודש הקודם מופיע כתג אפור, לא אדום ולא ירוק, כי הוצאה גבוהה יותר היא לא "רעה".</li>
+        <li><b>צפי לסוף החודש:</b> מופיע רק מהיום ה־7 בחודש (סעיף 3.4). אפשר לבדוק עם המתג "היום ה־3 בחודש".</li>
+        <li><b>גרף:</b> 6 חודשים, עמודה אחת לכל חודש. ערך כתוב רק מעל החודש הנבחר. לחיצה על עמודה מחליפה את הסיכום ואת הרשימה לחודש ההוא. זו תוספת קטנה מעבר לתוכנית, ואפשר לוותר עליה.</li>
+        <li><b>רשימה:</b> כרטיס אחד עם קווים מפרידים, לא כרטיס לכל נסיעה. שורה סגורה מציגה רק מתי, כמה ק״מ וכמה עלה. הרכב, הצריכה והעלות לק״מ מופיעים בפרטים.</li>
+        <li><b>מחיקה:</b> אישור אחד בתוך השורה, ואחריו הודעה עם "ביטול" לכמה שניות. "מחק את כל ההיסטוריה" נשאר בתחתית הרשימה, גם הוא עם אישור אחד.</li>
+        <li><b>כותרת משנה:</b> "כל שקל על הכביש, במבט אחד". אפשרויות נוספות: "יודעים בדיוק לאן הולך הכסף על הדלק", "הנסיעות שלך, החשבון שלך, בלי הפתעות".</li>
+        <li><b>חודשים:</b> מחושבים מ־<code>timestamp</code> בלבד. לרשומה ישנה בלי <code>timestamp</code> משתמשים ב־<code>Number(id)</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>תנועה</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>רגע</th><th>מה זז</th><th>משך</th></tr></thead>
+          <tbody>
+            <tr><td>כניסה למסך</td><td>כותרת, כרטיס ושורות עולים בזה אחר זה (fade ו־10px)</td><td class="n">400ms</td></tr>
+            <tr><td>הסכום</td><td>הספרות מתגלגלות מאפס, כמו בתוצאת המחשבון</td><td class="n">550ms</td></tr>
+            <tr><td>הגרף</td><td>העמודות צומחות מהבסיס, 40ms בין עמודה לעמודה</td><td class="n">≤650ms</td></tr>
+            <tr><td>החלפת חודש</td><td>הספרות מתגלגלות לסכום החדש, העמודה מתרוממת, הרשימה מחליקה מכיוון החודש</td><td class="n">550ms</td></tr>
+            <tr><td>פתיחת נסיעה</td><td>השורה נפתחת, החץ מסתובב, שורות הפרטים נכנסות בזו אחר זו</td><td class="n">300ms</td></tr>
+            <tr><td>לחיצה</td><td>שורה וכפתור מתכווצים קלות</td><td class="n">150ms</td></tr>
+            <tr><td>מחיקה</td><td>השורה מחליקה ונסגרת, הסכום מתגלגל לערך החדש, הודעה עם ביטול</td><td class="n">300ms</td></tr>
+            <tr><td>כפתור המידע</td><td>טבעות ה־halo נושמות, כמו במחשבון</td><td class="n">לולאה</td></tr>
+            <tr><td>Reduce Motion</td><td>הכל מוצג מיד, בלי גלגול ובלי טבעות</td><td class="n">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const CARS = [
+    { name: 'Citroen JUMPY', fuel: 'Diesel', kmPerL: 13.7, price: 9.58 },
+    { name: 'Hyundai IONIQ 5', fuel: 'Electric', kwhPerKm: 0.17, price: 0.6 },
+  ];
+  // Example data: a fixed pseudo-random sequence so the preview is stable
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const monthKey = (ts) => { const d = new Date(ts); return d.getFullYear() * 12 + d.getMonth(); };
+  let now = new Date(2026, 9, 19, 18, 0);
+  let trips = [];
+  [14, 17, 21, 16, 19, 15].forEach((n, i) => { // May..Oct
+    const m = 4 + i;
+    const lastDay = m === 9 ? 19 : new Date(2026, m + 1, 0).getDate();
+    for (let k = 0; k < n; k++) {
+      const car = rnd() < 0.8 ? CARS[0] : CARS[1];
+      const km = Math.round(8 + rnd() * (rnd() < 0.15 ? 220 : 45));
+      const day = 1 + Math.floor(rnd() * lastDay);
+      const ts = new Date(2026, m, day, 6 + Math.floor(rnd() * 14), Math.floor(rnd() * 60)).getTime();
+      const used = car.fuel === 'Electric' ? km * car.kwhPerKm : km / car.kmPerL;
+      trips.push({ id: String(ts + k), timestamp: ts, distance: km, vehicle: car.name, fuel: car.fuel, used, cost: used * car.price });
+    }
+  });
+  trips.sort((a, b) => b.timestamp - a.timestamp);
+  const all = trips.slice();
+  const seen = () => trips.filter((t) => t.timestamp <= now.getTime());
+
+  let selected = monthKey(now.getTime());
+  let confirmAll = false, lastDeleted = null, toastTimer = null, shownAmount = null;
+
+  const $ = (q) => document.querySelector(q);
+  const reduced = () => $('#phone').classList.contains('reduce') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ils = (v, d = 0) => '₪' + v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const num = (v, d = 0) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const monthName = (k) => MONTHS[k % 12];
+  const fuelName = (f) => (f === 'Electric' ? 'חשמל' : f === 'Diesel' ? 'סולר' : 'בנזין');
+
+  function dayLabel(ts) {
+    const d = new Date(ts), t = new Date(now);
+    const hm = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const diff = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+    const day = diff === 0 ? 'היום' : diff === 1 ? 'אתמול' : `<span class="ltr">${d.getDate()}.${d.getMonth() + 1}</span>`;
+    return `${day} · <span class="ltr">${hm}</span>`;
+  }
+
+  // Same algorithm as plan 3.4
+  function summary(key) {
+    const cur = seen().filter((t) => monthKey(t.timestamp) === key);
+    const prev = seen().filter((t) => monthKey(t.timestamp) === key - 1);
+    const total = cur.reduce((x, t) => x + t.cost, 0);
+    const prevTotal = prev.reduce((x, t) => x + t.cost, 0);
+    const km = cur.reduce((x, t) => x + t.distance, 0);
+    const deltaPct = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : null;
+    const isCurrent = key === monthKey(now.getTime());
+    const dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const projection = isCurrent && dom >= 7 ? (total / dom) * dim : null;
+    return { cur, total, km, deltaPct, projection, isCurrent };
+  }
+
+  // Sliding digits: each digit is a 0-9 strip that rolls to its value; `from` is the amount shown before
+  function digitsHtml(to, from) {
+    const t = num(to), f = num(from ?? 0).padStart(t.length, ' ').slice(-t.length);
+    return [...t].map((ch, i) => /\d/.test(ch)
+      ? `<span class="dg"><span class="strip" data-to="${ch}" style="transform:translateY(${-46 * (/\d/.test(f[i]) ? +f[i] : 0)}px);transition-delay:${(t.length - 1 - i) * 25}ms">${'0123456789'.split('').map((n) => `<span>${n}</span>`).join('')}</span></span>`
+      : `<span>${ch}</span>`).join('');
+  }
+  function rollDigits() {
+    const strips = document.querySelectorAll('.strip[data-to]');
+    const go = () => strips.forEach((el) => (el.style.transform = `translateY(${-46 * +el.dataset.to}px)`));
+    if (reduced()) { strips.forEach((el) => (el.style.transition = 'none')); go(); return; }
+    requestAnimationFrame(() => requestAnimationFrame(go));
+  }
+
+  function chartSvg(grow) {
+    const end = monthKey(now.getTime());
+    const keys = Array.from({ length: 6 }, (_, i) => end - 5 + i);
+    const totals = keys.map((k) => seen().filter((t) => monthKey(t.timestamp) === k).reduce((x, t) => x + t.cost, 0));
+    const W = 295, H = 140, top = 24, base = 112, max = Math.max(...totals, 1);
+    const slot = W / 6, bw = 26;
+    return `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="הוצאה חודשית, 6 חודשים אחרונים">` + keys.map((k, i) => {
+      // RTL: time runs right to left, so the newest month sits at the left end
+      const cx = W - slot * (i + 0.5);
+      const h = totals[i] ? Math.max(4, ((base - top) * totals[i]) / max) : 0;
+      const on = k === selected;
+      const x = cx - bw / 2, y = base - h;
+      const path = h ? `M${x},${base} V${y + 4} q0,-4 4,-4 h${bw - 8} q4,0 4,4 V${base} Z` : '';
+      return `<g class="bar${on ? ' on' : ''}" data-k="${k}" tabindex="0" role="button" aria-pressed="${on}" aria-label="${monthName(k)}: ${ils(totals[i])}">
+        <rect class="hit" x="${cx - slot / 2 + 2}" y="0" width="${slot - 4}" height="${H}" rx="8" fill="transparent"/>
+        ${path ? `<path class="mark${grow ? ' grow' : ''}" d="${path}" style="animation-delay:${grow ? 200 + i * 40 : 0}ms" fill="currentColor"/>` : ''}
+        ${on && totals[i] ? `<text class="v" x="${cx}" y="${y - 8}" text-anchor="middle" direction="ltr" style="animation-delay:${grow ? 500 : 0}ms">${ils(totals[i])}</text>` : ''}
+        <text class="m" x="${cx}" y="${H - 4}" text-anchor="middle">${monthName(k).slice(0, 3)}׳</text>
+      </g>`;
+    }).join('') + `</svg>`;
+  }
+
+  const actionsHtml = (id, confirming) => confirming
+    ? `<span class="confirm-q fade">למחוק את הנסיעה?</span><span class="confirm-btns fade"><button class="btn ghost" data-act="cancel">ביטול</button><button class="btn danger" data-act="del" data-id="${id}">מחק</button></span>`
+    : `<button class="btn danger-text" data-act="ask" data-id="${id}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>מחק נסיעה</button>`;
+
+  function tripHtml(t, i, anim) {
+    const ev = t.fuel === 'Electric';
+    const enter = anim === 'enter' ? ` enter" style="animation-delay:${Math.min(280 + i * 40, 520)}ms` : '';
+    return `<div class="trip${enter}" data-trip="${t.id}">
+      <button class="row" aria-expanded="false">
+        <span class="row-main"><div class="row-t">${dayLabel(t.timestamp)}</div><div class="row-s"><span class="ltr">${t.distance}</span> ק״מ</div></span>
+        <span class="row-cost">${ils(t.cost, 2)}</span>
+        <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="detail"><div>
+        <dl class="dl">
+          <div class="kv"><dt>רכב</dt><dd class="ltr">${esc(t.vehicle)}</dd></div>
+          <div class="kv"><dt>${ev ? 'חשמל שנצרך' : 'דלק שנצרך'}</dt><dd><span class="ltr">${num(t.used, 1)}</span> ${ev ? 'קוט״ש' : 'ליטר'}</dd></div>
+          <div class="kv"><dt>צריכה</dt><dd><span class="ltr">${ev ? num(t.used / t.distance * 100, 1) : num(t.distance / t.used, 1)}</span> ${ev ? 'קוט״ש ל־100 ק״מ' : 'ק״מ לליטר'}</dd></div>
+          <div class="kv"><dt>עלות לק״מ</dt><dd class="ltr">${ils(t.cost / t.distance, 2)}</dd></div>
+          <div class="kv"><dt>סוג אנרגיה</dt><dd>${fuelName(t.fuel)}</dd></div>
+        </dl>
+        <div class="actions">${actionsHtml(t.id, false)}</div>
+      </div></div>
+    </div>`;
+  }
+
+  // anim: 'enter' (first paint), 'left' / 'right' (month switch), 'update' (after a delete), 'none'
+  function render(anim = 'none') {
+    const cards = $('#cards');
+    if (!trips.length) {
+      shownAmount = null;
+      cards.innerHTML = `<div class="card summary empty enter">
+        <div class="tile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg></div>
+        <div class="empty-t">עוד אין נסיעות שמורות</div>
+        <div class="empty-s">אחרי חישוב, לוחצים "שמור" והנסיעה מופיעה כאן עם סיכום חודשי.</div>
+        <button class="cta">לחישוב ראשון</button>
+      </div>`;
+      return;
+    }
+    const s = summary(selected);
+    const prevName = monthName(selected - 1);
+    const delta = s.deltaPct == null ? '' : `<span class="delta${anim !== 'none' ? ' fade' : ''}" aria-label="שינוי מ${prevName}"><span class="num">${s.deltaPct >= 0 ? '+' : '−'}${num(Math.abs(s.deltaPct))}%</span> מ${prevName}</span>`;
+    const from = anim === 'enter' ? 0 : shownAmount ?? s.total;
+    const slide = anim === 'left' ? ' slide-l' : anim === 'right' ? ' slide-r' : '';
+    cards.innerHTML = `
+      <div class="card summary${anim === 'enter' ? ' enter" style="animation-delay:120ms' : ''}">
+        <div class="eyebrow">${s.isCurrent ? 'החודש · ' : ''}${monthName(selected)} <span class="ltr">2026</span></div>
+        <div class="amount-row">
+          <div class="amount" role="text" aria-label="${ils(s.total)}"><small>₪</small>${digitsHtml(s.total, from)}</div>
+          ${delta}
+        </div>
+        <div class="stats"><b class="ltr">${num(s.km)}</b> ק״מ · <b class="ltr">${s.cur.length}</b> נסיעות</div>
+        ${s.projection ? `<div class="proj">צפי לסוף החודש: <span class="ltr">${ils(Math.round(s.projection / 10) * 10)}</span></div>` : ''}
+        <div class="chart">${chartSvg(anim === 'enter')}</div>
+      </div>
+
+      <div class="card list${anim === 'enter' ? ' enter" style="animation-delay:240ms' : ''}">
+        <div class="list-head${slide}"><div class="list-title">נסיעות ב${monthName(selected)}</div><div class="list-count">${s.cur.length} נסיעות</div></div>
+        <div class="list-body${slide}">${s.cur.map((t, i) => tripHtml(t, i, anim)).join('') || `<div class="row" style="cursor:default"><div class="row-s">אין נסיעות בחודש הזה</div></div>`}</div>
+        <div class="actions" style="justify-content:center;border-top:1px solid var(--divider)">
+          ${confirmAll
+            ? `<span class="confirm-q fade">למחוק את כל ${trips.length} הנסיעות?</span><span class="confirm-btns fade"><button class="btn ghost" data-act="all-cancel">ביטול</button><button class="btn danger" data-act="all-yes">מחק הכל</button></span>`
+            : `<button class="btn danger-text" data-act="all-ask">מחק את כל ההיסטוריה</button>`}
+        </div>
+      </div>
+      <div class="ad" aria-label="פרסומת">פרסומת</div>`;
+    shownAmount = s.total;
+    rollDigits();
+  }
+
+  function selectMonth(k) {
+    if (k === selected) return;
+    const dir = k < selected ? 'right' : 'left'; // older months sit to the right
+    selected = k; confirmAll = false;
+    render(reduced() ? 'none' : dir);
+  }
+
+  function showToast() {
+    const el = $('#toast'); el.hidden = false; clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; lastDeleted = null; }, 4000);
+  }
+
+  function removeTrip(tripEl, id) {
+    const done = () => {
+      const i = trips.findIndex((t) => t.id === id);
+      lastDeleted = [trips[i]]; trips.splice(i, 1);
+      render('update'); showToast();
+    };
+    if (reduced()) return done();
+    tripEl.style.height = tripEl.offsetHeight + 'px';
+    requestAnimationFrame(() => { tripEl.classList.add('removing'); tripEl.style.height = '0px'; });
+    setTimeout(done, 300);
+  }
+
+  $('#cards').addEventListener('click', (e) => {
+    const bar = e.target.closest('.bar');
+    if (bar) return selectMonth(+bar.dataset.k);
+    const act = e.target.closest('[data-act]');
+    if (act) {
+      const a = act.dataset.act, tripEl = act.closest('.trip');
+      if (a === 'ask' || a === 'cancel') { tripEl.querySelector('.actions').innerHTML = actionsHtml(tripEl.dataset.trip, a === 'ask'); return; }
+      if (a === 'del') return removeTrip(tripEl, act.dataset.id);
+      if (a === 'all-ask') confirmAll = true;
+      if (a === 'all-cancel') confirmAll = false;
+      if (a === 'all-yes') { lastDeleted = trips.slice(); trips = []; confirmAll = false; showToast(); }
+      return render();
+    }
+    const row = e.target.closest('.trip .row');
+    if (row) {
+      // toggle in place so the height transition runs; one trip open at a time
+      const tripEl = row.closest('.trip'), opening = !tripEl.classList.contains('open');
+      document.querySelectorAll('.trip.open').forEach((el) => {
+        el.classList.remove('open'); el.querySelector('.row').setAttribute('aria-expanded', 'false');
+        el.querySelector('.actions').innerHTML = actionsHtml(el.dataset.trip, false);
+      });
+      if (opening) { tripEl.classList.add('open'); row.setAttribute('aria-expanded', 'true'); }
+    }
+  });
+  $('#cards').addEventListener('keydown', (e) => {
+    const bar = e.target.closest('.bar');
+    if (bar && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectMonth(+bar.dataset.k); document.querySelector(`.bar[data-k="${selected}"]`)?.focus(); }
+  });
+  $('#undo').addEventListener('click', () => {
+    if (lastDeleted) { trips = trips.concat(lastDeleted).sort((a, b) => b.timestamp - a.timestamp); lastDeleted = null; }
+    $('#toast').hidden = true; render('update');
+  });
+  $('#t-empty').addEventListener('change', (e) => { trips = e.target.checked ? [] : all.slice(); selected = monthKey(now.getTime()); render(reduced() ? 'none' : 'enter'); });
+  $('#t-reduce').addEventListener('change', (e) => { $('#phone').classList.toggle('reduce', e.target.checked); });
+  $('#t-early').addEventListener('change', (e) => { now = new Date(2026, 9, e.target.checked ? 3 : 19, 18, 0); selected = monthKey(now.getTime()); render('update'); });
+
+  function enterHero() {
+    ['#h1', '#sub'].forEach((q, i) => { const el = $(q); el.classList.remove('enter'); void el.offsetWidth; el.style.animationDelay = i * 60 + 'ms'; el.classList.add('enter'); });
+  }
+  $('#replay').addEventListener('click', () => { selected = monthKey(now.getTime()); $('#scroll').scrollTop = 0; enterHero(); render(reduced() ? 'none' : 'enter'); });
+
+  enterHero();
+  render(reduced() ? 'none' : 'enter');
+})();
+</script>
+

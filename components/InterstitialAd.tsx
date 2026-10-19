@@ -9,6 +9,8 @@ interface InterstitialAdProps {
   onAdError?: (error: any) => void;
 }
 
+const LOAD_TIMEOUT_MS = 4000;
+
 const InterstitialAd: React.FC<InterstitialAdProps> = ({
   onAdComplete,
   onAdError,
@@ -54,9 +56,17 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({
           requestNonPersonalizedAdsOnly: true,
         });
 
+        // No ad within 4s: give up so the caller never waits on the network.
+        const timer = setTimeout(() => {
+          console.log('InterstitialAd: Load timeout');
+          cleanup();
+          safeComplete();
+        }, LOAD_TIMEOUT_MS);
+
         const unsubLoaded = ad.addAdEventListener(
           AdEventType.LOADED,
           () => {
+            clearTimeout(timer);
             console.log('InterstitialAd: Ad loaded');
             ad.show();
           }
@@ -80,7 +90,7 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({
           }
         );
 
-        unsubscribersRef.current = [unsubLoaded, unsubClosed, unsubError];
+        unsubscribersRef.current = [unsubLoaded, unsubClosed, unsubError, () => clearTimeout(timer)];
         
         ad.load();
 

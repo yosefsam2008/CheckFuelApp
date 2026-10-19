@@ -1,0 +1,542 @@
+<title>CheckFuel Premium Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+/* Layout concept: a review board. Live phone prototypes on the stage, the decisions beside them. Inside the phone: a fuel-pump readout, one big number, one accent (brand green); teal and blue live only in the logo. */
+:root{
+  --bg:#F3F6F5; --surface:#FFFFFF; --fg:#14201C; --muted:#56635F; --line:#DCE3E1; --chip:#EAF0EE;
+  --green:#34C759; --green-strong:#1E7B34; --teal:#009688; --teal-strong:#00796B; --blue:#007AFF;
+  --app-bg:#F2F2F7; --app-text:#1C1C1E; --app-sub:#6E6E73; --app-line:#E5E5EA; --app-card:#FFFFFF; --app-chip:#F0F2F1;
+  --accent:#1E7B34; --accent-fill:#1E7B34; --accent-tint:#E6F4EA; --live:#34C759;
+  --on-strong:#FFFFFF;
+
+  --f-display:'Rubik','Assistant',system-ui,sans-serif;
+  --f-ui:'Assistant','Rubik',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1413; --surface:#162020; --fg:#E8EFED; --muted:#A1AEAA; --line:#273432; --chip:#1D2A28;
+  --app-bg:#000000; --app-text:#F2F2F7; --app-sub:#A1A1A8; --app-line:#2C2C2E; --app-card:#1C1C1E; --app-chip:#242826;
+  --green:#30D158; --accent:#30D158; --accent-tint:#123821; --live:#30D158; --green-strong:#1E7B34; --teal:#4DB6AC; --teal-strong:#4DB6AC; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1413; --surface:#162020; --fg:#E8EFED; --muted:#A1AEAA; --line:#273432; --chip:#1D2A28;
+  --app-bg:#000000; --app-text:#F2F2F7; --app-sub:#A1A1A8; --app-line:#2C2C2E; --app-card:#1C1C1E; --app-chip:#242826;
+  --green:#30D158; --accent:#30D158; --accent-tint:#123821; --live:#30D158; --green-strong:#1E7B34; --teal:#4DB6AC; --teal-strong:#4DB6AC; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--f-ui);padding-inline:16px;padding-block:32px 72px;margin:0}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+h1{font-family:var(--f-display);font-weight:600;font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.2;margin:0;text-wrap:balance}
+h3{font-size:15px;margin:0;font-weight:700}
+p{margin:0;max-width:66ch}
+.lede{color:var(--muted)}
+.top{display:flex;flex-direction:column;gap:14px}
+.brandrow{display:flex;align-items:center;gap:12px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{font:inherit;font-size:14px;padding:8px 14px;border:0;background:transparent;color:var(--fg);cursor:pointer;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.stage{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start}
+figure{margin:0;display:flex;flex-direction:column;gap:10px;align-items:center}
+figcaption{font-size:14px;color:var(--muted);text-align:center;max-width:300px}
+
+/* ---------- phone ---------- */
+.phone{width:min(340px,100%);border-radius:44px;padding:10px;background:#0B0F0E;box-shadow:0 30px 60px -30px rgba(10,30,25,.45)}
+.screen{border-radius:36px;overflow:hidden;background:var(--app-bg);color:var(--app-text);height:690px;display:flex;flex-direction:column;position:relative;font-family:var(--f-ui)}
+.status{display:flex;justify-content:space-between;padding:14px 26px 4px;font:600 13px/1 var(--f-display);direction:ltr}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;background:var(--app-card);position:relative}
+.nav{border-bottom:1px solid var(--app-line)}
+.mark{display:flex;align-items:center;gap:8px;font:600 18px/1 var(--f-display)}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;border-radius:22px;border:0;background:transparent;color:var(--app-sub);cursor:pointer}
+.body{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.body::-webkit-scrollbar{display:none}
+
+.vehicle{display:flex;align-items:center;gap:12px;background:var(--app-card);border-radius:14px;padding:12px 14px;border:0;width:100%;text-align:start;color:inherit;font:inherit;cursor:pointer}
+.vehicle .ic{width:36px;height:36px;border-radius:10px;background:var(--app-chip);display:grid;place-items:center;color:var(--app-text)}
+.vehicle b{display:block;font-size:16px}
+.vehicle small{color:var(--app-sub);font-size:13px}
+.vehicle .chev{margin-inline-start:auto;color:var(--app-sub)}
+
+.route{background:var(--app-card);border-radius:14px;padding:4px 14px}
+.route .row{display:flex;align-items:center;gap:12px;min-height:46px}
+.route .row + .row{border-top:1px solid var(--app-line)}
+.dot{width:10px;height:10px;border-radius:5px;flex:none}
+.route label{font-size:13px;color:var(--app-sub);width:42px;flex:none}
+.route .val{font-size:16px;font-weight:600}
+.km{margin-inline-start:auto;font:500 14px var(--f-display);color:var(--app-sub)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--app-line);background:var(--app-card);color:var(--app-text);border-radius:999px;padding:0 14px;min-height:36px;font:500 14px var(--f-ui);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-tint);border-color:transparent;color:var(--accent);font-weight:600}
+
+/* the pump readout */
+.readout{padding:18px 4px 6px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.readout .lbl{font-size:13px;color:var(--app-sub)}
+.cost{font:600 56px/1 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:-.02em;direction:ltr;display:flex;align-items:baseline;gap:4px}
+.cost .cur{font-size:28px;font-weight:500;color:var(--app-sub)}
+.meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font:400 14px var(--f-ui);color:var(--app-sub)}
+.meta span{font-variant-numeric:tabular-nums}
+
+.split{display:flex;align-items:center;justify-content:space-between;background:var(--app-card);border-radius:14px;padding:8px 8px 8px 14px;padding-inline-start:14px}
+.split .t{font-size:15px}
+.split .t b{font-family:var(--f-display);font-variant-numeric:tabular-nums}
+.stepper{display:flex;align-items:center;gap:2px;background:var(--app-chip);border-radius:12px}
+.stepper button{width:44px;height:40px;border:0;background:transparent;color:var(--app-text);font:600 20px var(--f-display);cursor:pointer;border-radius:12px}
+.stepper output{min-width:22px;text-align:center;font:600 16px var(--f-display)}
+
+.actions{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.btn{min-height:50px;border-radius:14px;border:0;font:600 16px var(--f-ui);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accent-fill);color:var(--on-strong)}
+.btn.calc{width:100%;min-height:54px;font-size:17px}
+.btn.calc:active{transform:scale(.98)}
+/* live price pill: tinted, tabular, with month-over-month direction */
+.pricerow{display:flex;align-items:center;justify-content:space-between;background:var(--app-card);border-radius:14px;padding:10px 14px}
+.pricerow .k{display:flex;flex-direction:column;gap:2px}
+.pricerow .k b{font-size:15px}
+.pricerow .k small{font-size:12px;color:var(--app-sub);display:flex;align-items:center;gap:6px}
+.pricerow .k small i{width:7px;height:7px;border-radius:4px;background:var(--live)}
+.pill{display:inline-flex;align-items:center;gap:8px;background:var(--accent-tint);color:var(--accent);border-radius:10px;padding:6px 12px;direction:ltr}
+.pill .v{font:500 22px/1 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.pill .d{display:inline-flex;align-items:center;gap:3px;font:500 13px var(--f-display);font-variant-numeric:tabular-nums}
+.pill .d svg{display:block}
+.resultcard{background:var(--app-card);border-radius:18px;padding:6px 14px 14px;display:flex;flex-direction:column;gap:12px;transition:opacity .2s}
+.resultcard.stale{opacity:.45}
+.resultcard .split{background:var(--app-chip)}
+.resultcard .btn.ghost{background:var(--app-chip)}
+.stalehint{font-size:13px;color:var(--app-sub);text-align:center;min-height:18px}
+.btn.ghost{background:var(--app-card);color:var(--app-text)}
+.more{background:var(--app-card);border-radius:14px}
+.more .r{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 14px;font-size:15px}
+.more .r + .r{border-top:1px solid var(--app-line)}
+.more .r span:last-child{color:var(--app-sub);font-variant-numeric:tabular-nums}
+.ad{min-height:60px;border-radius:14px;border:1px dashed var(--app-line);display:grid;place-items:center;font-size:12px;color:var(--app-sub)}
+
+.tabs{display:flex;justify-content:space-around;background:var(--app-card);border-top:1px solid var(--app-line);padding:8px 0 22px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font:500 11px var(--f-ui);color:var(--app-sub);min-width:64px}
+.tab.on{color:var(--accent)}
+
+/* share card */
+.sharecard{margin:auto 0;background:var(--app-card);border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -24px rgba(0,0,0,.35)}
+.sharecard .in{padding:22px 20px;display:flex;flex-direction:column;gap:14px}
+.sharecard .from{font-size:15px;color:var(--app-sub)}
+.sharecard .from b{color:var(--app-text)}
+.sharecard .big{font:600 48px/1 var(--f-display);direction:ltr;text-align:end;font-variant-numeric:tabular-nums}
+.pp{display:flex;justify-content:space-between;align-items:center;background:var(--app-chip);border-radius:12px;padding:12px 14px;font-size:15px}
+.pp b{font:600 22px var(--f-display);font-variant-numeric:tabular-nums;direction:ltr}
+.foot{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--app-sub)}
+
+/* history */
+.month{background:var(--app-card);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.month .head{display:flex;justify-content:space-between;align-items:baseline}
+.month .sum{font:600 34px/1 var(--f-display);direction:ltr;font-variant-numeric:tabular-nums}
+.delta{font-size:13px;color:var(--app-sub)}
+.bars{display:flex;align-items:flex-end;gap:10px;height:90px;padding-top:6px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.bars span{width:100%;border-radius:6px 6px 3px 3px;background:var(--app-chip)}
+.bars .now span{background:var(--accent)}
+.bars small{font-size:11px;color:var(--app-sub)}
+.list{background:var(--app-card);border-radius:16px}
+.trip{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 14px}
+.trip + .trip{border-top:1px solid var(--app-line)}
+.trip .w{flex:1;min-width:0}
+.trip b{display:block;font-size:15px}
+.trip small{color:var(--app-sub);font-size:13px}
+.trip .c{font:600 17px var(--f-display);direction:ltr;font-variant-numeric:tabular-nums}
+
+/* ---------- spec ---------- */
+.spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card ul{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.sw{display:flex;flex-wrap:wrap;gap:8px}
+.sw span{width:72px;height:54px;border-radius:10px;display:flex;align-items:flex-end;padding:5px 6px;font:500 11px ui-monospace,Menlo,monospace;color:#fff}
+.sw span.lt{color:#14201C;border:1px solid var(--line)}
+.ramp{display:flex;flex-direction:column;gap:6px}
+.ramp div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.ramp small{color:var(--muted);font-variant-numeric:tabular-nums}
+.note{font-size:14px;color:var(--muted)}
+.cmp{width:100%;border-collapse:collapse;font-size:15px}
+.cmp th,.cmp td{text-align:start;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.cmp th{font-weight:700}
+.tw{overflow-x:auto}
+/* ---------- motion ---------- */
+/* odometer: each digit is a 0-9 column that slides like a pump counter */
+.odo{display:inline-flex;direction:ltr}
+.odo .col{display:inline-block;height:1.1em;line-height:1.1em;overflow:hidden;vertical-align:top}
+.odo .strip{display:flex;flex-direction:column;transition:transform var(--odo-dur,650ms) cubic-bezier(.2,.8,.2,1);transition-delay:var(--odo-delay,0ms)}
+.odo .strip span{height:1.1em;line-height:1.1em;text-align:center}
+.odo .sep{display:inline-block;height:1.1em;line-height:1.1em}
+.resultcard.reveal{animation:reveal 220ms cubic-bezier(.2,.8,.2,1)}
+@keyframes reveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.btn,.chip,.stepper button,.vehicle{transition:transform 100ms ease-out,background-color 150ms ease-out,color 150ms ease-out,opacity 150ms}
+.btn:active,.chip:active,.stepper button:active,.vehicle:active{transform:scale(.97)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn[disabled]:active{transform:none}
+.haptic{position:absolute;inset-inline:0;top:52px;margin:auto;width:max-content;padding:4px 10px;border-radius:999px;background:var(--app-text);color:var(--app-card);font-size:11px;opacity:0;transition:opacity 150ms;pointer-events:none;z-index:2}
+.haptic.on{opacity:.9}
+.screen.big .body{zoom:1.22}
+.cta{display:flex;flex-direction:column;gap:10px;align-items:flex-start;background:var(--app-card);border-radius:14px;padding:14px}
+.cta b{font-size:16px}
+.cta small{font-size:13px;color:var(--app-sub)}
+.cta .btn{min-height:44px;padding:0 16px;background:var(--accent-tint);color:var(--accent)}
+.pricerow.offline .k small i{background:var(--app-sub)}
+.pricerow.offline .pill{background:var(--app-chip);color:var(--app-text)}
+.pricerow.offline .pill .d{display:none}
+.reduced .odo .strip,.reduced .resultcard,.reduced .btn,.reduced .chip{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion: reduce){.odo .strip,.resultcard.reveal,.btn,.chip{transition:none!important;animation:none!important}}
+/* widget */
+.home{height:690px;border-radius:36px;overflow:hidden;background:linear-gradient(160deg,#9DB8B0,#4F6E68 60%,#2E413D);padding:64px 22px;display:flex;flex-direction:column;gap:22px}
+.widget{width:158px;height:158px;border-radius:24px;background:var(--app-card);color:var(--app-text);padding:14px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}
+.widget .t{display:flex;align-items:center;gap:6px;font:600 12px var(--f-display);color:var(--app-sub)}
+.widget .p{font:600 30px/1 var(--f-display);font-variant-numeric:tabular-nums;direction:ltr;text-align:end}
+.widget .d{display:inline-flex;align-items:center;gap:4px;align-self:flex-end;background:var(--accent-tint);color:var(--accent);border-radius:8px;padding:3px 8px;font:500 12px var(--f-display);direction:ltr}
+.widget small{font-size:11px;color:var(--app-sub)}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.apps span{aspect-ratio:1;border-radius:14px;background:rgba(255,255,255,.28)}
+.widget.wide{width:100%;height:auto;gap:10px}
+.widget.wide .row{display:flex;justify-content:space-between;align-items:baseline}
+.mtable{width:100%;border-collapse:collapse;font-size:14px}
+.mtable td,.mtable th{text-align:start;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.mtable td:nth-child(2){font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted)}
+</style>
+
+<div class="wrap" dir="rtl" lang="he">
+  <header class="top">
+    <div class="brandrow">
+      <svg width="40" height="40" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="g0" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34C759"/><stop offset=".5" stop-color="#009688"/><stop offset="1" stop-color="#007AFF"/></linearGradient></defs><path d="M36 13a16 16 0 1 0 3 19" fill="none" stroke="url(#g0)" stroke-width="6" stroke-linecap="round"/><rect x="18" y="5" width="13" height="8" rx="3" fill="url(#g0)"/></svg>
+    </div>
+    <h1>CheckFuel, הכיוון החדש</h1>
+    <p class="lede">אותו לוגו ואותה פלטה, עם פחות רעש. המסך כולו בנוי סביב מספר אחד שמתגלגל כמו המונה של משאבת הדלק כשלוחצים חשב. הצבע היחיד בממשק הוא הירוק של המותג. הטורקיז והכחול נשארים רק בלוגו.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="ערכת נושא">
+        <button type="button" data-t="" aria-pressed="true">לפי המערכת</button>
+        <button type="button" data-t="light" aria-pressed="false">בהיר</button>
+        <button type="button" data-t="dark" aria-pressed="false">כהה</button>
+      </div>
+      <div class="seg" role="group" aria-label="מצב המסך">
+        <button type="button" data-s="normal" aria-pressed="true">רגיל</button>
+        <button type="button" data-s="novehicle" aria-pressed="false">אין רכב</button>
+        <button type="button" data-s="offline" aria-pressed="false">אין אינטרנט</button>
+        <button type="button" data-s="big" aria-pressed="false">טקסט גדול</button>
+      </div>
+      <div class="seg" role="group" aria-label="תנועה">
+        <button type="button" id="rm" aria-pressed="false">הפחתת תנועה</button>
+      </div>
+      <span class="note">הטלפון הראשון אינטראקטיבי: לחצו "חשב" וראו את המונה מתגלגל, שנו יעד או מספר נוסעים, ונסו את המצבים השונים. כל הנתונים הם דוגמה.</span>
+    </div>
+  </header>
+
+  <section class="stage" aria-label="תצוגה מקדימה">
+    <!-- 1. Calculator -->
+    <figure>
+      <div class="phone"><div class="screen" id="s1">
+        <div class="haptic" id="hap" aria-hidden="true">רטט קל</div>
+        <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="nav">
+          <button class="iconbtn" aria-label="מידע ופרטיות"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
+          <div class="mark"><svg width="24" height="24" viewBox="0 0 48 48" aria-hidden="true"><path d="M36 13a16 16 0 1 0 3 19" fill="none" stroke="url(#g0)" stroke-width="7" stroke-linecap="round"/><rect x="18" y="4" width="13" height="9" rx="3" fill="url(#g0)"/></svg>CheckFuel</div>
+          <span style="width:44px"></span>
+        </div>
+        <div class="body">
+          <div class="cta" id="cta" hidden>
+            <b>עוד אין רכב שמור</b>
+            <small>מקלידים מספר רישוי, ואנחנו ממלאים את השאר מהמאגר הממשלתי.</small>
+            <button class="btn" type="button">הוסף רכב לפי מספר רישוי</button>
+          </div>
+          <button class="vehicle" id="veh" type="button" aria-label="רכב: מאזדה 3, החלפה">
+            <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17h14M6 17v2M18 17v2M4 13l2-5h12l2 5v4H4z"/><circle cx="8" cy="14" r=".5"/><circle cx="16" cy="14" r=".5"/></svg></span>
+            <span><b>מאזדה 3</b><small>בנזין · <bdi>15.2</bdi> ק״מ לליטר</small></span>
+            <span class="chev">‹</span>
+          </button>
+
+          <div class="pricerow" id="price">
+            <span class="k"><b>בנזין 95</b><small><i></i><span id="pcap">מחיר חי · עודכן 01.10</span></small></span>
+            <span class="pill" role="img" aria-label="מחיר 7.29 שקלים לליטר, עלה ב-12 אגורות מהחודש הקודם"><span class="v">₪7.29</span><span class="d"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1l4 7H1z" fill="currentColor"/></svg>0.12</span></span>
+          </div>
+
+          <div class="route">
+            <div class="row"><span class="dot" style="background:var(--app-sub)"></span><label>מאיפה</label><span class="val">תל אביב</span></div>
+            <div class="row"><span class="dot" style="background:var(--accent)"></span><label>לאן</label><span class="val" id="dest">ירושלים</span><span class="km"><bdi id="kmv">63</bdi> ק״מ</span></div>
+          </div>
+
+          <div class="chips" role="group" aria-label="יעדים שמורים">
+            <button class="chip" type="button" data-km="63" data-d="ירושלים" aria-pressed="true">ירושלים</button>
+            <button class="chip" type="button" data-km="94" data-d="חיפה" aria-pressed="false">חיפה</button>
+            <button class="chip" type="button" data-km="18" data-d="העבודה" aria-pressed="false">העבודה</button>
+            <button class="chip" type="button" id="rt" aria-pressed="false">⇄ הלוך־חזור</button>
+          </div>
+
+          <button class="btn primary calc" type="button" id="calc">חשב</button>
+          <div class="stalehint" id="hint"></div>
+
+          <div class="resultcard" id="result">
+          <div class="readout" aria-live="polite">
+            <span class="lbl">עלות הנסיעה</span>
+            <div class="cost"><span class="cur">₪</span><span class="odo" id="cost"></span></div>
+            <div class="meta"><span><span class="odo" id="lit"></span> ליטר</span>·<span><bdi id="ppk">0.48</bdi> ₪ לק״מ</span></div>
+          </div>
+
+          <div class="split">
+            <span class="t">לכל נוסע: <b>₪<span class="odo" id="pp"></span></b></span>
+            <div class="stepper">
+              <button type="button" id="minus" aria-label="פחות נוסעים">−</button>
+              <output id="n" aria-label="מספר נוסעים">2</output>
+              <button type="button" id="plus" aria-label="יותר נוסעים">+</button>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary" type="button" style="background:var(--app-text);color:var(--app-card)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12M7 8l5-5 5 5M5 14v5h14v-5"/></svg>שתף בוואטסאפ</button>
+            <button class="btn ghost" type="button">שמור</button>
+          </div>
+          </div>
+
+          <div class="more">
+            <div class="r"><span>מונית</span><span>₪<bdi>247</bdi></span></div>
+            <div class="r"><span>אוטובוס</span><span>₪<bdi>16</bdi></span></div>
+            <div class="r"><span>ברכב חשמלי</span><span>₪<bdi>6.80</bdi></span></div>
+          </div>
+          <div class="ad">מקום שמור לבאנר, מתחת לתוצאה</div>
+        </div>
+        <nav class="tabs" aria-label="טאבים">
+          <span class="tab on"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="14" height="18" rx="3"/></svg>מחשבון</span>
+          <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>היסטוריה</span>
+          <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13l2-5h12l2 5v4H4z"/></svg>הרכבים שלי</span>
+        </nav>
+      </div></div>
+      <figcaption>המחשבון: מסך אחד במקום חמישה שלבים. הרכב והמחיר החי כבר מוכנים, נשאר לבחור יעד וללחוץ חשב.</figcaption>
+    </figure>
+
+    <!-- 2. Share card -->
+    <figure>
+      <div class="phone"><div class="screen" style="background:#0B0F0E;padding:28px 18px;justify-content:center">
+        <div class="sharecard">
+          <div class="in">
+            <div class="from"><b>תל אביב</b> ← <b>ירושלים</b> · <bdi>63</bdi> ק״מ</div>
+            <div class="big">₪30.22</div>
+            <div class="pp"><span>כל אחד משלם (2)</span><b>₪15.11</b></div>
+            <div class="foot"><span>מאזדה 3 · מחיר דלק <bdi>7.29</bdi></span><span style="display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 48 48"><path d="M36 13a16 16 0 1 0 3 19" fill="none" stroke="url(#g0)" stroke-width="7" stroke-linecap="round"/></svg>CheckFuel</span></div>
+          </div>
+        </div>
+        <p style="color:#A1AEAA;text-align:center;font-size:13px;margin-top:16px">התמונה שנשלחת בוואטסאפ</p>
+      </div></div>
+      <figcaption>כרטיס השיתוף: מנוע הצמיחה. כל שיתוף מגיע לכמה נוסעים ומציג את המותג.</figcaption>
+    </figure>
+
+    <!-- 3. History -->
+    <figure>
+      <div class="phone"><div class="screen">
+        <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="nav"><span style="width:44px"></span><div class="mark">היסטוריה</div><span style="width:44px"></span></div>
+        <div class="body">
+          <div class="month">
+            <div class="head"><h3>אוקטובר</h3><span class="delta"><bdi>+12%</bdi> מספטמבר</span></div>
+            <div class="sum">₪820</div>
+            <div class="delta"><bdi>640</bdi> ק״מ · <bdi>23</bdi> נסיעות</div>
+            <div class="bars" aria-label="הוצאה לפי חודש">
+              <div><span style="height:52%"></span><small>מאי</small></div>
+              <div><span style="height:61%"></span><small>יוני</small></div>
+              <div><span style="height:78%"></span><small>יולי</small></div>
+              <div><span style="height:70%"></span><small>אוג׳</small></div>
+              <div><span style="height:66%"></span><small>ספט׳</small></div>
+              <div class="now"><span style="height:74%"></span><small>אוק׳</small></div>
+            </div>
+          </div>
+          <div class="list">
+            <div class="trip"><div class="w"><b>תל אביב ← ירושלים</b><small>היום · מאזדה 3 · <bdi>63</bdi> ק״מ</small></div><span class="c">₪30.22</span></div>
+            <div class="trip"><div class="w"><b>העבודה</b><small>אתמול · <bdi>18</bdi> ק״מ</small></div><span class="c">₪8.63</span></div>
+            <div class="trip"><div class="w"><b>חיפה</b><small>14.10 · <bdi>94</bdi> ק״מ</small></div><span class="c">₪45.08</span></div>
+            <div class="trip"><div class="w"><b>העבודה</b><small>13.10 · <bdi>18</bdi> ק״מ</small></div><span class="c">₪8.63</span></div>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="טאבים">
+          <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="3"/></svg>מחשבון</span>
+          <span class="tab on"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>היסטוריה</span>
+          <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13l2-5h12l2 5v4H4z"/></svg>הרכבים שלי</span>
+        </nav>
+      </div></div>
+      <figcaption>ההיסטוריה: סיכום חודשי למעלה, ושורות נקיות במקום כרטיסים. סיבה לחזור לאפליקציה כל חודש.</figcaption>
+    </figure>
+
+    <!-- 4. Widget -->
+    <figure>
+      <div class="phone"><div class="home">
+        <div style="display:flex;gap:18px">
+          <div class="widget">
+            <span class="t"><svg width="14" height="14" viewBox="0 0 48 48"><path d="M36 13a16 16 0 1 0 3 19" fill="none" stroke="url(#g0)" stroke-width="7" stroke-linecap="round"/></svg>בנזין 95 היום</span>
+            <span class="p">₪7.29</span>
+            <span class="d"><svg width="9" height="9" viewBox="0 0 10 10"><path d="M5 1l4 7H1z" fill="currentColor"/></svg>0.12</span>
+            <small>מחיר מפוקח · אוקטובר</small>
+          </div>
+          <div class="apps" style="flex:1;grid-template-columns:repeat(2,1fr)"><span></span><span></span><span></span><span></span></div>
+        </div>
+        <div class="widget wide">
+          <span class="t"><svg width="14" height="14" viewBox="0 0 48 48"><path d="M36 13a16 16 0 1 0 3 19" fill="none" stroke="url(#g0)" stroke-width="7" stroke-linecap="round"/></svg>CheckFuel · החודש</span>
+          <div class="row"><span class="p" style="font-size:26px">₪820</span><small><bdi>23</bdi> נסיעות · <bdi>640</bdi> ק״מ</small></div>
+          <div class="row"><small>נסיעה אחרונה: ירושלים</small><span style="font:600 15px var(--f-display);direction:ltr">₪30.22</span></div>
+        </div>
+        <div class="apps"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      </div></div>
+      <figcaption>ווידג'ט למסך הבית: מחיר הדלק היום והסיכום החודשי, בלי לפתוח את האפליקציה.</figcaption>
+    </figure>
+  </section>
+
+  <section class="spec" aria-label="ההחלטות">
+    <div class="card">
+      <h2>צבע</h2>
+      <div class="sw">
+        <span style="background:#34C759" class="lt">#34C759</span>
+        <span style="background:#1E7B34">#1E7B34</span>
+        <span style="background:#E6F4EA" class="lt">#E6F4EA</span>
+        <span style="background:#1C1C1E">#1C1C1E</span>
+        <span style="background:#6E6E73">#6E6E73</span>
+        <span style="background:#F2F2F7" class="lt">#F2F2F7</span>
+      </div>
+      <ul>
+        <li>צבע אחד בממשק: הירוק של המותג. ירוק כהה לכפתור "חשב" ולטקסט, ירוק בהיר כרקע לבחירה ולמחיר החי.</li>
+        <li>הטורקיז והכחול ירדו מהממשק ונשארו רק בלוגו. שני גוונים קרובים של ירוק וטורקיז על אותו מסך נראים כמו חוסר החלטה.</li>
+        <li>אין יותר קו צבעוני. הכותרת מופרדת בקו אפור דק.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>טיפוגרפיה</h2>
+      <div class="ramp">
+        <div><span style="font:600 34px/1 var(--f-display)">₪30.22</span><small>מספר ראשי · Rubik</small></div>
+        <div><span style="font:600 22px var(--f-display)">כותרת</span><small>22 · Rubik</small></div>
+        <div><span style="font-size:17px">טקסט רגיל</span><small>17 · Assistant</small></div>
+        <div><span style="font-size:13px;color:var(--muted)">כיתוב משני</span><small>13</small></div>
+      </div>
+      <p class="note">ל־Rubik יש עיגול שמתאים ל־C של הלוגו, ומספרים ברוחב קבוע שלא קופצים בזמן אנימציה. שני הגופנים תומכים בעברית ונטענים דרך expo-font.</p>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <h2>תנועה</h2>
+      <p class="note">רגע חתימה אחד, וכל השאר משוב קטן. ב־React Native זה נבנה עם Reanimated (כבר מותקן) ו־expo-haptics.</p>
+      <div class="tw"><table class="mtable">
+        <tr><th>רגע</th><th>משך</th><th>מה קורה</th></tr>
+        <tr><td><b>לחיצה על "חשב"</b></td><td>650ms</td><td>כל ספרה מתגלגלת מ־0 לערך, כמו מונה המשאבה. עיכוב של 40ms בין ספרה לספרה, מונה הליטרים במקביל, ורטט קל בסוף.</td></tr>
+        <tr><td>הופעת התוצאה</td><td>220ms</td><td>הכרטיס עולה 8px ומופיע</td></tr>
+        <tr><td>לחיצה על כפתור</td><td>100ms</td><td>הכפתור מתכווץ ל־0.97</td></tr>
+        <tr><td>בחירת יעד</td><td>150ms</td><td>הרקע הירוק נכנס, ורטט בחירה</td></tr>
+        <tr><td>מספר נוסעים</td><td>180ms</td><td>רק הסכום לכל נוסע מתגלגל</td></tr>
+        <tr><td>"הנתונים השתנו"</td><td>200ms</td><td>הכרטיס מתעמעם</td></tr>
+        <tr><td>הפחתת תנועה</td><td>0ms</td><td>המספרים מופיעים מיד בערך הסופי, בלי גלגול ובלי הזזה</td></tr>
+      </table></div>
+      <p class="note">בלי: אנימציית טעינה, קונפטי, קפיצות, תנועה ברקע, או אנימציה ארוכה מ־700ms.</p>
+    </div>
+    <div class="card">
+      <h2>מה ירד</h2>
+      <ul>
+        <li>אשף של 5 שלבים ונקודות ההתקדמות</li>
+        <li>טשטוש נתונים מאחורי פרסומת</li>
+        <li>פרסומת מסך מלא לפני התוצאה</li>
+        <li>אימוג׳י במקום אייקונים, גרדיאנט מאחורי טקסט</li>
+        <li>כרטיס נפרד לכל נתון (בעמודה אחת עם קווים מפרידים)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>מה נוסף</h2>
+      <ul>
+        <li>כפתור "חשב" אחד, והתוצאה נפתחת מתחתיו</li>
+        <li>מחיר חי בתגית, עם השינוי מהחודש הקודם</li>
+        <li>יעדים שמורים והלוך־חזור בלחיצה אחת</li>
+        <li>חלוקה בין נוסעים וכרטיס שיתוף כתמונה</li>
+        <li>סיכום חודשי והשוואה לרכב חשמלי</li>
+        <li>מצב כהה אמיתי</li>
+        <li>מצבים מעוצבים: אין רכב, אין אינטרנט, טקסט גדול</li>
+        <li>ווידג'ט למסך הבית</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  // Example numbers only: Mazda 3 at 15.2 km/L, petrol 7.29 per litre.
+  var KMPL=15.2, PRICE=7.29, km=63, rt=false, n=2, reduced=false;
+  var $=function(id){return document.getElementById(id)};
+  var mq=window.matchMedia('(prefers-reduced-motion: reduce)');
+  function noMotion(){return reduced||mq.matches}
+  function fmt(x){return x.toFixed(2)}
+
+  // Odometer: builds one 0-9 strip per digit, then slides each strip to its digit.
+  function setOdo(el, str, opts){
+    opts=opts||{};
+    var same=el.dataset.v && el.dataset.v.length===str.length;
+    if(!same){
+      el.innerHTML='';
+      for(var i=0;i<str.length;i++){
+        var ch=str[i];
+        if(/\d/.test(ch)){
+          var col=document.createElement('span');col.className='col';
+          var st=document.createElement('span');st.className='strip';
+          for(var d=0;d<10;d++){var c=document.createElement('span');c.textContent=d;st.appendChild(c)}
+          col.appendChild(st);el.appendChild(col);
+        }else{var sp=document.createElement('span');sp.className='sep';sp.textContent=ch;el.appendChild(sp)}
+      }
+    }
+    el.setAttribute('aria-label',str);
+    var strips=el.querySelectorAll('.strip'), digits=str.replace(/\D/g,'');
+    var from=opts.fromZero && !noMotion();
+    strips.forEach(function(st,i){
+      st.style.setProperty('--odo-dur',(noMotion()?0:(opts.dur||650))+'ms');
+      st.style.setProperty('--odo-delay',(noMotion()?0:i*(opts.stagger||40))+'ms');
+      if(from){st.style.transition='none';st.style.transform='translateY(0)';}
+    });
+    var go=function(){strips.forEach(function(st,i){st.style.transition='';st.style.transform='translateY(-'+(+digits[i]*1.1)+'em)'})};
+    if(from||!same){strips[0]&&strips[0].offsetHeight;requestAnimationFrame(go)}else go();
+    el.dataset.v=str;
+  }
+
+  function values(){var d=rt?km*2:km, liters=d/KMPL, cost=liters*PRICE;return {d:d,liters:liters,cost:cost}}
+  function render(anim){
+    var v=values();
+    $('kmv').textContent=v.d;
+    setOdo($('cost'),fmt(v.cost),{fromZero:anim});
+    setOdo($('lit'),v.liters.toFixed(1),{fromZero:anim});
+    $('ppk').textContent=fmt(v.cost/v.d);
+    splitOnly(anim);
+  }
+  function splitOnly(anim){
+    var c=values().cost, per=Math.ceil(c*100/n)/100; // round up to the agora so the driver never loses money
+    setOdo($('pp'),fmt(per),{dur:180,stagger:15,fromZero:false});
+    $('n').textContent=n;
+  }
+  function haptic(){if(noMotion())return;var h=$('hap');h.classList.add('on');setTimeout(function(){h.classList.remove('on')},500)}
+
+  var shown=values();
+  function markStale(){$('result').classList.add('stale');$('hint').textContent='הנתונים השתנו. לחצו חשב לעדכון'}
+  $('calc').addEventListener('click',function(){
+    if(this.disabled)return;
+    var card=$('result');card.classList.remove('stale','reveal');void card.offsetWidth;
+    if(!noMotion())card.classList.add('reveal');
+    $('hint').textContent='';render(true);setTimeout(haptic,noMotion()?0:720);
+  });
+  document.querySelectorAll('.chip[data-km]').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.chip[data-km]').forEach(function(x){x.setAttribute('aria-pressed','false')});
+      b.setAttribute('aria-pressed','true'); km=+b.dataset.km; $('dest').textContent=b.dataset.d; $('kmv').textContent=rt?km*2:km; markStale();
+    });
+  });
+  $('rt').addEventListener('click',function(){rt=!rt;this.setAttribute('aria-pressed',String(rt));$('kmv').textContent=rt?km*2:km;markStale()});
+  // The split changes only the per-person amount of the shown result; it does not recalculate.
+  $('minus').addEventListener('click',function(){n=Math.max(1,n-1);splitOnly()});
+  $('plus').addEventListener('click',function(){n=Math.min(8,n+1);splitOnly()});
+
+  function seg(groupSel,fn){document.querySelectorAll(groupSel).forEach(function(b){b.addEventListener('click',function(){
+    document.querySelectorAll(groupSel).forEach(function(x){x.setAttribute('aria-pressed','false')});
+    b.setAttribute('aria-pressed','true');fn(b);})})}
+  seg('.seg button[data-t]',function(b){
+    if(b.dataset.t) document.documentElement.setAttribute('data-theme',b.dataset.t); else document.documentElement.removeAttribute('data-theme');
+  });
+  seg('.seg button[data-s]',function(b){
+    var st=b.dataset.s, scr=$('s1');
+    $('cta').hidden=st!=='novehicle'; $('veh').hidden=st==='novehicle';
+    $('calc').disabled=st==='novehicle'; $('result').hidden=st==='novehicle';
+    $('price').classList.toggle('offline',st==='offline');
+    $('pcap').textContent=st==='offline'?'אין חיבור · מחיר מ־01.10':'מחיר חי · עודכן 01.10';
+    scr.classList.toggle('big',st==='big');
+  });
+  $('rm').addEventListener('click',function(){reduced=!reduced;this.setAttribute('aria-pressed',String(reduced));document.documentElement.classList.toggle('reduced',reduced)});
+
+  render(false);
+})();
+</script>

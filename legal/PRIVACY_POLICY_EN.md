@@ -28,8 +28,6 @@ When you use the App, you can enter:
 
 ### 2.3 Data We Do NOT Collect:
 ❌ We do not collect your personal identification (name, phone, email)
-❌ We do not send your vehicle data to any external server
-❌ We do not use cookies or tracking
 ❌ We do not use GPS or location data
 
 ## 3. How Do We Store Your Data?
@@ -54,48 +52,20 @@ We rely on your operating system's security mechanisms (iOS/Android):
 - **Improve User Experience** - such as saving your vehicle as default
 
 **What We Do NOT Do:**
-- We do not sell, share, or transmit your data
-- We do not use data for advertising or marketing purposes
-- We do not use data for analytics or user tracking
+- We do not sell your data
+- Your vehicles and history are not sent to our servers
 
-## 5. External APIs - How They Are Used
+## 5. External Services
 
-### 5.1 data.gov.il API (Vehicle Data)
-**When We Use It:**
-- Only when you manually enter a vehicle license plate
-- To retrieve vehicle details from the Israeli government database
-
-**What We Send:**
-- License plate number only (no personal identification)
-
-**What They Do With It:**
-- All information is in Israel's open government database
-- You can read their terms at: https://data.gov.il
-
-**Privacy Note:**
-- They don't know who you are
-- They only see the license plate number
-- Each lookup is separate (no cross-referencing)
-
-### 5.2 Fuel Economy API (Fuel Consumption)
-**When We Use It:**
-- To retrieve recommended fuel consumption data
-
-**What We Send:**
-- Vehicle details only (manufacturer, model, year)
-- No personal identification
+- **Google AdMob (ads):** the App shows ads. Google may collect device identifiers and usage data to serve and measure ads. Ads are non-personalized. More: https://policies.google.com/technologies/ads . Users in the European Economic Area are asked for consent, which can be changed in the info menu.
+- **data.gov.il (vehicle data):** when you look up a vehicle by plate, only the plate number is sent, with no personal identification.
+- **checkfuel-data.vercel.app (fuel and electricity prices):** prices are downloaded from here. No personal data is sent.
 
 ## 6. Who Do We Share Your Data With?
 
-**Short Answer: No One.**
-
-- We do not share data with third parties
-- We do not sell data
-- We do not allow other companies to access it
-- We do not send data to any servers of ours (we don't have servers)
-
-**Exception:**
-If you yourself share calculation results (via "Share Results"), then **you** choose who to share with (WhatsApp, SMS, etc.).
+- Your vehicles and history stay on your device and are not shared with anyone.
+- Information Google collects for ads is governed by Google's privacy policy.
+- If you share a calculation via "Share results", **you** choose with whom.
 
 ## 7. Your Privacy Rights
 
@@ -109,7 +79,7 @@ You can:
 You can remove:
 - A single vehicle from your list
 - A single calculation from history
-- All data when uninstalling the App
+- All data: info menu → "Delete all my data", or uninstall the App
 
 **How:**
 - Select vehicle → tap "Delete"

@@ -3,11 +3,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Updates from 'expo-updates';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckFuelTabBar } from '../../components/nav/CheckFuelTabBar';
 import { FirstLaunchModal } from '../../components/modals/FirstLaunchModal';
 import { InfoMenuContext } from '../../hooks/use-info-menu';
+import { PRIVACY_POLICY_URL } from '../../legal/LEGAL_UI_STRINGS_HE';
+import { privacyOptionsRequired, showPrivacyOptions } from '../../lib/ads/initAds';
 import LegalScreen from '../LegalScreen';
 import UserGuideScreen from '../UserGuideScreen';
 
@@ -16,9 +19,34 @@ const TEAL = '#009688';
 type MenuView = 'menu' | 'legal' | 'guide';
 
 // Info panel (guide, legal). Legal/guide render inside the same Modal: iOS can't present a second modal while the menu is dismissing
-function SideMenu({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function SideMenu({ visible, onClose, onDataDeleted }: { visible: boolean; onClose: () => void; onDataDeleted: () => void }) {
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<MenuView>('menu');
+  const [showAdPrivacy, setShowAdPrivacy] = useState(false);
+
+  useEffect(() => {
+    if (visible) privacyOptionsRequired().then(setShowAdPrivacy);
+  }, [visible]);
+
+  const confirmDeleteAll = () =>
+    Alert.alert('מחיקת כל הנתונים', 'זה ימחק את כל הרכבים וההיסטוריה מהמכשיר. אי אפשר לבטל.', [
+      { text: 'ביטול', style: 'cancel' },
+      {
+        text: 'מחק הכול',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await AsyncStorage.clear(); // the app only stores its own keys here
+            close();
+            onDataDeleted();
+            // Reload so screens drop their in-memory state; dev builds can't reload.
+            if (!__DEV__) Updates.reloadAsync().catch(() => {});
+          } catch {
+            Alert.alert('שגיאה', 'לא הצלחנו למחוק את הנתונים. נסה שוב.');
+          }
+        },
+      },
+    ]);
 
   const close = () => {
     setView('menu');
@@ -40,6 +68,20 @@ function SideMenu({ visible, onClose }: { visible: boolean; onClose: () => void 
             <TouchableOpacity style={styles.item} onPress={() => setView('legal')} accessibilityRole="button">
               <MaterialIcons name="policy" size={24} color="#555" />
               <Text style={styles.itemText}>הצהרות משפטיות</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.item} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} accessibilityRole="link">
+              <MaterialIcons name="open-in-new" size={24} color="#555" />
+              <Text style={styles.itemText}>מדיניות פרטיות באתר</Text>
+            </TouchableOpacity>
+            {showAdPrivacy && (
+              <TouchableOpacity style={styles.item} onPress={() => showPrivacyOptions().catch(() => {})} accessibilityRole="button">
+                <MaterialIcons name="tune" size={24} color="#555" />
+                <Text style={styles.itemText}>הגדרות פרטיות לפרסומות</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.item} onPress={confirmDeleteAll} accessibilityRole="button" accessibilityLabel="מחק את כל הנתונים שלי">
+              <MaterialIcons name="delete-outline" size={24} color="#B3261E" />
+              <Text style={[styles.itemText, { color: '#B3261E' }]}>מחק את כל הנתונים שלי</Text>
             </TouchableOpacity>
           </View>
           <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="סגור" />
@@ -85,7 +127,7 @@ export default function TabsLayout() {
   return (
     <InfoMenuContext.Provider value={openMenu}>
       <FirstLaunchModal visible={showFirstLaunch} onAccept={handleAccept} />
-      <SideMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
+      <SideMenu visible={menuOpen} onClose={() => setMenuOpen(false)} onDataDeleted={() => setShowFirstLaunch(true)} />
 
       <Tabs
         tabBar={(props) => <CheckFuelTabBar {...props} />}

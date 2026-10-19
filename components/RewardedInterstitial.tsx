@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import { adsAllowed } from '../lib/ads/initAds';
 import {
   RewardedInterstitialAd,
   TestIds,
@@ -47,8 +48,8 @@ const RewardedInterstitial: React.FC<RewardedInterstitialProps> = ({
   useEffect(() => {
     mountedRef.current = true;
 
-    if (Platform.OS === 'web') {
-      console.log('RewardedInterstitial: Skipping ad on web');
+    if (Platform.OS === 'web' || !adsAllowed()) {
+      console.log('RewardedInterstitial: Skipping ad (web or no ad consent)');
       safeComplete();
       return;
     }

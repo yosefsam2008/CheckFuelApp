@@ -79,21 +79,17 @@ const PRIVACY_POLICY_HE = `
 • שמירת היסטוריה
 • שיפור חוויית המשתמש
 
-אנחנו לא:
-• מוכרים, משתפים, או משדרים נתונים
-• משתמשים בנתונים למטרות פרסום או עקיבה
-• מחלקים נתונים עם צד שלישי
+אנחנו לא מוכרים את הנתונים שלך, והרכבים וההיסטוריה שלך לא נשלחים לשרת שלנו.
 
-5. API חיצוניים
-• data.gov.il: למביא נתוני רכבים (מאגר ממשלתי)
-• Fuel Economy API: לנתוני צריכה
-
-אנחנו שולחים רק מספר לוחית או פרטי רכב - אין זיהוי אישי.
+5. שירותים חיצוניים
+• פרסומות: האפליקציה מציגה פרסומות של Google AdMob. גוגל עשויה לאסוף מזהי מכשיר ונתוני שימוש כדי להציג ולמדוד פרסומות. הפרסומות אינן מותאמות אישית. מידע נוסף: https://policies.google.com/technologies/ads
+• data.gov.il: בעת חיפוש רכב לפי לוחית נשלח אליו מספר הלוחית בלבד (מאגר ממשלתי)
+• checkfuel-data.vercel.app: משם מורדים מחירי דלק וחשמל. לא נשלח אליו מידע אישי
 
 6. זכויות שלך
-• זכות להיגע לנתונים שלך בכל עת
+• זכות לראות את הנתונים שלך בכל עת
 • זכות למחוק רכב או חישוב בודד
-• זכות למחוק את כל הנתונים בהסרת האפליקציה
+• זכות למחוק את כל הנתונים: בתפריט המידע, "מחק את כל הנתונים שלי", או בהסרת האפליקציה
 
 7. אבטחה
 אנחנו משתמשים במנגנוני האבטחה של מערכת ההפעלה:
@@ -110,7 +106,7 @@ const PRIVACY_POLICY_HE = `
 • מדיניות Google Play
 
 10. צור קשר
-שאלות? בדוק את ההגדרות של האפליקציה או צור קשר דרך Google Play.
+שאלות? צור קשר דרך Google Play. מדיניות מלאה: https://sites.google.com/view/checkfuelpolicy/home
 `;
 
 const PRIVACY_POLICY_EN = `
@@ -139,21 +135,17 @@ All your data is stored only on your device - not on any server.
 • Maintain history
 • Improve user experience
 
-We do NOT:
-• Sell, share, or transmit data
-• Use data for advertising or tracking
-• Share data with third parties
+We do not sell your data, and your vehicles and history are not sent to our servers.
 
-5. External APIs
-• data.gov.il: provides vehicle data (Israeli government database)
-• Fuel Economy API: provides consumption data
-
-We send only license plate or vehicle details - no personal identification.
+5. External Services
+• Ads: the App shows Google AdMob ads. Google may collect device identifiers and usage data to serve and measure ads. Ads are non-personalized. More: https://policies.google.com/technologies/ads
+• data.gov.il: when you look up a vehicle by plate, only the plate number is sent (Israeli government database)
+• checkfuel-data.vercel.app: fuel and electricity prices are downloaded from here. No personal data is sent
 
 6. Your Rights
-• Right to access your data anytime
+• Right to view your data anytime
 • Right to delete a single vehicle or calculation
-• Right to delete all data when uninstalling the App
+• Right to delete all data: in the info menu, "Delete all my data", or by uninstalling the App
 
 7. Security
 We use operating system security mechanisms:
@@ -170,7 +162,7 @@ We comply with:
 • Google Play Store Policies
 
 10. Contact Us
-Questions? Check the App's settings or contact us via Google Play.
+Questions? Contact us via Google Play. Full policy: https://sites.google.com/view/checkfuelpolicy/home
 `;
 
 const TERMS_OF_SERVICE_HE = `
@@ -290,10 +282,8 @@ const ABOUT_CONTENT_HE = `
 • עדכון תקופתי
 • גישה חינם לציבור
 
-🔧 Fuel Economy APIs
-מקורות נתונים צד שלישי לצריכת דלק
-• הערכות יצרן
-• נתונים ממשלתיים מחו"ל
+🔧 נתוני צריכה
+הערכות צריכה מחושבות בתוך האפליקציה לפי נתוני הרכב מהמאגר הממשלתי
 
 ⛽ מחירי דלק וחשמל
 מחירים אחרונים מהשוק בישראל
@@ -340,10 +330,8 @@ Israel's open government database
 • Regular updates
 • Free public access
 
-🔧 Fuel Economy APIs
-Third-party data sources for fuel consumption
-• Manufacturer estimates
-• International government data
+🔧 Consumption data
+Consumption estimates are calculated inside the App from the government vehicle data
 
 ⛽ Fuel and Electricity Prices
 Current market prices in Israel

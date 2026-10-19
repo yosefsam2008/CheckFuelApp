@@ -1,0 +1,447 @@
+<title>CheckFuel Vehicles Screen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* Layout: the phone (the app, light only like the app) beside a notes column for approval.
+   App tokens are copied from constants/theme.ts; page chrome has its own light/dark tokens. */
+:root {
+  /* app (constants/theme.ts colors) */
+  --app-bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --text: #000000;
+  --muted: #8E8E93;
+  --divider: #E5E5EA;
+  --green: #34C759;
+  --teal: #00C7BE;
+  --sel-fill: #A8E6CF;
+  --sel-border: #34C759;
+  --sel-text: #248A3D;
+  --error: #FF3B30;
+  --white: #FFFFFF;
+  --white18: rgba(255,255,255,0.18);
+  --white80: rgba(255,255,255,0.80);
+  /* page chrome */
+  --page: #E9ECE8;
+  --ink: #1C1F1D;
+  --ink-2: #5A625C;
+  --line: #CDD3CE;
+  --panel: #F7F8F6;
+  --font: 'Heebo', 'Assistant', 'Arial Hebrew', Arial, sans-serif;
+  --r-card: 22px; --r-tile: 14px; --r-pill: 999px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #141715; --ink: #E8ECE9; --ink-2: #9BA49E; --line: #2E3430; --panel: #1C201E; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --page: #141715; --ink: #E8ECE9; --ink-2: #9BA49E; --line: #2E3430; --panel: #1C201E; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); margin: 0; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 375px minmax(0, 1fr); gap: 40px; align-items: start; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); justify-items: center; } .notes { justify-self: stretch; } }
+
+/* ---------- phone ---------- */
+.phone { width: 375px; max-width: 100%; height: 780px; border-radius: 44px; background: var(--app-bg); overflow: hidden; position: relative; box-shadow: 0 0 0 10px #101211, 0 24px 60px rgba(0,0,0,0.28); display: flex; flex-direction: column; color: var(--text); }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+.hero { background: linear-gradient(225deg, var(--green), var(--teal)); padding: 54px 20px 70px; position: relative; }
+.toprow { height: 44px; display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+.wordmark { font-weight: 800; font-size: 21px; color: var(--white); direction: ltr; }
+.wordmark span { opacity: .8; }
+.logo { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--white); border-inline-end-color: transparent; transform: rotate(-30deg); }
+.info { position: absolute; left: 24px; top: 54px; width: 44px; height: 44px; border-radius: 22px; background: var(--white18); display: grid; place-items: center; border: 0; cursor: pointer; }
+.info::before, .info::after { content: ""; position: absolute; border: 1.5px solid var(--white); border-radius: 50%; pointer-events: none; }
+.info::before { inset: -11px; opacity: .3; } .info::after { inset: -22px; opacity: .18; }
+.h1 { font-weight: 800; font-size: 30px; line-height: 38px; color: var(--white); margin: 0; }
+.sub { font-size: 14px; color: var(--white80); margin-top: 4px; }
+
+.cards { padding: 0 16px 32px; display: flex; flex-direction: column; gap: 24px; }
+.card { background: var(--surface); border-radius: var(--r-card); box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+.summary { margin-top: -44px; position: relative; z-index: 2; padding: 24px 24px 18px; }
+.eyebrow { font-size: 13px; font-weight: 500; color: var(--muted); }
+.amount-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.amount { font-weight: 900; font-size: 40px; line-height: 46px; direction: ltr; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+.amount small { font-size: 22px; font-weight: 800; margin-inline-end: 2px; }
+.delta { height: 28px; padding: 0 10px; border-radius: var(--r-pill); background: var(--app-bg); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.delta .num { direction: ltr; unicode-bidi: isolate; }
+.stats { font-size: 15px; color: var(--muted); margin-top: 8px; }
+.stats b { color: var(--text); font-weight: 700; }
+.ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+.proj { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+.chart { margin-top: 20px; border-top: 1px solid var(--divider); padding-top: 18px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.bar { cursor: pointer; }
+.bar .mark { fill: var(--sel-fill); transition: fill .15s; }
+.bar.on .mark { fill: var(--sel-text); }
+.bar:hover .mark { fill: #8FD9B8; } .bar.on:hover .mark { fill: var(--sel-text); }
+.bar:focus-visible { outline: none; } .bar:focus-visible rect.hit { stroke: var(--sel-text); stroke-width: 2; }
+.bar text.m { font-size: 12px; fill: var(--muted); font-family: var(--font); font-weight: 500; }
+.bar.on text.m { fill: var(--text); font-weight: 700; }
+.bar text.v { font-size: 12px; fill: var(--text); font-family: var(--font); font-weight: 700; }
+.grow { transform-box: fill-box; transform-origin: bottom; }
+@keyframes grow { from { transform: scaleY(0); } }
+
+.list { overflow: hidden; }
+.list-head { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 24px 10px; }
+.list-title { font-weight: 800; font-size: 17px; }
+.list-count { font-size: 13px; color: var(--muted); }
+.trip { position: relative; }
+.trip::before { content: ""; position: absolute; top: 0; inset-inline: 24px; border-top: 1px solid var(--divider); }
+.row-s .ltr { display: inline; }
+.row { width: 100%; min-height: 84px; display: flex; align-items: center; gap: 16px; padding: 20px 24px; background: none; border: 0; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.row:focus-visible { outline: 2px solid var(--sel-text); outline-offset: -2px; }
+.tile { width: 40px; height: 40px; border-radius: 12px; background: var(--app-bg); display: grid; place-items: center; flex: none; }
+.row-main { flex: 1; min-width: 0; }
+.row-t { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-s { font-size: 14px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-cost { font-weight: 800; font-size: 18px; direction: ltr; font-variant-numeric: tabular-nums; }
+.chev { flex: none; transition: transform .3s cubic-bezier(.33,1,.68,1); color: var(--muted); }
+.trip.open .chev { transform: rotate(180deg); }
+.detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.33,1,.68,1); }
+.trip.open .detail { grid-template-rows: 1fr; }
+.detail > div { overflow: hidden; }
+.dl { margin: 0 24px; padding: 6px 16px; background: var(--app-bg); border-radius: var(--r-tile); }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; font-size: 15px; border-top: 1px solid var(--divider); }
+.kv:first-child { border-top: 0; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-weight: 700; }
+.actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 24px 18px; min-height: 68px; }
+.btn { height: 44px; padding: 0 18px; border-radius: var(--r-pill); border: 0; font: 700 14px var(--font); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.btn:focus-visible { outline: 2px solid var(--sel-text); outline-offset: 2px; }
+.btn.ghost { background: var(--app-bg); color: var(--text); }
+.btn.danger-text { background: none; color: var(--error); padding: 0 4px; }
+.btn.danger { background: var(--error); color: var(--white); }
+.confirm-q { font-weight: 700; font-size: 14px; }
+.confirm-btns { display: flex; gap: 8px; }
+
+.clear { display: flex; justify-content: center; padding: 6px 0 2px; }
+.ad { height: 56px; border-radius: var(--r-tile); background: var(--divider); display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+
+.empty { padding: 28px 20px 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.empty .tile { width: 48px; height: 48px; border-radius: var(--r-tile); margin-bottom: 6px; }
+.empty-t { font-weight: 800; font-size: 17px; }
+.empty-s { font-size: 14px; color: var(--muted); }
+.cta { height: 44px; margin-top: 10px; padding: 0 20px; border-radius: var(--r-pill); background: var(--green); color: var(--white); border: 0; font: 700 14px var(--font); cursor: pointer; }
+
+.tabbar { height: 64px; padding-bottom: 0; display: flex; background: var(--surface); border-top: 1px solid var(--divider); position: relative; flex: none; margin-bottom: 18px; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 700 12px var(--font); color: var(--muted); position: relative; z-index: 1; }
+.tab.on { color: var(--sel-text); }
+.tab.on::before { content: ""; position: absolute; inset: 8px 10px; border-radius: 16px; background: var(--sel-fill); z-index: -1; }
+
+.toast { position: absolute; left: 16px; right: 16px; bottom: 98px; background: var(--text); color: var(--white); border-radius: var(--r-pill); padding: 12px 18px; font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; align-items: center; transition: opacity .2s, transform .3s; }
+.toast[hidden] { display: none !important; }
+.toast button { background: none; border: 0; color: var(--sel-fill); font: 700 14px var(--font); cursor: pointer; min-height: 32px; }
+
+/* entrance: 400ms fade + 10px rise, same as useEnter() in constants/motion.ts */
+.enter { animation: enter .4s cubic-bezier(.22,1,.36,1) both; }
+@keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+.slide-l { animation: slideL .3s cubic-bezier(.22,1,.36,1) both; } .slide-r { animation: slideR .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes slideL { from { opacity: 0; transform: translateX(-24px); } } @keyframes slideR { from { opacity: 0; transform: translateX(24px); } }
+.fade { animation: fade .2s ease-out both; } @keyframes fade { from { opacity: 0; } }
+/* sliding digits, like components/calculator/SlidingDigits.tsx */
+.amount { display: inline-flex; align-items: baseline; }
+.dg { display: inline-block; height: 46px; overflow: hidden; }
+.strip { display: flex; flex-direction: column; transition: transform .55s cubic-bezier(.22,1,.36,1); }
+.strip span { height: 46px; line-height: 46px; text-align: center; }
+/* press feedback, like PressableScale */
+.row, .btn { transition: transform .15s ease-out, background-color .15s; }
+.row:active { transform: scale(.985); background: #FAFAFC; }
+.btn:active { transform: scale(.96); }
+/* bars: the picked one lifts, and its value rises in */
+.bar .mark { transform-box: fill-box; transform-origin: bottom; }
+.bar.on .mark { animation: pick .3s cubic-bezier(.22,1,.36,1); }
+@keyframes pick { 40% { transform: scaleY(1.06); } }
+.bar .mark.grow { animation: grow .45s cubic-bezier(.22,1,.36,1) both; }
+.bar text.v { animation: valueIn .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes valueIn { from { opacity: 0; transform: translateY(6px); } }
+/* details open: each line follows the height by 30ms */
+.trip.open .kv, .trip.open .actions > * { animation: enter .3s cubic-bezier(.22,1,.36,1) both; }
+.trip.open .kv:nth-child(2) { animation-delay: 30ms; } .trip.open .kv:nth-child(3) { animation-delay: 60ms; }
+.trip.open .kv:nth-child(4) { animation-delay: 90ms; } .trip.open .kv:nth-child(5) { animation-delay: 120ms; }
+.trip.open .actions > * { animation-delay: 150ms; }
+.trip.removing { transition: opacity .3s, transform .3s cubic-bezier(.22,1,.36,1), height .3s cubic-bezier(.22,1,.36,1); opacity: 0; transform: translateX(-30px); overflow: hidden; }
+/* info halo breathes, like components/calculator/Halo.tsx */
+.info::before { animation: breathe 3.2s ease-in-out infinite; } .info::after { animation: breathe 3.2s ease-in-out 1.6s infinite; }
+@keyframes breathe { 50% { opacity: .42; transform: scale(1.04); } }
+.toast:not([hidden]) { animation: toastIn .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px); } }
+.reduce * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .phone * { animation: none !important; transition: none !important; } }
+
+/* ---------- notes ---------- */
+.notes { display: flex; flex-direction: column; gap: 24px; min-width: 0; max-width: 620px; }
+.notes h1 { font-weight: 800; font-size: 26px; margin: 0; text-wrap: balance; }
+.lead { color: var(--ink-2); font-size: 15px; line-height: 1.6; margin: 6px 0 0; max-width: 60ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 14px var(--font); cursor: pointer; }
+.toggle input { accent-color: var(--sel-text); width: 16px; height: 16px; margin: 0; }
+section h2 { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--ink-2); margin: 0 0 8px; }
+.decisions { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.decisions li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.55; }
+.decisions b { font-weight: 700; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: start; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 700; color: var(--ink-2); font-size: 13px; }
+td.n { direction: ltr; text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
+/* ---------- vehicles screen ---------- */
+.badge { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: var(--r-pill); background: var(--sel-fill); color: #1B6B30; font: 700 12px var(--font); white-space: nowrap; }
+.row-s { display: flex; align-items: center; gap: 8px; }
+.row-name { direction: ltr; text-align: right; }
+.add-row .tile { background: var(--sel-fill); color: #1B6B30; }
+.add-row .row-t { font-weight: 700; color: var(--sel-text); }
+.field { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--divider); }
+.field:first-child { border-top: 0; }
+.field label { font-size: 13px; color: var(--muted); }
+.field input { height: 44px; border-radius: 12px; border: 1.5px solid var(--divider); background: var(--surface); padding: 0 12px; font: 600 16px var(--font); color: var(--text); }
+.field input:focus { outline: none; border-color: var(--sel-border); }
+.btn.primary { background: var(--sel-fill); color: #1B6B30; }
+.cta-grad { width: 100%; height: 52px; border-radius: var(--r-pill); border: 0; color: #fff; font: 800 16px var(--font); background: linear-gradient(225deg, #1FA84F, #0E9F8E); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; }
+.vwrap { margin-top: -44px; position: relative; z-index: 2; display: flex; flex-direction: column; gap: 12px; }
+.vcard { overflow: hidden; border: 1.5px solid transparent; transition: border-color .2s; }
+.vcard.cur { border-color: var(--sel-border); }
+.vcard.trip::before { display: none; }
+.row.vbtn { display: block; padding: 18px 20px; min-height: 0; }
+.cons { font-weight: 800; font-size: 20px; line-height: 22px; text-align: end; flex: none; }
+.cons small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+.vtop { display: flex; align-items: center; gap: 14px; }
+.vtile { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; flex: none; }
+.vtile.Gasoline { background: #FFF1DB; color: #B86A00; }
+.vtile.Diesel { background: #E6EDF6; color: #34557D; }
+.vtile.Electric, .vtile.PHEV { background: #E3F6EA; color: #0E7A3C; }
+.vname { font-weight: 800; font-size: 17px; direction: ltr; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vcard .detail .dl { margin: 0 20px; }
+.vcard .actions { padding-inline: 20px; }
+.addcard { width: 100%; min-height: 72px; border-radius: var(--r-card); border: 1.5px dashed #C7C7CC; background: transparent; display: flex; align-items: center; gap: 14px; padding: 0 20px; font: inherit; color: inherit; cursor: pointer; text-align: start; transition: transform .15s, background-color .15s; }
+.addcard:active { transform: scale(.985); background: var(--surface); }
+.addcard .vtile { background: var(--sel-fill); color: #1B6B30; }
+</style>
+
+<div class="wrap" dir="rtl">
+  <div class="phone" id="phone" aria-label="תצוגת מסך הרכבים">
+    <div class="scroll" id="scroll">
+      <header class="hero">
+        <button class="info" aria-label="מידע">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        </button>
+        <div class="toprow"><div class="logo" aria-hidden="true"></div><div class="wordmark">Check<span>Fuel</span></div></div>
+        <h2 class="h1" id="h1">הרכבים שלי</h2>
+        <div class="sub" id="sub">הרכב במסגרת הירוקה נפתח במחשבון</div>
+      </header>
+      <div class="cards" id="cards"></div>
+    </div>
+
+    <div class="toast" id="toast" hidden role="status"><span id="toast-t">הרכב נמחק</span><button id="undo">ביטול</button></div>
+
+    <nav class="tabbar" aria-label="ניווט">
+      <div class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M16 14v4M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>מחשבון דלק</div>
+      <div class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>היסטוריה</div>
+      <div class="tab on" aria-current="page"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>הרכבים שלי</div>
+    </nav>
+  </div>
+
+  <div class="notes">
+    <div>
+      <h1>מסך הרכבים, לאישור</h1>
+      <p class="lead">אותה כותרת, אותו כרטיס שעולה עליה ואותן שורות נפתחות כמו בהיסטוריה. לחיצה על רכב פותחת את הפרטים בתוך השורה. משם אפשר לבחור אותו למחשבון, לערוך או למחוק.</p>
+    </div>
+    <div class="controls">
+      <button class="toggle" id="replay" type="button">הפעל שוב את הכניסה</button>
+      <label class="toggle" for="t-empty"><input type="checkbox" id="t-empty"> בלי רכבים</label>
+      <label class="toggle" for="t-reduce"><input type="checkbox" id="t-reduce"> Reduce Motion</label>
+    </div>
+    <section>
+      <h2>מה צריך לאשר</h2>
+      <ul class="decisions">
+        <li><b>כרטיס לכל רכב:</b> אייקון על רקע בגוון עדין לפי סוג הדלק (כתום לבנזין, כחול־אפור לדיזל, ירוק לחשמלי), שם, סוג דלק ושנה. הרכב של המחשבון מסומן במסגרת ירוקה. מספר הרישוי בפרטים.</li>
+        <li><b>צריכה:</b> בצד שמאל של הכרטיס, מספר גדול ויחידה קטנה מתחתיו. בכניסה הוא עולה מאפס.</li>
+        <li><b>ברירת מחדל:</b> הרכב שהמחשבון פותח איתו (<code>lastVehicleId</code>) מסומן במסגרת ירוקה בלבד, בלי תג. בפרטים של רכב אחר יש כפתור "קבע כברירת מחדל".</li>
+        <li><b>צריכה:</b> בבנזין ובדיזל "ק״מ לליטר". בחשמלי "קוט״ש ל־100 ק״מ", כמו בהיסטוריה, במקום <code>0.1500 kWh/ק״מ</code> של היום. הנתון השמור לא משתנה, רק התצוגה.</li>
+        <li><b>עריכה:</b> בתוך השורה, רק שם וצריכה. סוג הדלק מגיע ממשרד הרישוי ולא נערך (היום אפשר לשנות אותו, וזה מקלקל את החישוב).</li>
+        <li><b>מחיקה:</b> אישור אחד בתוך השורה, ואז הודעה עם "ביטול" ל־4 שניות. אם מוחקים את הרכב של המחשבון, המחשבון עובר לרכב הבא.</li>
+        <li><b>הוספה:</b> שורה ירוקה בתחתית הרשימה. כשאין רכבים, כפתור gradient ראשי. שתיהן פותחות את מסך ההוספה החדש (לחיצה כאן בתצוגה פותחת אותו), עם חיפוש לפי מספר רישוי והוספה ידנית.</li>
+        <li><b>נמחק:</b> חלון הפרטים, חלון אישור המחיקה, הכותרת הלבנה, הצבע <code>#009688</code>, ובערך 1,000 שורות.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>תנועה</h2>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>רגע</th><th>מה זז</th><th>משך</th></tr></thead>
+        <tbody>
+          <tr><td>כניסה למסך</td><td>כותרת וכרטיסים עולים בזה אחר זה, 70ms בין כרטיס לכרטיס</td><td class="n">400ms</td></tr>
+          <tr><td>הצריכה בכרטיס</td><td>עולה מאפס לערך, כמו מונה</td><td class="n">600ms</td></tr>
+          <tr><td>פתיחת רכב</td><td>השורה נפתחת, החץ מסתובב, הפרטים נכנסים בזה אחר זה</td><td class="n">300ms</td></tr>
+          <tr><td>מעבר לעריכה</td><td>השדות מחליפים את הפרטים ב־fade</td><td class="n">200ms</td></tr>
+          <tr><td>בחירה למחשבון</td><td>התג עובר לרכב החדש, רטט קל</td><td class="n">200ms</td></tr>
+          <tr><td>מחיקה</td><td>השורה מחליקה ונסגרת, הודעה עם ביטול</td><td class="n">300ms</td></tr>
+          <tr><td>Reduce Motion</td><td>הכל מוצג מיד</td><td class="n">0</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const ALL = [
+    { id: '1', name: 'Citroen JUMPY', model: 'JUMPY', engine: '2.0 BlueHDi', year: 2021, plate: '12-345-67', fueltype: 'Diesel', type: 'car', avgConsumption: 13.7 },
+    { id: '2', name: 'Hyundai IONIQ 5', model: 'IONIQ 5', engine: 'Electric', year: 2023, plate: '345-67-801', fueltype: 'Electric', type: 'car', avgConsumption: 0.17 },
+    { id: '3', name: 'Yamaha TMAX', model: 'TMAX 560', engine: '562cc', year: 2020, plate: '81-234-56', fueltype: 'Gasoline', type: 'motorcycle', avgConsumption: 21.3 },
+  ];
+  let vehicles = ALL.map((v) => ({ ...v }));
+  let current = '1', openId = null, mode = 'view', lastDeleted = null, toastTimer = null;
+  const $ = (q) => document.querySelector(q);
+  const reduced = () => $('#phone').classList.contains('reduce') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ev = (v) => v.fueltype === 'Electric' || v.fueltype === 'PHEV';
+  const fuelName = (f) => ({ Electric: 'חשמלי', PHEV: 'פלאג־אין', Diesel: 'דיזל', Gasoline: 'בנזין' }[f] || 'לא ידוע');
+  const cons = (v) => !v.avgConsumption ? ['—', ''] : ev(v) ? [(v.avgConsumption * 100).toFixed(1), 'קוט״ש ל־100 ק״מ'] : [v.avgConsumption.toFixed(1), 'ק״מ לליטר'];
+  const ICON = {
+    car: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+    motorcycle: '<circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>',
+  };
+  const icon = (t, c = '#8E8E93') => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[t] || ICON.car}</svg>`;
+  const trash = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+  const addIcon = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+
+  function detailHtml(v) {
+    if (mode === 'edit') {
+      return `<div class="dl fade">
+          <div class="field"><label for="e-name">שם הרכב</label><input id="e-name" value="${esc(v.name)}"></div>
+          <div class="field"><label for="e-cons">צריכה ממוצעת (${ev(v) ? 'קוט״ש ל־100 ק״מ' : 'ק״מ לליטר'})</label><input id="e-cons" inputmode="decimal" dir="ltr" style="text-align:right" value="${cons(v)[0]}"></div>
+        </div>
+        <div class="actions fade"><button class="btn ghost" data-act="cancel">ביטול</button><button class="btn primary" data-act="save">שמור</button></div>`;
+    }
+    const [c, unit] = cons(v);
+    return `<dl class="dl">
+        <div class="kv"><dt>מספר רישוי</dt><dd class="ltr">${esc(v.plate || '—')}</dd></div>
+        <div class="kv"><dt>דגם</dt><dd class="ltr">${esc(v.model)}</dd></div>
+        <div class="kv"><dt>מנוע</dt><dd class="ltr">${esc(v.engine)}</dd></div>
+        <div class="kv"><dt>שנת ייצור</dt><dd class="ltr">${v.year}</dd></div>
+        <div class="kv"><dt>סוג דלק</dt><dd>${fuelName(v.fueltype)}</dd></div>
+        <div class="kv"><dt>צריכה</dt><dd><span class="ltr">${c}</span> ${unit}</dd></div>
+      </dl>
+      ${current === v.id ? '' : `<div class="actions" style="padding-bottom:0;min-height:0"><button class="btn primary" style="width:100%;justify-content:center" data-act="use">קבע כברירת מחדל</button></div>`}
+      <div class="actions">${mode === 'confirm'
+        ? `<span class="confirm-q fade">למחוק את הרכב?</span><span class="confirm-btns fade"><button class="btn ghost" data-act="back">ביטול</button><button class="btn danger" data-act="del">מחק</button></span>`
+        : `<button class="btn danger-text" data-act="ask">${trash}מחק רכב</button><button class="btn ghost" data-act="edit">ערוך</button>`}</div>`;
+  }
+
+  function rowHtml(v, i, anim) {
+    const [c, unit] = cons(v);
+    const open = openId === v.id;
+    const enter = anim ? ` enter" style="animation-delay:${Math.min(160 + i * 70, 450)}ms` : '';
+    return `<div class="card vcard trip${open ? ' open' : ''}${current === v.id ? ' cur' : ''}${enter}" data-id="${v.id}">
+      <button class="row vbtn" aria-expanded="${open}">
+        <span class="vtop">
+          <span class="vtile ${v.fueltype}">${icon(v.type, 'currentColor')}</span>
+          <span class="row-main">
+            <div class="vname">${esc(v.name)}</div>
+            <div class="row-s"><span>${fuelName(v.fueltype)} · <span class="ltr">${v.year}</span></span></div>
+          </span>
+          <span class="cons"><span class="ltr" data-count="${c}" data-dec="1">${c}</span><small>${unit}</small></span>
+          <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </button>
+      <div class="detail"><div>${open ? detailHtml(v) : ''}</div></div>
+    </div>`;
+  }
+
+  // numbers count up from 0 on first show (Reduce Motion: shown as is)
+  function countUp() {
+    if (reduced()) return;
+    document.querySelectorAll('[data-count]').forEach((el) => {
+      const to = parseFloat(el.dataset.count), dec = +(el.dataset.dec || 0), t0 = performance.now(), delay = 250;
+      if (!(to > 0)) return;
+      el.textContent = (0).toFixed(dec);
+      const step = (t) => {
+        const p = Math.min(1, Math.max(0, (t - t0 - delay) / 600)), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = (to * e).toFixed(dec);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  function render(anim = false) {
+    const cards = $('#cards');
+    if (!vehicles.length) {
+      cards.innerHTML = `<div class="card summary empty${anim ? ' enter' : ''}">
+        <div class="tile">${icon('car')}</div>
+        <div class="empty-t">עוד אין רכבים</div>
+        <div class="empty-s">מקלידים מספר רישוי ואנחנו מביאים את הדגם, סוג הדלק והצריכה ממשרד הרישוי. אפשר גם להוסיף ידנית.</div>
+        <button class="cta-grad" onclick="location.href='add-vehicle.html'">${addIcon}הוספת רכב</button>
+      </div>`;
+      return;
+    }
+    cards.innerHTML = `<div class="vwrap">
+        ${vehicles.map((v, i) => rowHtml(v, i, anim)).join('')}
+        <button class="addcard${anim ? ` enter" style="animation-delay:${Math.min(160 + vehicles.length * 70, 520)}ms` : ''}" onclick="location.href='add-vehicle.html'"><span class="vtile">${addIcon}</span><span class="row-main"><div class="row-t" style="font-weight:700;color:var(--sel-text)">הוספת רכב</div><div class="row-s" style="color:var(--muted)">לפי מספר רישוי או ידנית</div></span></button>
+      </div>
+      <div class="ad" aria-label="פרסומת">פרסומת</div>`;
+    if (anim) countUp();
+  }
+
+  function toast(text, undo) {
+    $('#toast-t').textContent = text; $('#undo').hidden = !undo;
+    const el = $('#toast'); el.hidden = false; clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; lastDeleted = null; }, undo ? 4000 : 2400);
+  }
+
+  const setDetail = (el) => { el.querySelector('.detail > div').innerHTML = detailHtml(vehicles.find((x) => x.id === el.dataset.id)); };
+
+  $('#cards').addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]');
+    const el = e.target.closest('.trip[data-id]');
+    if (act && el) {
+      const a = act.dataset.act, v = vehicles.find((x) => x.id === el.dataset.id);
+      if (a === 'edit') mode = 'edit';
+      if (a === 'cancel' || a === 'back') mode = 'view';
+      if (a === 'ask') mode = 'confirm';
+      if (a === 'save') {
+        const n = $('#e-name').value.trim(), c = parseFloat($('#e-cons').value.replace(',', '.'));
+        if (n) v.name = n;
+        if (c > 0) v.avgConsumption = ev(v) ? c / 100 : c;
+        mode = 'view'; render(); toast('השינויים נשמרו'); return;
+      }
+      if (a === 'use') { current = v.id; mode = 'view'; render(); toast(v.name + ' נקבע כברירת מחדל'); return; }
+      if (a === 'del') {
+        const i = vehicles.indexOf(v);
+        const done = () => {
+          lastDeleted = { v, i, wasCurrent: current === v.id };
+          vehicles.splice(i, 1);
+          if (current === v.id) current = vehicles[0]?.id ?? null;
+          openId = null; mode = 'view'; render(); toast('הרכב נמחק', true);
+        };
+        if (reduced()) return done();
+        el.style.height = el.offsetHeight + 'px';
+        requestAnimationFrame(() => { el.classList.add('removing'); el.style.height = '0px'; });
+        return setTimeout(done, 300);
+      }
+      return setDetail(el);
+    }
+    const row = e.target.closest('.trip[data-id] > .row');
+    if (row) {
+      const el2 = row.parentElement, id = el2.dataset.id, opening = openId !== id;
+      document.querySelectorAll('.trip.open').forEach((x) => { x.classList.remove('open'); x.querySelector('.row').setAttribute('aria-expanded', 'false'); });
+      openId = opening ? id : null; mode = 'view';
+      if (opening) { setDetail(el2); el2.classList.add('open'); row.setAttribute('aria-expanded', 'true'); }
+    }
+  });
+  $('#undo').addEventListener('click', () => {
+    if (lastDeleted) { vehicles.splice(lastDeleted.i, 0, lastDeleted.v); if (lastDeleted.wasCurrent) current = lastDeleted.v.id; lastDeleted = null; }
+    $('#toast').hidden = true; render();
+  });
+  $('#t-empty').addEventListener('change', (e) => { vehicles = e.target.checked ? [] : ALL.map((v) => ({ ...v })); current = vehicles[0]?.id ?? null; openId = null; render(!reduced()); });
+  $('#t-reduce').addEventListener('change', (e) => $('#phone').classList.toggle('reduce', e.target.checked));
+  function enterHero() {
+    ['#h1', '#sub'].forEach((q, i) => { const el = $(q); el.classList.remove('enter'); void el.offsetWidth; el.style.animationDelay = i * 60 + 'ms'; el.classList.add('enter'); });
+  }
+  $('#replay').addEventListener('click', () => { openId = null; $('#scroll').scrollTop = 0; enterHero(); render(!reduced()); });
+  enterHero();
+  render(!reduced());
+})();
+</script>

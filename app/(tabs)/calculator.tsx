@@ -25,12 +25,12 @@ import { LEGAL_UI_STRINGS } from '../../legal/LEGAL_UI_STRINGS_HE';
 import { getRoute, LatLng, RouteResult, routeProviderConfigured } from '../../lib/route';
 import { computeTrip, DEFAULT_PREFS, FuelPrices, Octane, priceFor, TripPrefs, Vehicle } from '../../lib/tripCost';
 import { NO_TOUCH } from '../../constants/rtl';
+import { DEFAULT_PRICES, defaultIO, getPrices, PriceResult } from '../../lib/prices';
 
 // Conditional imports for ads - only load on native platforms
 const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 const InterstitialAd = Platform.OS === 'web' ? () => null : require('../../components/InterstitialAd').default;
 
-const DEFAULT_FUEL_PRICES: FuelPrices = { Gasoline: 7.08, Diesel: 9.58, Electric: 0.6 };
 const MAX_KM = 5000;
 const RECENT_KEY = 'recentDestinations';
 
@@ -85,31 +85,21 @@ export default function CalculatorScreen() {
   const [livePrices, setLivePrices] = useState<FuelPrices | null>(null);
   const [pricesLoading, setPricesLoading] = useState(true);
   const [octane, setOctane] = useState<Octane>('95');
-  const [fuelPrice, setFuelPrice] = useState(DEFAULT_FUEL_PRICES.Gasoline.toFixed(2));
+  const [fuelPrice, setFuelPrice] = useState(DEFAULT_PRICES.Gasoline.toFixed(2));
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const response = await fetch('https://checkfuel-data.vercel.app/prices.json');
-        if (!response.ok) throw new Error('Network response not ok');
-        const data = await response.json();
-        if (!cancelled) {
-          setLivePrices({ Gasoline: parseFloat(data.Gasoline), Diesel: parseFloat(data.Diesel), Electric: parseFloat(data.Electric) });
-        }
-      } catch {
-        // stays on the default prices
-      } finally {
-        if (!cancelled) setPricesLoading(false);
-      }
-    })();
+    const apply = (r: PriceResult) => !cancelled && setLivePrices(r.source === 'default' ? null : r.prices);
+    getPrices(defaultIO, apply)
+      .then(apply)
+      .finally(() => !cancelled && setPricesLoading(false));
     return () => {
       cancelled = true;
     };
   }, []);
 
   useEffect(() => {
-    if (vehicle) setFuelPrice(priceFor(vehicle, livePrices ?? DEFAULT_FUEL_PRICES, octane).toFixed(2));
+    if (vehicle) setFuelPrice(priceFor(vehicle, livePrices ?? DEFAULT_PRICES, octane).toFixed(2));
   }, [vehicle, livePrices, octane]);
 
   // ---------- route ----------

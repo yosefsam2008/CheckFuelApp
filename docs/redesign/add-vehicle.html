@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CheckFuel Add Vehicle</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* Layout: the phone (the app, light only like the app) beside a notes column for approval.
+   App tokens are copied from constants/theme.ts; page chrome has its own light/dark tokens. */
+:root {
+  /* app (constants/theme.ts colors) */
+  --app-bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --text: #000000;
+  --muted: #8E8E93;
+  --divider: #E5E5EA;
+  --green: #34C759;
+  --teal: #00C7BE;
+  --sel-fill: #A8E6CF;
+  --sel-border: #34C759;
+  --sel-text: #248A3D;
+  --error: #FF3B30;
+  --white: #FFFFFF;
+  --white18: rgba(255,255,255,0.18);
+  --white80: rgba(255,255,255,0.80);
+  /* page chrome */
+  --page: #E9ECE8;
+  --ink: #1C1F1D;
+  --ink-2: #5A625C;
+  --line: #CDD3CE;
+  --panel: #F7F8F6;
+  --font: 'Heebo', 'Assistant', 'Arial Hebrew', Arial, sans-serif;
+  --r-card: 22px; --r-tile: 14px; --r-pill: 999px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #141715; --ink: #E8ECE9; --ink-2: #9BA49E; --line: #2E3430; --panel: #1C201E; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --page: #141715; --ink: #E8ECE9; --ink-2: #9BA49E; --line: #2E3430; --panel: #1C201E; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); margin: 0; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 375px minmax(0, 1fr); gap: 40px; align-items: start; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); justify-items: center; } .notes { justify-self: stretch; } }
+
+/* ---------- phone ---------- */
+.phone { width: 375px; max-width: 100%; height: 780px; border-radius: 44px; background: var(--app-bg); overflow: hidden; position: relative; box-shadow: 0 0 0 10px #101211, 0 24px 60px rgba(0,0,0,0.28); display: flex; flex-direction: column; color: var(--text); }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+.hero { background: linear-gradient(225deg, var(--green), var(--teal)); padding: 54px 20px 70px; position: relative; }
+.toprow { height: 44px; display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+.wordmark { font-weight: 800; font-size: 21px; color: var(--white); direction: ltr; }
+.wordmark span { opacity: .8; }
+.logo { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--white); border-inline-end-color: transparent; transform: rotate(-30deg); }
+.info { position: absolute; left: 24px; top: 54px; width: 44px; height: 44px; border-radius: 22px; background: var(--white18); display: grid; place-items: center; border: 0; cursor: pointer; }
+.info::before, .info::after { content: ""; position: absolute; border: 1.5px solid var(--white); border-radius: 50%; pointer-events: none; }
+.info::before { inset: -11px; opacity: .3; } .info::after { inset: -22px; opacity: .18; }
+.h1 { font-weight: 800; font-size: 30px; line-height: 38px; color: var(--white); margin: 0; }
+.sub { font-size: 14px; color: var(--white80); margin-top: 4px; }
+
+.cards { padding: 0 16px 32px; display: flex; flex-direction: column; gap: 24px; }
+.card { background: var(--surface); border-radius: var(--r-card); box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+.summary { margin-top: -44px; position: relative; z-index: 2; padding: 24px 24px 18px; }
+.eyebrow { font-size: 13px; font-weight: 500; color: var(--muted); }
+.amount-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.amount { font-weight: 900; font-size: 40px; line-height: 46px; direction: ltr; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+.amount small { font-size: 22px; font-weight: 800; margin-inline-end: 2px; }
+.delta { height: 28px; padding: 0 10px; border-radius: var(--r-pill); background: var(--app-bg); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.delta .num { direction: ltr; unicode-bidi: isolate; }
+.stats { font-size: 15px; color: var(--muted); margin-top: 8px; }
+.stats b { color: var(--text); font-weight: 700; }
+.ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+.proj { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+.chart { margin-top: 20px; border-top: 1px solid var(--divider); padding-top: 18px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.bar { cursor: pointer; }
+.bar .mark { fill: var(--sel-fill); transition: fill .15s; }
+.bar.on .mark { fill: var(--sel-text); }
+.bar:hover .mark { fill: #8FD9B8; } .bar.on:hover .mark { fill: var(--sel-text); }
+.bar:focus-visible { outline: none; } .bar:focus-visible rect.hit { stroke: var(--sel-text); stroke-width: 2; }
+.bar text.m { font-size: 12px; fill: var(--muted); font-family: var(--font); font-weight: 500; }
+.bar.on text.m { fill: var(--text); font-weight: 700; }
+.bar text.v { font-size: 12px; fill: var(--text); font-family: var(--font); font-weight: 700; }
+.grow { transform-box: fill-box; transform-origin: bottom; }
+@keyframes grow { from { transform: scaleY(0); } }
+
+.list { overflow: hidden; }
+.list-head { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 24px 10px; }
+.list-title { font-weight: 800; font-size: 17px; }
+.list-count { font-size: 13px; color: var(--muted); }
+.trip { position: relative; }
+.trip::before { content: ""; position: absolute; top: 0; inset-inline: 24px; border-top: 1px solid var(--divider); }
+.row-s .ltr { display: inline; }
+.row { width: 100%; min-height: 84px; display: flex; align-items: center; gap: 16px; padding: 20px 24px; background: none; border: 0; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.row:focus-visible { outline: 2px solid var(--sel-text); outline-offset: -2px; }
+.tile { width: 40px; height: 40px; border-radius: 12px; background: var(--app-bg); display: grid; place-items: center; flex: none; }
+.row-main { flex: 1; min-width: 0; }
+.row-t { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-s { font-size: 14px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-cost { font-weight: 800; font-size: 18px; direction: ltr; font-variant-numeric: tabular-nums; }
+.chev { flex: none; transition: transform .3s cubic-bezier(.33,1,.68,1); color: var(--muted); }
+.trip.open .chev { transform: rotate(180deg); }
+.detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.33,1,.68,1); }
+.trip.open .detail { grid-template-rows: 1fr; }
+.detail > div { overflow: hidden; }
+.dl { margin: 0 24px; padding: 6px 16px; background: var(--app-bg); border-radius: var(--r-tile); }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; font-size: 15px; border-top: 1px solid var(--divider); }
+.kv:first-child { border-top: 0; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-weight: 700; }
+.actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 24px 18px; min-height: 68px; }
+.btn { height: 44px; padding: 0 18px; border-radius: var(--r-pill); border: 0; font: 700 14px var(--font); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.btn:focus-visible { outline: 2px solid var(--sel-text); outline-offset: 2px; }
+.btn.ghost { background: var(--app-bg); color: var(--text); }
+.btn.danger-text { background: none; color: var(--error); padding: 0 4px; }
+.btn.danger { background: var(--error); color: var(--white); }
+.confirm-q { font-weight: 700; font-size: 14px; }
+.confirm-btns { display: flex; gap: 8px; }
+
+.clear { display: flex; justify-content: center; padding: 6px 0 2px; }
+.ad { height: 56px; border-radius: var(--r-tile); background: var(--divider); display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+
+.empty { padding: 28px 20px 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.empty .tile { width: 48px; height: 48px; border-radius: var(--r-tile); margin-bottom: 6px; }
+.empty-t { font-weight: 800; font-size: 17px; }
+.empty-s { font-size: 14px; color: var(--muted); }
+.cta { height: 44px; margin-top: 10px; padding: 0 20px; border-radius: var(--r-pill); background: var(--green); color: var(--white); border: 0; font: 700 14px var(--font); cursor: pointer; }
+
+.tabbar { height: 64px; padding-bottom: 0; display: flex; background: var(--surface); border-top: 1px solid var(--divider); position: relative; flex: none; margin-bottom: 18px; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 700 12px var(--font); color: var(--muted); position: relative; z-index: 1; }
+.tab.on { color: var(--sel-text); }
+.tab.on::before { content: ""; position: absolute; inset: 8px 10px; border-radius: 16px; background: var(--sel-fill); z-index: -1; }
+
+.toast { position: absolute; left: 16px; right: 16px; bottom: 98px; background: var(--text); color: var(--white); border-radius: var(--r-pill); padding: 12px 18px; font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; align-items: center; transition: opacity .2s, transform .3s; }
+.toast[hidden] { display: none !important; }
+.toast button { background: none; border: 0; color: var(--sel-fill); font: 700 14px var(--font); cursor: pointer; min-height: 32px; }
+
+/* entrance: 400ms fade + 10px rise, same as useEnter() in constants/motion.ts */
+.enter { animation: enter .4s cubic-bezier(.22,1,.36,1) both; }
+@keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+.slide-l { animation: slideL .3s cubic-bezier(.22,1,.36,1) both; } .slide-r { animation: slideR .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes slideL { from { opacity: 0; transform: translateX(-24px); } } @keyframes slideR { from { opacity: 0; transform: translateX(24px); } }
+.fade { animation: fade .2s ease-out both; } @keyframes fade { from { opacity: 0; } }
+/* sliding digits, like components/calculator/SlidingDigits.tsx */
+.amount { display: inline-flex; align-items: baseline; }
+.dg { display: inline-block; height: 46px; overflow: hidden; }
+.strip { display: flex; flex-direction: column; transition: transform .55s cubic-bezier(.22,1,.36,1); }
+.strip span { height: 46px; line-height: 46px; text-align: center; }
+/* press feedback, like PressableScale */
+.row, .btn { transition: transform .15s ease-out, background-color .15s; }
+.row:active { transform: scale(.985); background: #FAFAFC; }
+.btn:active { transform: scale(.96); }
+/* bars: the picked one lifts, and its value rises in */
+.bar .mark { transform-box: fill-box; transform-origin: bottom; }
+.bar.on .mark { animation: pick .3s cubic-bezier(.22,1,.36,1); }
+@keyframes pick { 40% { transform: scaleY(1.06); } }
+.bar .mark.grow { animation: grow .45s cubic-bezier(.22,1,.36,1) both; }
+.bar text.v { animation: valueIn .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes valueIn { from { opacity: 0; transform: translateY(6px); } }
+/* details open: each line follows the height by 30ms */
+.trip.open .kv, .trip.open .actions > * { animation: enter .3s cubic-bezier(.22,1,.36,1) both; }
+.trip.open .kv:nth-child(2) { animation-delay: 30ms; } .trip.open .kv:nth-child(3) { animation-delay: 60ms; }
+.trip.open .kv:nth-child(4) { animation-delay: 90ms; } .trip.open .kv:nth-child(5) { animation-delay: 120ms; }
+.trip.open .actions > * { animation-delay: 150ms; }
+.trip.removing { transition: opacity .3s, transform .3s cubic-bezier(.22,1,.36,1), height .3s cubic-bezier(.22,1,.36,1); opacity: 0; transform: translateX(-30px); overflow: hidden; }
+/* info halo breathes, like components/calculator/Halo.tsx */
+.info::before { animation: breathe 3.2s ease-in-out infinite; } .info::after { animation: breathe 3.2s ease-in-out 1.6s infinite; }
+@keyframes breathe { 50% { opacity: .42; transform: scale(1.04); } }
+.toast:not([hidden]) { animation: toastIn .3s cubic-bezier(.22,1,.36,1) both; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px); } }
+.reduce * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .phone * { animation: none !important; transition: none !important; } }
+
+/* ---------- notes ---------- */
+.notes { display: flex; flex-direction: column; gap: 24px; min-width: 0; max-width: 620px; }
+.notes h1 { font-weight: 800; font-size: 26px; margin: 0; text-wrap: balance; }
+.lead { color: var(--ink-2); font-size: 15px; line-height: 1.6; margin: 6px 0 0; max-width: 60ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 14px var(--font); cursor: pointer; }
+.toggle input { accent-color: var(--sel-text); width: 16px; height: 16px; margin: 0; }
+section h2 { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--ink-2); margin: 0 0 8px; }
+.decisions { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.decisions li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.55; }
+.decisions b { font-weight: 700; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: start; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 700; color: var(--ink-2); font-size: 13px; }
+td.n { direction: ltr; text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
+/* ---------- add vehicle screen ---------- */
+.hero.small { padding-bottom: 64px; }
+.back { position: absolute; right: 16px; top: 54px; width: 44px; height: 44px; border-radius: 22px; background: var(--white18); display: grid; place-items: center; border: 0; cursor: pointer; }
+.hero.small .toprow { justify-content: flex-end; padding-inline-end: 0; }
+.panel { margin-top: -44px; position: relative; z-index: 2; padding: 16px 20px 22px; }
+.seg { position: relative; display: flex; background: var(--app-bg); border-radius: 14px; padding: 4px; height: 52px; }
+.seg-ind { position: absolute; top: 4px; bottom: 4px; width: calc(50% - 4px); right: 4px; border-radius: 11px; background: var(--sel-fill); border: 1.5px solid var(--sel-border); transition: transform .3s cubic-bezier(.22,1,.36,1); }
+.seg.manual .seg-ind { transform: translateX(-100%); }
+.seg button { position: relative; flex: 1; border: 0; background: none; font: 700 15px var(--font); color: var(--muted); cursor: pointer; }
+.seg button[aria-selected="true"] { color: var(--sel-text); }
+.pane-t { font-weight: 800; font-size: 17px; margin: 20px 0 4px; }
+.pane-s { font-size: 14px; color: var(--muted); margin: 0 0 14px; }
+.plate-in { width: 100%; height: 64px; border-radius: 16px; border: 1.5px solid var(--divider); background: var(--surface); text-align: center; font: 800 28px var(--font); letter-spacing: 2px; direction: ltr; color: var(--text); font-variant-numeric: tabular-nums; }
+.plate-in:focus, .in:focus { outline: none; border-color: var(--sel-border); }
+.cta-grad { width: 100%; height: 52px; border-radius: var(--r-pill); border: 0; color: #fff; font: 800 16px var(--font); background: linear-gradient(225deg, #1FA84F, #0E9F8E); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; transition: transform .15s, opacity .15s; }
+.cta-grad:active { transform: scale(.97); }
+.cta-grad:disabled { opacity: .45; cursor: default; transform: none; }
+.hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.msg { margin-top: 16px; padding: 14px 16px; border-radius: var(--r-tile); background: var(--app-bg); display: flex; gap: 12px; align-items: flex-start; }
+.msg-t { font-weight: 700; font-size: 15px; }
+.msg-s { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.link { background: none; border: 0; padding: 0; margin-top: 8px; min-height: 32px; font: 700 14px var(--font); color: var(--sel-text); cursor: pointer; }
+.found { margin-top: 16px; border-radius: var(--r-tile); background: var(--app-bg); padding: 4px 16px; }
+.found-h { display: flex; align-items: center; gap: 12px; padding: 14px 0 10px; }
+.found-h .tile { background: var(--surface); }
+.found-name { font-weight: 800; font-size: 18px; direction: ltr; text-align: right; }
+.found-s { font-size: 13px; color: var(--muted); }
+.lbl { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+.lbl .req { color: var(--sel-text); }
+.in { width: 100%; height: 48px; border-radius: 12px; border: 1.5px solid var(--divider); background: var(--surface); padding: 0 14px; font: 600 16px var(--font); color: var(--text); }
+.in.ltr-in { direction: ltr; text-align: right; }
+.unit-row { position: relative; }
+.unit-row .u { position: absolute; left: 14px; top: 0; height: 48px; display: flex; align-items: center; font-size: 13px; color: var(--muted); pointer-events: none; }
+.fuel3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.fuel3 button { height: 48px; border-radius: 12px; border: 1.5px solid var(--divider); background: var(--surface); font: 700 15px var(--font); color: var(--text); cursor: pointer; transition: background-color .15s, border-color .15s; }
+.fuel3 button[aria-pressed="true"] { background: var(--sel-fill); border-color: var(--sel-border); color: var(--sel-text); }
+.sugg { margin-top: 6px; border: 1px solid var(--divider); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.sugg button { display: block; width: 100%; text-align: right; padding: 0 14px; height: 44px; border: 0; border-top: 1px solid var(--divider); background: none; font: 500 15px var(--font); cursor: pointer; direction: ltr; }
+.sugg button:first-child { border-top: 0; }
+.more { margin-top: 18px; border-top: 1px solid var(--divider); }
+.more summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 52px; font-weight: 700; font-size: 15px; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary span { font-weight: 400; color: var(--muted); font-size: 13px; }
+.more[open] .chev { transform: rotate(180deg); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.reduce .spin { animation: none !important; }
+</style>
+
+<div class="wrap" dir="rtl">
+  <div class="phone" id="phone" aria-label="תצוגת מסך הוספת רכב">
+    <div class="scroll" id="scroll">
+      <header class="hero small">
+        <button class="back" aria-label="חזרה" onclick="history.back()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <div class="toprow"><div class="logo" aria-hidden="true"></div><div class="wordmark">Check<span>Fuel</span></div></div>
+        <h2 class="h1 enter">הוספת רכב</h2>
+        <div class="sub enter" style="animation-delay:60ms">מספר רישוי ממלא הכל לבד. אין? מוסיפים ידנית.</div>
+      </header>
+
+      <div class="cards">
+        <div class="card panel enter" style="animation-delay:120ms">
+          <div class="seg" id="seg" role="tablist" aria-label="דרך הוספה">
+            <span class="seg-ind" aria-hidden="true"></span>
+            <button role="tab" aria-selected="true" data-tab="plate">לפי מספר רישוי</button>
+            <button role="tab" aria-selected="false" data-tab="manual">ידנית</button>
+          </div>
+          <div id="pane"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden role="status"><span id="toast-t">הרכב נשמר</span></div>
+  </div>
+
+  <div class="notes">
+    <div>
+      <h1>מסך הוספת רכב, לאישור</h1>
+      <p class="lead">מסך אחד במקום שניים (<code>addVehicleByPlate</code> ו־<code>addVehicle</code>). למעלה בורר בין חיפוש לפי מספר רישוי להוספה ידנית. לנסות: להקליד מספר וללחוץ "חפש", ולהחליף את תוצאת החיפוש במתגים.</p>
+    </div>
+    <div class="controls">
+      <span style="align-self:center;font-weight:700;font-size:14px">תוצאת החיפוש:</span>
+      <label class="toggle"><input type="radio" name="res" value="found" checked> נמצא</label>
+      <label class="toggle"><input type="radio" name="res" value="notfound"> לא נמצא</label>
+      <label class="toggle"><input type="radio" name="res" value="offline"> אין רשת</label>
+      <label class="toggle" for="t-reduce"><input type="checkbox" id="t-reduce"> Reduce Motion</label>
+    </div>
+    <section>
+      <h2>מה צריך לאשר</h2>
+      <ul class="decisions">
+        <li><b>בורר למעלה:</b> "לפי מספר רישוי" (ברירת מחדל) ו"ידנית", באותו בורר כמו במחשבון. ההוספה הידנית כבר לא מוסתרת מאחורי קישור.</li>
+        <li><b>חיפוש:</b> שדה גדול למספר, בלי צבע צהוב. הכפתור "חפש" הוא ה־gradient היחיד במסך. בלי פרסומת לפני החיפוש. timeout של 8 שניות.</li>
+        <li><b>נמצא:</b> מוצגים הדגם, השנה וסוג הדלק, ושני שדות שאפשר לתקן: שם וצריכה. "שמור רכב" חוזר לרשימה.</li>
+        <li><b>לא נמצא / אין רשת:</b> שתי הודעות שונות. "לא נמצא" מציע להוסיף ידנית, ומעביר את המספר לטופס. "אין רשת" מציע לנסות שוב.</li>
+        <li><b>ידנית:</b> חובה רק יצרן, סוג דלק וצריכה. יחידת הצריכה משתנה לפי הדלק (ק״מ לליטר או קוט״ש ל־100 ק״מ). דגם, מספר רישוי, מנוע ושנה מתחת ל"פרטים נוספים", סגור כברירת מחדל.</li>
+        <li><b>שמירה:</b> הכפתור לא פעיל עד שהשדות החובה תקינים. פסיק עשרוני מתקבל (באג מוכר ב־<code>addVehicle.tsx:102</code>).</li>
+        <li><b>רכב חדש</b> הופך לרכב של המחשבון (<code>lastVehicleId</code>), כי כנראה מוסיפים אותו כדי לחשב איתו.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>תנועה</h2>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>רגע</th><th>מה זז</th><th>משך</th></tr></thead>
+        <tbody>
+          <tr><td>החלפת לשונית</td><td>הסמן מחליק, התוכן מתחלף ב־fade</td><td class="n">300ms</td></tr>
+          <tr><td>חיפוש</td><td>ספינר קטן בתוך הכפתור (לא מסך טעינה)</td><td class="n">עד תשובה</td></tr>
+          <tr><td>תוצאה</td><td>כרטיס התוצאה עולה (fade ו־10px)</td><td class="n">400ms</td></tr>
+          <tr><td>שמירה</td><td>רטט הצלחה, חזרה לרשימה והודעה</td><td class="n">300ms</td></tr>
+          <tr><td>Reduce Motion</td><td>הכל מוצג מיד</td><td class="n">0</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const MAKERS = ['Toyota', 'Hyundai', 'Kia', 'Mazda', 'Skoda', 'Suzuki', 'Mitsubishi', 'Tesla', 'BYD', 'Citroen', 'Peugeot', 'Volkswagen', 'Nissan', 'Chevrolet', 'Seat', 'Renault'];
+  const FUELS = [['Gasoline', 'בנזין'], ['Diesel', 'דיזל'], ['Electric', 'חשמלי']];
+  const $ = (q) => document.querySelector(q);
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const reduced = () => $('#phone').classList.contains('reduce') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const num = (s) => parseFloat(String(s).replace(',', '.'));
+  const chev = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>';
+  const car = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>';
+  const icoAlert = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
+  const icoOff = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round"><path d="M12 20h.01M8.5 16.4a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 4.2-2.7M22 8.8a15 15 0 0 0-11.3-3.8M5 12.9a10 10 0 0 1 5.2-2.7M19 12.9a10 10 0 0 0-2-1.5M2 2l20 20"/></svg>';
+
+  let tab = 'plate', plate = '', state = 'idle'; // idle | loading | found | notfound | offline
+  let m = { maker: '', model: '', fuel: '', cons: '', plate: '', engine: '', year: '' };
+  let found = { name: 'Toyota COROLLA', year: 2022, fuel: 'בנזין', engine: '1.8 Hybrid', cons: '19.6' };
+
+  const fmtPlate = (d) => d.length === 8 ? `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}` : d.length === 7 ? `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}` : d;
+  const consUnit = (f) => (f === 'Electric' ? 'קוט״ש ל־100 ק״מ' : 'ק״מ לליטר');
+
+  function platePane() {
+    const digits = plate.replace(/\D/g, '');
+    const ok = digits.length >= 7;
+    let res = '';
+    if (state === 'found') res = `<div class="found enter">
+        <div class="found-h"><span class="tile">${car}</span><div><div class="found-name">${esc(found.name)}</div><div class="found-s"><span class="ltr">${found.year}</span> · ${found.fuel} · <span class="ltr">${esc(found.engine)}</span></div></div></div>
+        <label class="lbl" for="f-name">שם הרכב</label><input class="in ltr-in" id="f-name" value="${esc(found.name)}">
+        <label class="lbl" for="f-cons">צריכה ממוצעת</label><div class="unit-row"><input class="in ltr-in" id="f-cons" inputmode="decimal" value="${found.cons}"><span class="u">ק״מ לליטר</span></div>
+        <div class="hint" style="padding-bottom:14px">הערכה לפי משקל ומנוע. אם אתם יודעים את הצריכה האמיתית, עדיף לתקן.</div>
+      </div>
+      <button class="cta-grad" data-act="save">שמור רכב</button>`;
+    if (state === 'notfound') res = `<div class="msg enter"><span>${icoAlert}</span><div><div class="msg-t">לא מצאנו רכב עם המספר הזה</div><div class="msg-s">כדאי לבדוק את המספר. רכבים חדשים מאוד, אופנועים ורכבים מיובאים לא תמיד מופיעים במאגר.</div><button class="link" data-act="to-manual">הוספה ידנית עם המספר הזה</button></div></div>`;
+    if (state === 'offline') res = `<div class="msg enter"><span>${icoOff}</span><div><div class="msg-t">אין חיבור לאינטרנט</div><div class="msg-s">החיפוש צריך רשת. אפשר לנסות שוב, או להוסיף ידנית.</div><button class="link" data-act="search">נסה שוב</button></div></div>`;
+    return `<div class="fade">
+      <div class="pane-t">מה מספר הרישוי?</div>
+      <p class="pane-s">נביא את הדגם, סוג הדלק והצריכה ממאגר משרד התחבורה.</p>
+      <input class="plate-in" id="plate" inputmode="numeric" placeholder="12-345-67" aria-label="מספר רישוי" maxlength="10" value="${esc(plate)}">
+      ${state === 'found' ? '' : `<button class="cta-grad" data-act="search" ${ok && state !== 'loading' ? '' : 'disabled'}>${state === 'loading' ? '<span class="spin" aria-hidden="true"></span>מחפש…' : 'חפש'}</button>`}
+      ${res}
+    </div>`;
+  }
+
+  function manualPane() {
+    const q = m.maker.trim().toLowerCase();
+    const sugg = q && !MAKERS.some((x) => x.toLowerCase() === q) ? MAKERS.filter((x) => x.toLowerCase().startsWith(q)).slice(0, 4) : [];
+    const ok = m.maker.trim() && m.fuel && num(m.cons) > 0;
+    return `<div class="fade">
+      <div class="pane-t">פרטי הרכב</div>
+      <p class="pane-s">שלושה שדות חובה, וזהו.</p>
+      <label class="lbl" for="m-maker">יצרן <span class="req">*</span></label>
+      <input class="in ltr-in" id="m-maker" placeholder="Toyota" autocomplete="off" value="${esc(m.maker)}">
+      ${sugg.length ? `<div class="sugg">${sugg.map((x) => `<button data-maker="${x}">${x}</button>`).join('')}</div>` : ''}
+      <span class="lbl">סוג דלק <span class="req">*</span></span>
+      <div class="fuel3" role="group" aria-label="סוג דלק">${FUELS.map(([k, l]) => `<button data-fuel="${k}" aria-pressed="${m.fuel === k}">${l}</button>`).join('')}</div>
+      <label class="lbl" for="m-cons">צריכה ממוצעת <span class="req">*</span></label>
+      <div class="unit-row"><input class="in ltr-in" id="m-cons" inputmode="decimal" placeholder="${m.fuel === 'Electric' ? '16.5' : '15.5'}" value="${esc(m.cons)}"><span class="u">${consUnit(m.fuel)}</span></div>
+      <details class="more" ${m.plate ? 'open' : ''}><summary>פרטים נוספים <span>לא חובה</span>${chev}</summary>
+        <label class="lbl" for="m-model">דגם</label><input class="in ltr-in" id="m-model" placeholder="COROLLA" value="${esc(m.model)}">
+        <label class="lbl" for="m-plate">מספר רישוי</label><input class="in ltr-in" id="m-plate" inputmode="numeric" placeholder="12-345-67" value="${esc(m.plate)}">
+        <div class="grid2">
+          <div><label class="lbl" for="m-engine">מנוע</label><input class="in ltr-in" id="m-engine" placeholder="1.6" value="${esc(m.engine)}"></div>
+          <div><label class="lbl" for="m-year">שנת ייצור</label><input class="in ltr-in" id="m-year" inputmode="numeric" placeholder="2022" value="${esc(m.year)}"></div>
+        </div>
+      </details>
+      <button class="cta-grad" data-act="save" ${ok ? '' : 'disabled'}>שמור רכב</button>
+    </div>`;
+  }
+
+  function render() {
+    $('#seg').classList.toggle('manual', tab === 'manual');
+    document.querySelectorAll('#seg button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+    $('#pane').innerHTML = tab === 'plate' ? platePane() : manualPane();
+  }
+  // re-render without losing the caret in the field being typed in
+  function rerenderKeep(id) {
+    const el = document.getElementById(id), pos = el?.selectionStart;
+    render();
+    const n = document.getElementById(id); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch {} }
+  }
+
+  function toast(t) { $('#toast-t').textContent = t; const el = $('#toast'); el.hidden = false; setTimeout(() => (el.hidden = true), 2000); }
+
+  $('#seg').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b && b.dataset.tab !== tab) { tab = b.dataset.tab; render(); } });
+  $('#pane').addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.id === 'plate') { plate = fmtPlate(t.value.replace(/\D/g, '').slice(0, 8)); state = 'idle'; return rerenderKeep('plate'); }
+    const k = { 'm-maker': 'maker', 'm-model': 'model', 'm-cons': 'cons', 'm-plate': 'plate', 'm-engine': 'engine', 'm-year': 'year' }[t.id];
+    if (k) { m[k] = t.value; const btn = $('#pane [data-act="save"]'); if (k === 'maker') return rerenderKeep(t.id); if (btn) btn.disabled = !(m.maker.trim() && m.fuel && num(m.cons) > 0); }
+  });
+  $('#pane').addEventListener('click', (e) => {
+    const mk = e.target.closest('[data-maker]'); if (mk) { m.maker = mk.dataset.maker; return render(); }
+    const fu = e.target.closest('[data-fuel]'); if (fu) { m.fuel = fu.dataset.fuel; return render(); }
+    const a = e.target.closest('[data-act]')?.dataset.act;
+    if (a === 'search') {
+      state = 'loading'; render();
+      setTimeout(() => { state = document.querySelector('input[name=res]:checked').value; render(); }, reduced() ? 0 : 900);
+    }
+    if (a === 'to-manual') { m.plate = plate; tab = 'manual'; render(); }
+    if (a === 'save') { toast('הרכב נשמר ונבחר למחשבון'); setTimeout(() => history.back(), 1200); }
+  });
+  document.querySelectorAll('input[name=res]').forEach((r) => r.addEventListener('change', () => { if (state !== 'idle' && state !== 'loading') { state = r.value; tab = 'plate'; render(); } }));
+  $('#t-reduce').addEventListener('change', (e) => $('#phone').classList.toggle('reduce', e.target.checked));
+  render();
+})();
+</script>

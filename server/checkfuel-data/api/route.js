@@ -1,34 +1,38 @@
-// Supabase Edge Function: driving route proxy for Google Routes API (Essentials tier).
-// Deploy: supabase functions deploy route ; supabase secrets set GOOGLE_ROUTES_API_KEY=...
-const API_KEY = Deno.env.get('GOOGLE_ROUTES_API_KEY');
+// Vercel Function for the checkfuel-data project: driving route proxy for the Google Routes API (Essentials tier).
+// Copy to api/route.js in checkfuel-data, set GOOGLE_ROUTES_API_KEY in the project's env vars, redeploy.
+// Served at https://checkfuel-data.vercel.app/api/route ; the app reads it from EXPO_PUBLIC_ROUTE_URL.
+const API_KEY = process.env.GOOGLE_ROUTES_API_KEY;
 
-// shortcut: per-instance memory cache, lost on cold start; move to a table if route costs matter
-const cache = new Map<string, unknown>();
+// shortcut: per-instance memory cache and no rate limit; add a KV cache + per-IP limit if Google costs show up
+const cache = new Map();
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+// the web build calls this from another origin
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+const json = (body, status = 200) => Response.json(body, { status, headers: CORS });
 
-Deno.serve(async (req) => {
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
+export async function POST(req) {
   if (!API_KEY) return json({ error: 'not_configured' }, 500);
 
-  let body: { origin?: { latitude?: unknown; longitude?: unknown }; destination?: unknown };
+  let body;
   try {
     body = await req.json();
   } catch {
     return json({ error: 'bad_json' }, 400);
   }
-  const lat = body.origin?.latitude;
-  const lng = body.origin?.longitude;
-  const dest = typeof body.destination === 'string' ? body.destination.trim() : '';
+  const lat = body?.origin?.latitude;
+  const lng = body?.origin?.longitude;
+  const dest = typeof body?.destination === 'string' ? body.destination.trim() : '';
   if (typeof lat !== 'number' || typeof lng !== 'number' || Math.abs(lat) > 90 || Math.abs(lng) > 180 || !dest || dest.length > 200) {
     return json({ error: 'bad_request' }, 400);
   }
 
   // ~100m origin rounding so nearby requests share a cache entry
   const key = `${lat.toFixed(3)},${lng.toFixed(3)}|${dest.toLowerCase()}`;
-  const cached = cache.get(key);
-  if (cached) return json(cached);
+  if (cache.has(key)) return json(cache.get(key));
 
   const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
     method: 'POST',
@@ -44,8 +48,9 @@ Deno.serve(async (req) => {
       languageCode: 'he',
       regionCode: 'IL',
     }),
-  });
-  if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => null);
+  if (!res?.ok) return json({ error: 'upstream', status: res?.status ?? 0 }, 502);
 
   const route = (await res.json()).routes?.[0];
   if (!route?.distanceMeters) return json({ error: 'no_route' }, 404);
@@ -57,4 +62,4 @@ Deno.serve(async (req) => {
   };
   cache.set(key, out);
   return json(out);
-});
+}

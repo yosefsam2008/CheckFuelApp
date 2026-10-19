@@ -1,4 +1,4 @@
-// Driving route provider. The Google key lives server-side in supabase/functions/route.
+// Driving route provider. The Google key lives server-side in the checkfuel-data Vercel function (server/checkfuel-data/api/route.js).
 export interface LatLng {
   latitude: number;
   longitude: number;
@@ -10,7 +10,6 @@ export interface RouteResult {
 }
 
 const ROUTE_URL = process.env.EXPO_PUBLIC_ROUTE_URL;
-const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 export const routeProviderConfigured = !!ROUTE_URL;
 
@@ -18,10 +17,7 @@ export async function getRoute(origin: LatLng, destination: string): Promise<Rou
   if (!ROUTE_URL) throw new Error('Route provider not configured');
   const res = await fetch(ROUTE_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(ANON_KEY ? { Authorization: `Bearer ${ANON_KEY}`, apikey: ANON_KEY } : {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ origin, destination }),
   });
   if (!res.ok) throw new Error(`Route request failed: ${res.status}`);

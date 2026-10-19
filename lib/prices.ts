@@ -6,7 +6,7 @@ export const PRICES_URL = 'https://checkfuel-data.vercel.app/prices.json';
 export const CACHE_KEY = 'pricesCache';
 export const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 export const FETCH_TIMEOUT_MS = 5000;
-export const DEFAULT_PRICES: Prices = { Gasoline: 7.08, Diesel: 9.58, Electric: 0.6 };
+export const DEFAULT_PRICES: Prices = { Gasoline: 8.25, Diesel: 10.74, Electric: 0.6 }; // prices.json on 2026-10-19; only used before the first successful fetch
 
 export type PriceSource = 'live' | 'cache' | 'cache-stale' | 'default';
 export interface PriceResult {

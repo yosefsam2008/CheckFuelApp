@@ -45,12 +45,13 @@ interface Props {
 }
 
 export function SlidingDigits({ value, fontSize, color, fontFamily, staggerMs = 0, from, startDelay = 0, prefix, accessibilityLabel }: Props) {
-  const [shown, setShown] = useState(from ?? value);
+  const reduced = useReducedMotion();
+  const [shown, setShown] = useState(reduced ? value : from ?? value);
   useEffect(() => {
-    if (from === undefined) return setShown(value);
+    if (from === undefined || reduced) return setShown(value);
     const t = setTimeout(() => setShown(value), startDelay);
     return () => clearTimeout(t);
-  }, [value, from, startDelay]);
+  }, [value, from, startDelay, reduced]);
 
   const height = Math.round(fontSize * 1.25);
   const width = Math.round(fontSize * 0.58);

@@ -1,6 +1,6 @@
 // Run: npm run check:contrast. WCAG 2.x contrast for every text/background pair we ship.
 import assert from 'node:assert';
-import { color } from '../constants/tokens';
+import { color, fuelTint } from '../constants/tokens';
 
 const lin = (c: number) => ((c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 const lum = (hex: string) => {
@@ -25,6 +25,9 @@ const pairs: [string, string, number, string][] = [
   [color.warningText, color.surface, 4.5, 'warning text on white'],
   [color.textPrimary, color.brandGreen, 4.5, 'dark text on brand green'],
   [color.brandTeal, color.surface, 3, 'brand teal icon on white'],
+  [fuelTint.gasolineIcon, fuelTint.gasolineFill, 3, 'gasoline icon on tint'],
+  [fuelTint.dieselIcon, fuelTint.dieselFill, 3, 'diesel icon on tint'],
+  ['#0E7A3C', '#E3F6EA', 3, 'electric icon on tint'],
   [color.brandGreen, color.surface, 3, 'brand green icon on white (expected to FAIL: do not use as text)'],
 ];
 

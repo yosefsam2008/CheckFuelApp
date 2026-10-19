@@ -18,3 +18,10 @@ export const color = {
   separator: '#E5E5EA',
 } as const;
 
+// Vehicle icon tile tints by fuel type (icon on fill needs 3:1, checked by scripts/contrast-check.ts)
+export const fuelTint = {
+  gasolineFill: '#FFF1DB',
+  gasolineIcon: '#B86A00',
+  dieselFill: '#E6EDF6',
+  dieselIcon: '#34557D',
+} as const;

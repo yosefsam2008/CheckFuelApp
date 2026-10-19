@@ -28,10 +28,11 @@ export const ease = { out: Easing.out(Easing.cubic), inOut: Easing.inOut(Easing.
  * on web those leave a fixed inline height on the element, which clips content that grows later.
  */
 export function useEnter(delay: number) {
-  const t = useSharedValue(0);
+  const reduced = useReducedMotion();
+  const t = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
-    t.value = withDelay(delay, withTiming(1, { duration: 400, easing: ease.out }));
-  }, [delay, t]);
+    t.value = reduced ? 1 : withDelay(delay, withTiming(1, { duration: 400, easing: ease.out }));
+  }, [delay, reduced, t]);
   return useAnimatedStyle(() => ({ opacity: t.value, transform: [{ translateY: (1 - t.value) * 10 }] }));
 }
 

@@ -1,7 +1,7 @@
 // Per-digit rolling number (port of Motion Primitives "Sliding Number"). Digits spring up/down a 0-9 column.
 import React, { useEffect, useState } from 'react';
 import { StyleProp, Text, TextStyle, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
 import { spring } from '../../constants/motion';
 import { LTR } from '../../constants/rtl';
 import { Heebo } from '../../constants/theme';
@@ -9,10 +9,11 @@ import { Heebo } from '../../constants/theme';
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 function Digit({ digit, height, width, delay, textStyle }: { digit: number; height: number; width: number; delay: number; textStyle: StyleProp<TextStyle> }) {
+  const reduced = useReducedMotion();
   const y = useSharedValue(-digit * height);
   useEffect(() => {
-    y.value = withDelay(delay, withSpring(-digit * height, spring.digit));
-  }, [digit, height, delay, y]);
+    y.value = reduced ? -digit * height : withDelay(delay, withSpring(-digit * height, spring.digit));
+  }, [digit, height, delay, reduced, y]);
   const column = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
   return (

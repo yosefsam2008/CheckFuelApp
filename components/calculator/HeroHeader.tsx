@@ -8,7 +8,15 @@ import { LTR } from '../../constants/rtl';
 import { colors, Heebo } from '../../constants/theme';
 import { InfoHalo } from './Halo';
 
-export function HeroHeader({ onInfo }: { onInfo: () => void }) {
+export function HeroHeader({
+  onInfo,
+  title = 'כמה זה יעלה לי?',
+  subtitle = 'המחיר המדויק לנסיעה, לפני שיוצאים',
+}: {
+  onInfo: () => void;
+  title?: string;
+  subtitle?: string;
+}) {
   const insets = useSafeAreaInsets();
   const titleIn = useEnter(0);
   const subIn = useEnter(60);
@@ -31,10 +39,10 @@ export function HeroHeader({ onInfo }: { onInfo: () => void }) {
       </View>
 
       <Animated.Text style={[styles.title, titleIn]} accessibilityRole="header">
-        כמה זה יעלה לי?
+        {title}
       </Animated.Text>
       <Animated.Text style={[styles.subtitle, subIn]} numberOfLines={1}>
-        המחיר המדויק לנסיעה, לפני שיוצאים
+        {subtitle}
       </Animated.Text>
     </LinearGradient>
   );

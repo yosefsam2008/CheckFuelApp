@@ -163,6 +163,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="vehicles"
           options={{
+            headerShown: false, // the vehicles hero has its own brand row and info button
             tabBarLabel: 'הרכבים שלי',
             tabBarIcon: ({ color, size }) => <MaterialIcons name="directions-car" color={color} size={size} />,
           }}

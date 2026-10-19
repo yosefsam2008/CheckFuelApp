@@ -24,9 +24,6 @@ const R = 4;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedSvgText = Animated.createAnimatedComponent(SvgText);
 
-// LRI ... PDI keeps "₪481" in order inside Hebrew text
-const ltr = (s: string) => `⁦${s}⁩`;
-
 function barPath(h: number) {
   'worklet';
   if (h < 0.5) return 'M0,0';
@@ -79,7 +76,7 @@ function Bar({ index, monthKey, total, max, on, onPress }: { index: number; mont
           fontFamily={Heebo.bold}
           fill={colors.text}
         >
-          {ltr(`₪${formatAmount(total, 0)}`)}
+          {`₪${formatAmount(total, 0)}`}
         </AnimatedSvgText>
         <SvgText
           x={COL_W / 2}

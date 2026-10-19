@@ -15,8 +15,10 @@ import { NO_TOUCH } from '../../constants/rtl';
 import { colors, Heebo, radius } from '../../constants/theme';
 import { dayLabel, tripTime } from '../../lib/calc/monthly';
 import { formatAmount } from '../../lib/format';
+import type { Vehicle } from '../../lib/tripCost';
 import type { TripRecord } from '../../types/trip';
 import { PressableScale } from '../calculator/PressableScale';
+import { vehicleTitle } from '../calculator/VehiclePriceCard';
 import { LtrText } from './LtrText';
 
 const PAD_X = 24;
@@ -132,7 +134,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
         <View style={styles.measure} onLayout={(e) => (detailH.value = e.nativeEvent.layout.height)}>
           <View style={styles.dl}>
             <Reveal p={p} i={0}>
-              <Line first label="רכב" value={`${trip.vehicleName} ${trip.vehicleModel}`.trim()} ltr />
+              <Line first label="רכב" value={vehicleTitle({ name: trip.vehicleName, model: trip.vehicleModel } as Vehicle)} ltr />
             </Reveal>
             <Reveal p={p} i={1}>
               <Line label={ev ? 'חשמל שנצרך' : 'דלק שנצרך'} value={used.toFixed(1)} unit={ev ? 'קוט״ש' : 'ליטר'} />

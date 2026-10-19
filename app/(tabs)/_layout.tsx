@@ -12,13 +12,12 @@ import { InfoMenuContext } from '../../hooks/use-info-menu';
 import { PRIVACY_POLICY_URL } from '../../legal/LEGAL_UI_STRINGS_HE';
 import { privacyOptionsRequired, showPrivacyOptions } from '../../lib/ads/initAds';
 import LegalScreen from '../LegalScreen';
-import UserGuideScreen from '../UserGuideScreen';
 
 const TEAL = '#009688';
 
-type MenuView = 'menu' | 'legal' | 'guide';
+type MenuView = 'menu' | 'legal';
 
-// Info panel (guide, legal). Legal/guide render inside the same Modal: iOS can't present a second modal while the menu is dismissing
+// Info panel. Legal renders inside the same Modal: iOS can't present a second modal while the menu is dismissing
 function SideMenu({ visible, onClose, onDataDeleted }: { visible: boolean; onClose: () => void; onDataDeleted: () => void }) {
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<MenuView>('menu');
@@ -56,15 +55,10 @@ function SideMenu({ visible, onClose, onDataDeleted }: { visible: boolean; onClo
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
       {view === 'legal' && <LegalScreen onClose={() => setView('menu')} />}
-      {view === 'guide' && <UserGuideScreen onClose={() => setView('menu')} />}
       {view === 'menu' && (
         <View style={styles.overlay}>
           <View style={[styles.panel, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
             <Text style={styles.brand}>מידע</Text>
-            <TouchableOpacity style={styles.item} onPress={() => setView('guide')} accessibilityRole="button">
-              <MaterialIcons name="help-outline" size={24} color="#555" />
-              <Text style={styles.itemText}>מדריך למשתמש</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.item} onPress={() => setView('legal')} accessibilityRole="button">
               <MaterialIcons name="policy" size={24} color="#555" />
               <Text style={styles.itemText}>הצהרות משפטיות</Text>

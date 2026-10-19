@@ -67,7 +67,6 @@ export default function RootLayout() {
       <Stack.Screen name="addVehicleByPlate" />
       <Stack.Screen name="addVehicle" />
       <Stack.Screen name="LegalScreen" />
-      <Stack.Screen name="UserGuideScreen" />
     </Stack>
     </BottomSheetModalProvider>
     </GestureHandlerRootView>

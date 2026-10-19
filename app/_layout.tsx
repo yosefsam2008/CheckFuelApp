@@ -1,4 +1,16 @@
+import {
+  Heebo_400Regular,
+  Heebo_500Medium,
+  Heebo_600SemiBold,
+  Heebo_700Bold,
+  Heebo_800ExtraBold,
+  Heebo_900Black,
+  useFonts,
+} from '@expo-google-fonts/heebo';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ReducedMotionConfig, ReduceMotion } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { StatusBar, Platform, I18nManager } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -7,6 +19,7 @@ import { runAutoMigration } from '../lib/utils/evDataMigration';
 import * as Updates from 'expo-updates';
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({ Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold, Heebo_900Black });
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -47,7 +60,12 @@ export default function RootLayout() {
     initializeApp();
   }, []);
 
+  if (!fontsLoaded) return null;
+
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ReducedMotionConfig mode={ReduceMotion.Never} />
+    <BottomSheetModalProvider>
     <Stack screenOptions={{
       headerShown: false,
       contentStyle: { backgroundColor: '#f5f7fa' }
@@ -58,5 +76,7 @@ export default function RootLayout() {
       <Stack.Screen name="LegalScreen" />
       <Stack.Screen name="UserGuideScreen" />
     </Stack>
+    </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }

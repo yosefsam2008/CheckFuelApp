@@ -22,7 +22,8 @@
       "requireFullScreen": true,
       "buildNumber": "2.4.0",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["waze", "comgooglemaps"]
       }
     },
     "android": {
@@ -46,6 +47,12 @@
       "expo-router",
       "expo-web-browser",
       "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "CheckFuel משתמשת במיקום שלך כדי לחשב את מרחק הנסיעה ליעד."
+        }
+      ],
       [
         "expo-splash-screen",
         {

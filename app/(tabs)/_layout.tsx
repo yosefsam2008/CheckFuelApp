@@ -2,10 +2,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CheckFuelTabBar } from '../../components/nav/CheckFuelTabBar';
 import { FirstLaunchModal } from '../../components/modals/FirstLaunchModal';
+import { InfoMenuContext } from '../../hooks/use-info-menu';
 import LegalScreen from '../LegalScreen';
 import UserGuideScreen from '../UserGuideScreen';
 
@@ -50,9 +52,8 @@ function SideMenu({ visible, onClose }: { visible: boolean; onClose: () => void 
 export default function TabsLayout() {
   const [showFirstLaunch, setShowFirstLaunch] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const openMenu = useCallback(() => setMenuOpen(true), []);
 
-  // מקבל את המידות המדויקות של שטחי המערכת (כולל פס הניווט למטה)
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const checkFirstLaunch = async () => {
@@ -82,11 +83,12 @@ export default function TabsLayout() {
   };
 
   return (
-    <>
+    <InfoMenuContext.Provider value={openMenu}>
       <FirstLaunchModal visible={showFirstLaunch} onAccept={handleAccept} />
       <SideMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <Tabs
+        tabBar={(props) => <CheckFuelTabBar {...props} />}
         screenOptions={{
           headerShown: true,
           headerTitle: 'CheckFuel',
@@ -104,25 +106,12 @@ export default function TabsLayout() {
             </TouchableOpacity>
           ),
           sceneStyle: { backgroundColor: '#f5f7fa' },
-          tabBarActiveTintColor: TEAL,
-          tabBarInactiveTintColor: '#999',
-          // גובה דינמי וריווח תחתון שמתחשב בפס הניווט של המערכת
-          tabBarStyle: {
-            height: 60 + insets.bottom,
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 5,
-            paddingTop: 5,
-            backgroundColor: '#ffffff',
-            borderTopWidth: 1,
-            borderTopColor: '#e0e0e0',
-          },
-          tabBarLabelStyle: { fontWeight: 'bold', fontSize: 12 },
-          tabBarItemStyle: { width: Platform.OS === 'ios' ? 80 : 70 },
-          tabBarHideOnKeyboard: true,
         }}
       >
         <Tabs.Screen
           name="calculator"
           options={{
+            headerShown: false, // the calculator hero has its own brand row and info button
             tabBarLabel: 'מחשבון דלק',
             tabBarIcon: ({ color, size }) => <MaterialIcons name="calculate" color={color} size={size} />,
           }}
@@ -142,7 +131,7 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-    </>
+    </InfoMenuContext.Provider>
   );
 }
 

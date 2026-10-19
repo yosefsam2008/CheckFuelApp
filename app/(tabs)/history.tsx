@@ -1,1240 +1,284 @@
 // app/(tabs)/history.tsx
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "@react-navigation/native";
-import { useRouter } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
-import {
-  Alert,
-  Animated,
-  FlatList,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { color } from "../../constants/theme";
-import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import { History as HistoryIcon } from 'lucide-react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { HeroHeader } from '../../components/calculator/HeroHeader';
+import { PressableScale } from '../../components/calculator/PressableScale';
+import { MonthSummary } from '../../components/history/MonthSummary';
+import { TripRow } from '../../components/history/TripRow';
+import { dur, ease, haptic, useEnter } from '../../constants/motion';
+import { colors, Heebo, radius, shadow, space } from '../../constants/theme';
+import { useOpenInfoMenu } from '../../hooks/use-info-menu';
+import { loadTrips } from '../../lib/calc/history';
+import { lastMonths, monthKey, monthName, monthSummary } from '../../lib/calc/monthly';
+import { LEGAL_UI_STRINGS } from '../../legal/LEGAL_UI_STRINGS_HE';
+import type { TripRecord } from '../../types/trip';
 
-// Import unified icons from Lucide
-import { 
-  Zap, 
-  Fuel, 
-  Trash2, 
-  AlertTriangle, 
-  ClipboardList, 
-  Calculator, 
-  Calendar, 
-  TrendingUp, 
-  Info 
-} from 'lucide-react-native';
+// Banner ads only exist on native
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 
-// Conditional import for ads - only load on native platforms
-const AdBanner = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
+const KEY = 'tripHistory';
+const GAP = 24;
+const SLIDE = 24;
 
-interface TripRecord {
-  id: string;
-  date: string;
-  timestamp: number;
-  distance: number;
-  vehicleName: string;
-  vehicleModel: string;
-  fuelType: string;
-  totalCost: number;
-  fuelConsumed: number;
-  costPerKm: number;
-  consumption: number;
-  energyType: "fuel" | "electricity";
+type ToastMsg = { text: string; undo?: TripRecord[]; error?: boolean };
+
+const readTrips = async (): Promise<TripRecord[]> => {
+  const stored = await AsyncStorage.getItem(KEY);
+  return stored ? JSON.parse(stored) : [];
+};
+
+const persist = async (next: TripRecord[]) => {
+  try {
+    if (next.length) await AsyncStorage.setItem(KEY, JSON.stringify(next));
+    else await AsyncStorage.removeItem(KEY);
+    return true;
+  } catch (error) {
+    console.error('Failed to save history:', error);
+    return false;
+  }
+};
+
+/** Fade + rise on first show only (month changes and deletes must not replay it) */
+function Enter({ delay, animate, children, style }: { delay: number; animate: boolean; children: React.ReactNode; style?: object }) {
+  const anim = useEnter(delay);
+  const [first] = useState(animate); // fixed at mount: flipping it later would remount the children
+  return first ? <Animated.View style={[style, anim]}>{children}</Animated.View> : <View style={style}>{children}</View>;
 }
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const [history, setHistory] = useState<TripRecord[]>([]);
-  const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastOpacity = useRef(new Animated.Value(0)).current;
-  const modalScale = useRef(new Animated.Value(0.9)).current;
-  const modalOpacity = useRef(new Animated.Value(0)).current;
+  const openInfo = useOpenInfoMenu();
+  const reduced = useReducedMotion();
 
-  const cardAnimations = useRef<{ [key: string]: Animated.Value }>({}).current;
+  const [trips, setTripsState] = useState<TripRecord[]>([]);
+  const tripsRef = useRef<TripRecord[]>([]);
+  const [now, setNow] = useState(Date.now());
+  const [selected, setSelected] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false);
+  const [toast, setToast] = useState<ToastMsg | null>(null);
+  const [intro, setIntro] = useState(true);
 
-  const showToast = (message: string, duration = 2000) => {
-    setToastMessage(message);
-    Animated.spring(toastOpacity, {
-      toValue: 1,
-      friction: 8,
-      tension: 40,
-      useNativeDriver: true,
-    }).start(() => {
-      setTimeout(() => {
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => setToastMessage(null));
-      }, duration);
-    });
+  const setTrips = (next: TripRecord[]) => {
+    tripsRef.current = next;
+    setTripsState(next);
   };
+  const failToast = () => setToast({ text: LEGAL_UI_STRINGS.errors.apiError, error: true });
 
-  const loadHistory = useCallback(async () => {
-    try {
-      const stored = await AsyncStorage.getItem("tripHistory");
-      if (!stored) {
-        setHistory([]);
-        return;
-      }
-      
-      const parsed = JSON.parse(stored) as TripRecord[];
-      if (!Array.isArray(parsed)) {
-        throw new Error("Invalid history data format");
-      }
-      
-      const sorted = parsed.sort((a, b) => b.timestamp - a.timestamp);
-      setHistory(sorted);
-      
-      sorted.forEach((trip, index) => {
-        if (!cardAnimations[trip.id]) {
-          cardAnimations[trip.id] = new Animated.Value(0);
-          Animated.spring(cardAnimations[trip.id], {
-            toValue: 1,
-            delay: index * 50,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }).start();
-        }
-      });
-    } catch (error) {
-      console.error("Failed to load history:", error);
-      showToast(LEGAL_UI_STRINGS.errors.apiError);
-      setHistory([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const t = setTimeout(() => setIntro(false), 1000);
+    return () => clearTimeout(t);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadHistory();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+      let alive = true;
+      (async () => {
+        try {
+          const loaded = await loadTrips();
+          if (!alive) return;
+          setNow(Date.now());
+          setTrips(loaded);
+        } catch (error) {
+          console.error('Failed to load history:', error);
+          if (alive) failToast();
+        }
+      })();
+      return () => {
+        alive = false;
+      };
+    }, []),
   );
 
-  const deleteTrip = async (id: string) => {
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), toast.undo ? 4000 : 2400);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const currentKey = monthKey(now);
+  const selectedKey = selected ?? currentKey;
+  const months = lastMonths(trips, now);
+  const summary = monthSummary(trips, selectedKey, now);
+
+  // list slides in from the side of the month that was picked: newer months sit at the left end of the chart
+  const slideX = useSharedValue(0);
+  const slideO = useSharedValue(1);
+  const prevKey = useRef(selectedKey);
+  useEffect(() => {
+    const dir = Math.sign(selectedKey - prevKey.current);
+    prevKey.current = selectedKey;
+    if (!dir || reduced) return;
+    slideX.value = dir > 0 ? -SLIDE : SLIDE;
+    slideO.value = 0;
+    slideX.value = withTiming(0, { duration: dur.std, easing: ease.out });
+    slideO.value = withTiming(1, { duration: dur.std, easing: ease.out });
+  }, [selectedKey, reduced, slideX, slideO]);
+  const slideStyle = useAnimatedStyle(() => ({ opacity: slideO.value, transform: [{ translateX: slideX.value }] }));
+
+  const selectMonth = (key: number) => {
+    setSelected(key);
+    setOpenId(null);
+    setConfirmAll(false);
+  };
+
+  // optimistic: remove, write, and put everything back if the write fails
+  const remove = async (next: TripRecord[], removed: TripRecord[]) => {
+    const prev = tripsRef.current;
+    setTrips(next);
+    setOpenId(null);
+    setConfirmAll(false);
+    if (await persist(next)) setToast({ text: 'הנסיעה נמחקה', undo: removed });
+    else {
+      setTrips(prev);
+      failToast();
+    }
+  };
+  const deleteTrip = (trip: TripRecord) => remove(tripsRef.current.filter((t) => t.id !== trip.id), [trip]);
+  const clearAll = () => {
+    haptic.press();
+    remove([], tripsRef.current);
+  };
+
+  const undo = async (items: TripRecord[]) => {
+    setToast(null);
     try {
-      const updated = history.filter((trip) => trip.id !== id);
-      setHistory(updated);
-      await AsyncStorage.setItem("tripHistory", JSON.stringify(updated));
-      closeDetailsModal();
-      setShowDeleteConfirm(false);
-      setSelectedTrip(null);
-      showToast(LEGAL_UI_STRINGS.toasts.dataDeleted);
+      const have = await readTrips();
+      const ids = new Set(have.map((t) => t.id));
+      const merged = [...have, ...items.filter((t) => !ids.has(t.id))];
+      await AsyncStorage.setItem(KEY, JSON.stringify(merged));
+      setTrips(merged);
     } catch (error) {
-      console.error("Failed to delete trip:", error);
-      showToast(LEGAL_UI_STRINGS.errors.apiError);
+      console.error('Failed to restore trips:', error);
+      failToast();
     }
   };
 
-  const clearAllHistory = async () => {
-    try {
-      await AsyncStorage.removeItem("tripHistory");
-      setHistory([]);
-      setShowClearAllConfirm(false);
-      showToast(LEGAL_UI_STRINGS.toasts.dataDeleted);
-    } catch (error) {
-      console.error("Failed to clear history:", error);
-      showToast(LEGAL_UI_STRINGS.errors.apiError);
-    }
-  };
-
-  const confirmClearAllHistory = () => {
-    setShowClearAllConfirm(true);
-  };
-
-  const formatDate = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return `היום, ${date.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`;
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return `אתמול, ${date.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`;
-    } else {
-      return date.toLocaleDateString("he-IL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-  };
-
-  // Helper mapping to return unified SVG Icons instead of text emojis
-  const getFuelIcon = (fuelType: string, size: number, color: string) => {
-    if (fuelType === "Electric") return <Zap size={size} color={color} />;
-    return <Fuel size={size} color={color} />;
-  };
-
-  const openTripDetails = (trip: TripRecord) => {
-    setSelectedTrip(trip);
-    setShowDetailsModal(true);
-    modalScale.setValue(0.9);
-    modalOpacity.setValue(0);
-    
-    Animated.parallel([
-      Animated.spring(modalScale, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const closeDetailsModal = () => {
-    Animated.parallel([
-      Animated.timing(modalScale, {
-        toValue: 0.9,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => setShowDetailsModal(false));
-  };
-
-  const TripCard = ({ item, index }: { item: TripRecord; index: number }) => {
-    const isElectric = item.energyType === "electricity";
-    const cardAnim = cardAnimations[item.id] || new Animated.Value(1);
-
-    const animRef = useRef(cardAnim || new Animated.Value(1)).current;
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-
-    if (!cardAnimations[item.id]) {
-    console.warn(`Missing animation for trip ${item.id}`);
-    cardAnimations[item.id] = animRef;
-  }
-  
-    const handlePressIn = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 0.96,
-        friction: 8,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const handlePressOut = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    return (
-      <Animated.View
-        style={[
-          {
-            opacity: cardAnim,
-            transform: [
-              {
-                translateY: cardAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [50, 0],
-                }),
-              },
-              { scale: scaleAnim },
-            ],
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.tripCard}
-          onPress={() => openTripDetails(item)}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          activeOpacity={1}
-        >
-          <View
-            style={[
-              styles.cardGradient,
-              isElectric ? styles.cardGradientElectric : styles.cardGradientFuel,
-            ]}
-          />
-
-          {/* Replaced massive background emoji with scaled SVG icon */}
-          <View style={styles.cardBgIconWrapper}>
-             {getFuelIcon(item.fuelType, 140, "#000000")}
-          </View>
-
-          <View style={styles.cardContent}>
-            <View style={styles.cardTop}>
-              <View style={styles.cardTopRight}>
-                <View style={styles.emojiCircle}>
-                  {getFuelIcon(item.fuelType, 24, "#00BFA5")}
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardVehicle} numberOfLines={1}>
-                    {item.vehicleName}
-                  </Text>
-                  <Text style={styles.cardModel} numberOfLines={1}>
-                    {item.vehicleModel}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.cardDate}>
-                <Text style={styles.cardDateText}>{formatDate(item.timestamp)}</Text>
-              </View>
-            </View>
-
-            <View style={styles.cardDivider} />
-
-            <View style={styles.cardBottom}>
-              <View style={styles.cardStat}>
-                <Text style={styles.cardStatValue}>₪{item.totalCost.toFixed(2)}</Text>
-                <Text style={styles.cardStatLabel}>עלות כוללת</Text>
-              </View>
-              <View style={styles.cardStatDivider} />
-              <View style={styles.cardStat}>
-                <Text style={styles.cardStatValue}>{item.distance}</Text>
-                <Text style={styles.cardStatLabel}>ק״מ</Text>
-              </View>
-              <View style={styles.cardStatDivider} />
-              <View style={styles.cardStat}>
-                <Text style={styles.cardStatValue}>₪{item.costPerKm.toFixed(2)}</Text>
-                <Text style={styles.cardStatLabel}>לק״מ</Text>
-              </View>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
-
-  const now = new Date();
-  const monthCost = history
-    .filter((t) => {
-      const d = new Date(t.timestamp);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    })
-    .reduce((sum, t) => sum + t.totalCost, 0);
-
-  // Policy-compliant Feed Banner Ad
-  const FeedBannerAd = () => (
-    <View style={styles.feedAdContainer}>
-      <Text style={styles.adTagSmall}>פרסומת</Text>
-      <AdBanner />
-    </View>
-  );
+  const empty = trips.length === 0;
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerGradient} />
-        <Text style={styles.title}>היסטוריית נסיעות</Text>
-        <Text style={styles.subtitle}>
-          {history.length > 0
-            ? `${history.length} נסיעות שמורות${monthCost > 0 ? ` • החודש: ₪${monthCost.toFixed(0)}` : ""}`
-            : "התחל לחשב"}
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <HeroHeader onInfo={openInfo} title="כמה הוצאתי על דלק?" subtitle="כל שקל על הכביש, במבט אחד" />
 
-      {/* Toast */}
-      {toastMessage && (
+        {empty ? (
+          <Enter delay={120} animate={intro} style={styles.top}>
+            <View style={styles.emptyCard}>
+              <View style={styles.tile}>
+                <HistoryIcon size={24} color={colors.textMuted} strokeWidth={2} />
+              </View>
+              <Text style={styles.emptyTitle}>עוד אין נסיעות שמורות</Text>
+              <Text style={styles.emptySub}>{'אחרי חישוב, לוחצים "שמור" והנסיעה מופיעה כאן עם סיכום חודשי.'}</Text>
+              <PressableScale onPress={() => router.navigate('/calculator')} style={styles.cta} accessibilityRole="button">
+                <Text style={styles.ctaText}>לחישוב ראשון</Text>
+              </PressableScale>
+            </View>
+          </Enter>
+        ) : (
+          <>
+            <Enter delay={120} animate={intro} style={styles.top}>
+              <MonthSummary summary={summary} months={months} selectedKey={selectedKey} onSelectMonth={selectMonth} isCurrent={selectedKey === currentKey} />
+            </Enter>
+
+            <Enter delay={240} animate={intro} style={styles.card}>
+              <View style={styles.head}>
+                <Text style={styles.headTitle}>נסיעות ב{monthName(selectedKey)}</Text>
+                <Text style={styles.headCount}>{summary.count} נסיעות</Text>
+              </View>
+              <Animated.View style={slideStyle}>
+                {summary.trips.length === 0 ? (
+                  <Text style={styles.none}>אין נסיעות בחודש הזה</Text>
+                ) : (
+                  summary.trips.map((t, i) => (
+                    <Enter key={t.id} delay={Math.min(280 + 40 * i, 520)} animate={intro}>
+                      <TripRow trip={t} first={i === 0} open={openId === t.id} onToggle={() => setOpenId(openId === t.id ? null : t.id)} onDelete={deleteTrip} />
+                    </Enter>
+                  ))
+                )}
+              </Animated.View>
+              <View style={styles.clear}>
+                {confirmAll ? (
+                  <View style={styles.confirm}>
+                    <Text style={styles.confirmQ}>למחוק את כל {trips.length} הנסיעות?</Text>
+                    <View style={styles.btns}>
+                      <PressableScale onPress={() => setConfirmAll(false)} style={[styles.btn, styles.ghost]} accessibilityRole="button">
+                        <Text style={styles.btnText}>ביטול</Text>
+                      </PressableScale>
+                      <PressableScale onPress={clearAll} style={[styles.btn, styles.danger]} accessibilityRole="button">
+                        <Text style={[styles.btnText, { color: colors.white }]}>מחק הכל</Text>
+                      </PressableScale>
+                    </View>
+                  </View>
+                ) : (
+                  <PressableScale onPress={() => setConfirmAll(true)} style={styles.askBtn} accessibilityRole="button">
+                    <Text style={[styles.btnText, { color: colors.error }]}>מחק את כל ההיסטוריה</Text>
+                  </PressableScale>
+                )}
+              </View>
+            </Enter>
+          </>
+        )}
+
+        <View style={styles.banner}>
+          <BannerAd />
+        </View>
+      </ScrollView>
+
+      {toast && (
         <Animated.View
-          style={[
-            styles.toast,
-            {
-              opacity: toastOpacity,
-              transform: [
-                {
-                  translateY: toastOpacity.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [20, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
+          entering={reduced ? undefined : FadeInDown.duration(dur.std)}
+          exiting={reduced ? undefined : FadeOut.duration(200)}
+          style={[styles.toast, toast.error && { backgroundColor: colors.error }]}
+          accessibilityLiveRegion="polite"
         >
-          <Text style={styles.toastText}>{toastMessage}</Text>
+          <Text style={styles.toastText}>{toast.text}</Text>
+          {toast.undo && (
+            <Pressable onPress={() => undo(toast.undo!)} hitSlop={12} style={styles.toastAction} accessibilityRole="button" accessibilityLabel="ביטול המחיקה">
+              <Text style={styles.toastActionText}>ביטול</Text>
+            </Pressable>
+          )}
         </Animated.View>
       )}
-
-      {history.length === 0 ? (
-        <>
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyCircle}>
-              <ClipboardList size={64} color="#00BFA5" />
-            </View>
-            <Text style={styles.emptyTitle}>{LEGAL_UI_STRINGS.empty.noHistory}</Text>
-            <Text style={styles.emptyText}>
-              {LEGAL_UI_STRINGS.empty.addFirst}
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => router.push("/calculator")}
-              activeOpacity={0.8}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                 <Calculator size={20} color="#fff" />
-                 <Text style={styles.emptyButtonText}>צור חישוב ראשון</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Fixed Ad pinned to the bottom, but using standard BANNER size */}
-          {Platform.OS !== 'web' && (
-            <View style={styles.emptyAdAbsolute}>
-              <AdBanner size="BANNER" />
-            </View>
-          )}
-        </>
-      ) : (
-        <>
-          <FlatList
-            data={history}
-            keyExtractor={(item, index) => item.id || `item-${index}`}
-            renderItem={({ item, index }) => {
-              // Show feed ad after every 3rd trip
-              const showAdAfterThisItem = (index + 1) % 3 === 0 && index < history.length - 1;
-              return (
-                <>
-                  <TripCard item={item} index={index} />
-                  {showAdAfterThisItem && Platform.OS !== 'web' && <FeedBannerAd />}
-                </>
-              );
-            }}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-
-          <TouchableOpacity
-            style={styles.clearAllButton}
-            onPress={confirmClearAllHistory}
-            activeOpacity={0.8}
-          >
-            <View style={styles.clearAllGradient} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 1 }}>
-              <Trash2 size={20} color="#fff" />
-              <Text style={styles.clearAllText}>נקה הכל</Text>
-            </View>
-          </TouchableOpacity>
-        </>
-      )}
-
-
-      {/* Trip Details Modal */}
-      <Modal
-        visible={showDetailsModal}
-        animationType="none"
-        transparent
-        onRequestClose={closeDetailsModal}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={closeDetailsModal}
-          />
-          <Animated.View
-            style={[
-              styles.modalContent,
-              {
-                opacity: modalOpacity,
-                transform: [{ scale: modalScale }],
-              },
-            ]}
-          >
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {selectedTrip && (
-                <>
-                  <View style={styles.modalHeader}>
-                    <View style={styles.modalEmojiCircle}>
-                      {getFuelIcon(selectedTrip.fuelType, 40, "#00BFA5")}
-                    </View>
-                    <Text style={styles.modalTitle}>{selectedTrip.vehicleName}</Text>
-                    <Text style={styles.modalSubtitle}>{selectedTrip.vehicleModel}</Text>
-                  </View>
-
-                  <View style={styles.costHero}>
-                    <View style={styles.costHeroGradient} />
-                    <Text style={styles.costHeroLabel}>עלות כוללת</Text>
-                    <Text style={styles.costHeroValue}>₪{selectedTrip.totalCost.toFixed(2)}</Text>
-                    <View style={styles.costHeroStats}>
-                      <View style={styles.costHeroStat}>
-                        <Text style={styles.costHeroStatValue}>
-                          {selectedTrip.distance}
-                        </Text>
-                        <Text style={styles.costHeroStatLabel}>ק״מ</Text>
-                      </View>
-                      <View style={styles.costHeroDivider} />
-                      <View style={styles.costHeroStat}>
-                        <Text style={styles.costHeroStatValue}>
-                          ₪{selectedTrip.costPerKm.toFixed(2)}
-                        </Text>
-                        <Text style={styles.costHeroStatLabel}>לק״מ</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.detailsContainer}>
-                    <DetailRow
-                      iconNode={<Calendar size={20} color="#666" />}
-                      label="תאריך"
-                      value={formatDate(selectedTrip.timestamp)}
-                    />
-                    <DetailRow
-                      iconNode={selectedTrip.energyType === "electricity" ? <Zap size={20} color="#666" /> : <Fuel size={20} color="#666" />}
-                      label={selectedTrip.energyType === "electricity" ? "חשמל" : "דלק"}
-                      value={`${selectedTrip.fuelConsumed.toFixed(2)} ${
-                        selectedTrip.energyType === "electricity" ? "kWh" : "ליטר"
-                      }`}
-                    />
-                    <DetailRow
-                      iconNode={<TrendingUp size={20} color="#666" />}
-                      label="יעילות"
-                      value={`${selectedTrip.consumption.toFixed(2)} ${
-                        selectedTrip.energyType === "electricity" ? "km/%" : "km/l"
-                      }`}
-                    />
-                    <DetailRow
-                      iconNode={<Info size={20} color="#666" />}
-                      label="סוג"
-                      value={selectedTrip.fuelType}
-                      isLast
-                    />
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => setShowDeleteConfirm(true)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                       <Trash2 size={18} color="#FF5252" />
-                       <Text style={styles.deleteButtonText}>מחק נסיעה</Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={closeDetailsModal}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.closeButtonText}>סגור</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </ScrollView>
-          </Animated.View>
-        </View>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        visible={showDeleteConfirm}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setShowDeleteConfirm(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowDeleteConfirm(false)}
-          />
-          <View style={styles.confirmModal}>
-            <View style={styles.confirmIconCircle}>
-              <Trash2 size={40} color="#FF5252" />
-            </View>
-            <Text style={styles.confirmTitle}>מחיקת נסיעה</Text>
-            <Text style={styles.confirmText}>
-              האם אתה בטוח שברצונך למחוק{"\n"}נסיעה זו? הפעולה בלתי הפיכה.
-            </Text>
-            <View style={styles.confirmActions}>
-              <TouchableOpacity
-                style={[styles.confirmButton, styles.confirmCancel]}
-                onPress={() => setShowDeleteConfirm(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.confirmCancelText}>ביטול</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmButton, styles.confirmDelete]}
-                onPress={() => {
-                  if (selectedTrip) {
-                    if (Platform.OS === "web") {
-                      const confirmed = confirm(LEGAL_UI_STRINGS.confirmations.deleteHistory);
-                      if (confirmed) {
-                        deleteTrip(selectedTrip.id);
-                      }
-                    } else {
-                      Alert.alert(
-                        "מחק נסיעה",
-                        LEGAL_UI_STRINGS.confirmations.deleteHistory,
-                        [
-                          {
-                            text: "ביטול",
-                            onPress: () => {},
-                            style: "cancel",
-                          },
-                          {
-                            text: "מחק",
-                            onPress: () => deleteTrip(selectedTrip.id),
-                            style: "destructive",
-                          },
-                        ]
-                      );
-                    }
-                  }
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.confirmDeleteText}>מחק</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Clear All History Confirmation Modal */}
-      <Modal
-        visible={showClearAllConfirm}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setShowClearAllConfirm(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowClearAllConfirm(false)}
-          />
-          <View style={styles.confirmModal}>
-            <View style={[styles.confirmIconCircle, { backgroundColor: '#FFFBEB' }]}>
-              <AlertTriangle size={40} color="#F59E0B" />
-            </View>
-            <Text style={styles.confirmTitle}>מחיקת כל ההיסטוריה</Text>
-            <Text style={styles.confirmText}>
-              האם אתה בטוח שברצונך למחוק את כל{"\n"}
-              היסטוריית הנסיעות?{"\n\n"}
-              פעולה זו תמחק לצמיתות את כל הרשומות{"\n"}
-              שלך ולא ניתן יהיה לשחזר אותן.
-            </Text>
-            <View style={styles.confirmActions}>
-              <TouchableOpacity
-                style={[styles.confirmButton, styles.confirmCancel]}
-                onPress={() => setShowClearAllConfirm(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.confirmCancelText}>ביטול</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmButton, styles.confirmDelete]}
-                onPress={clearAllHistory}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.confirmDeleteText}>מחק הכל</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
-const DetailRow = ({
-  iconNode,
-  label,
-  value,
-  isLast = false,
-}: {
-  iconNode: React.ReactNode;
-  label: string;
-  value: string;
-  isLast?: boolean;
-}) => (
-  <View style={[styles.detailRow, isLast && styles.detailRowLast]}>
-    <View style={styles.detailLeft}>
-      {iconNode}
-      <Text style={styles.detailLabel}>{label}</Text>
-    </View>
-    <Text style={styles.detailValue}>{value}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f7fa",
-  },
-  header: {
-    paddingTop: 16, // the navigation header already covers the status bar
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    position: "relative",
-    overflow: "hidden",
-  },
-  headerGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    backgroundColor: "#00BFA5",
-    opacity: 0.08,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    textAlign: "center",
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    fontWeight: "500",
-  },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingBottom: 96 },
+  // the wrapper must sit above the hero because the card inside overlaps it
+  top: { zIndex: 2 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.card, marginHorizontal: space.gutter, marginTop: GAP, overflow: 'hidden', ...shadow.card },
+  head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingTop: 22, paddingHorizontal: GAP, paddingBottom: 10 },
+  headTitle: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
+  headCount: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted },
+  none: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, paddingVertical: 20, paddingHorizontal: GAP },
+  clear: { minHeight: 68, justifyContent: 'center', paddingVertical: 12, paddingHorizontal: GAP },
+  confirm: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  confirmQ: { fontFamily: Heebo.bold, fontSize: 14, color: colors.text, flexShrink: 1 },
+  btns: { flexDirection: 'row', gap: 8 },
+  btn: { height: 44, minWidth: 44, paddingHorizontal: 18, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  ghost: { backgroundColor: colors.bg },
+  danger: { backgroundColor: colors.error },
+  askBtn: { height: 44, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  btnText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.text },
+  banner: { alignItems: 'center', marginTop: GAP },
 
-  // Empty State
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
-    paddingBottom: 80, // Just enough space for the smaller banner ad
-  },
-  emptyAdAbsolute: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 20 : 0,
-    left: 0,
-    right: 0,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f5f7fa', // Matches the screen background perfectly
-    zIndex: 10,
-  },
-  emptyCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
-    shadowColor: "#00BFA5",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  emptyContentWrapper: {
-    flex: 1,
-    justifyContent: "center", 
-    alignItems: "center",
-  },
-  emptyTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  emptyButton: {
-    backgroundColor: "#00BFA5",
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 16,
-    shadowColor: "#00BFA5",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  emptyButtonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
+  emptyCard: { backgroundColor: colors.surface, borderRadius: radius.card, marginTop: -44, marginHorizontal: space.gutter, paddingTop: GAP, paddingHorizontal: 20, paddingBottom: GAP, alignItems: 'flex-start', gap: 6, ...shadow.card },
+  tile: { width: 40, height: 40, borderRadius: radius.tile, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  emptyTitle: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
+  emptySub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted },
+  cta: { height: 44, marginTop: 10, paddingHorizontal: 20, borderRadius: radius.pill, backgroundColor: colors.selectedFill, alignItems: 'center', justifyContent: 'center' },
+  ctaText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.guideText },
 
-  // Trip Cards
-  listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 120, // This 120px gap allows the last card to scroll completely above the red button
-  },
-  tripCard: {
-    height: 160,
-    borderRadius: 24,
-    marginBottom: 16,
-    backgroundColor: "#fff",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  cardGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.6,
-  },
-  cardGradientFuel: {
-    backgroundColor: "#FF6B6B",
-    opacity: 0.05,
-  },
-  cardGradientElectric: {
-    backgroundColor: "#4ECDC4",
-    opacity: 0.08,
-  },
-  cardBgIconWrapper: {
-    position: "absolute",
-    right: -20,
-    bottom: -30,
-    opacity: 0.04,
-  },
-  cardContent: {
-    flex: 1,
-    padding: 20,
-  },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  cardTopRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  emojiCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(0, 191, 165, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 12,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  cardVehicle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 2,
-    letterSpacing: -0.3,
-  },
-  cardModel: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  cardDate: {
-    backgroundColor: "rgba(0, 0, 0, 0.03)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  cardDateText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.06)",
-    marginBottom: 16,
-  },
-  cardBottom: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-  },
-  cardStat: {
-    flex: 1,
-    alignItems: "center",
-  },
-  cardStatValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#00BFA5",
-    marginBottom: 2,
-    letterSpacing: -0.5,
-  },
-  cardStatLabel: {
-    fontSize: 12,
-    color: "#888",
-    fontWeight: "600",
-  },
-  cardStatDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: "rgba(0, 0, 0, 0.06)",
-  },
-
-  clearAllButton: {
-    position: "absolute",
-    bottom: Platform.OS === "ios" ? 30 : 20, // Sticks nicely to the bottom
-    left: 20,
-    right: 20,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: "#FF5252",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#FF5252",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-    overflow: "hidden",
-    zIndex: 100, // Ensures it ALWAYS stays on top of the cards
-  },
-  stickyBottomAd: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    alignItems: "center",
-    backgroundColor: "#fff", 
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
-    paddingTop: 6,
-    paddingBottom: Platform.OS === "ios" ? 20 : 6, 
-    zIndex: 50,
-  },
-  clearAllGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
-  clearAllText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 420,
-    maxHeight: "85%",
-    backgroundColor: "#fff",
-    borderRadius: 28,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 24,
-  },
-  modalHeader: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  modalEmojiCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(0, 191, 165, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 4,
-    textAlign: "center",
-    letterSpacing: -0.5,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "500",
-    textAlign: "center",
-  },
-
-  costHero: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    alignItems: "center",
-    position: "relative",
-    overflow: "hidden",
-  },
-  costHeroGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#00BFA5",
-    opacity: 0.05,
-  },
-  costHeroLabel: {
-    fontSize: 14,
-   color: "#666",
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  costHeroValue: {
-    fontSize: 48,
-    fontWeight: "900",
-    color: "#00BFA5",
-    marginBottom: 16,
-    letterSpacing: -1,
-  },
-  costHeroStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  costHeroStat: {
-    alignItems: "center",
-  },
-  costHeroStatValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 2,
-  },
-  costHeroStatLabel: {
-    fontSize: 12,
-    color: "#888",
-    fontWeight: "600",
-  },
-  costHeroDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-  },
-
-  detailsContainer: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 20,
-    padding: 4,
-    marginBottom: 20,
-  },
-  detailRow: {
-    flexDirection: "row-reverse",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.05)",
-  },
-  detailRowLast: {
-    borderBottomWidth: 0,
-  },
-  detailLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  detailLabel: {
-    fontSize: 15,
-    color: "#666",
-    fontWeight: "600",
-  },
-  detailValue: {
-    fontSize: 15,
-    color: "#1a1a1a",
-    fontWeight: "700",
-    textAlign: "right",
-  },
-
-  deleteButton: {
-    backgroundColor: "#FFF0F0",
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "#FF5252",
-  },
-  deleteButtonText: {
-    color: "#FF5252",
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: 0.3,
-  },
-  closeButton: {
-    paddingVertical: 14,
-  },
-  closeButtonText: {
-    color: "#00BFA5",
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: 0.3,
-  },
-
-  confirmModal: {
-    width: "90%",
-    maxWidth: 360,
-    backgroundColor: "#fff",
-    borderRadius: 28,
-    padding: 32,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 24,
-  },
-  confirmIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#FFF0F0",
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  confirmTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 12,
-    textAlign: "center",
-    color: "#1a1a1a",
-    letterSpacing: -0.5,
-  },
-  confirmText: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  confirmActions: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  confirmButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmCancel: {
-    backgroundColor: "#f0f0f0",
-  },
-  confirmCancelText: {
-    color: "#1a1a1a",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  confirmDelete: {
-    backgroundColor: "#FF5252",
-    shadowColor: "#FF5252",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  confirmDeleteText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-
-  toast: {
-    position: "absolute",
-    bottom: 120,
-    left: 40,
-    right: 40,
-    backgroundColor: "rgba(26, 26, 26, 0.95)",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 999,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-  },
-  toastText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-
-  emptyAdWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 260,
-    marginTop: 20, 
-  },
-  feedAdContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-    paddingVertical: 8,
-    backgroundColor: "transparent",
-  },
-  adTagSmall: {
-    fontSize: 10,
-    color: color.textSecondary,
-    marginBottom: 4,
-    writingDirection: "rtl",
-  },
+  toast: { position: 'absolute', start: space.gutter, end: space.gutter, bottom: space.gutter, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: colors.text, borderRadius: radius.pill, paddingVertical: 4, paddingStart: 18, paddingEnd: 8, minHeight: 48 },
+  toastText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.white, flexShrink: 1 },
+  toastAction: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
+  toastActionText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.selectedFill },
 });

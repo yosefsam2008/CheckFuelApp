@@ -161,6 +161,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="history"
           options={{
+            headerShown: false, // the history hero has its own brand row and info button
             tabBarLabel: 'היסטוריה',
             tabBarIcon: ({ color, size }) => <MaterialIcons name="history" color={color} size={size} />,
           }}

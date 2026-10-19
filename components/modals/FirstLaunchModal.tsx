@@ -11,10 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { color } from "../../constants/theme";
 import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
 
 const COLORS = {
   primary: "#34C759",
+  primaryStrong: color.brandGreenStrong, // fills that carry white text
   primaryDark: "#248A3D",
   primaryLight: "#A8E6CF",
   accent: "#007AFF",
@@ -26,8 +28,8 @@ const COLORS = {
   card: "#FFFFFF",
   cardBorder: "rgba(0, 0, 0, 0.04)",
   textPrimary: "#000000",
-  textSecondary: "#8E8E93",
-  textTertiary: "#AEAEB2",
+  textSecondary: color.textSecondary,
+  textTertiary: color.textSecondary,
   textOnPrimary: "#FFFFFF",
   overlay: "rgba(0, 0, 0, 0.4)",
   shadow: "#000000",
@@ -309,8 +311,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
+    borderColor: COLORS.primaryStrong,
   },
   checkmark: {
     color: COLORS.textOnPrimary,
@@ -332,7 +334,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     alignItems: "center",
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },

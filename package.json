@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "check:contrast": "ts-node --compiler-options {\\\"module\\\":\\\"commonjs\\\"} scripts/contrast-check.ts"
   },
   "dependencies": {
     "@expo-google-fonts/heebo": "^0.4.2",

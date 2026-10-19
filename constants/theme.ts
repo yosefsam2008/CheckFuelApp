@@ -5,6 +5,12 @@
 
 import { Platform } from 'react-native';
 
+// Contrast-checked text/fill colors live in tokens.ts (no react-native import, so scripts/contrast-check.ts runs in node).
+// The calculator design tokens (colors, radius, space, shadow, Heebo) are below and are the source of truth.
+export * from './tokens';
+
+// shortcut: Colors/Fonts below are template leftovers used only by dead code, delete with it (plan 1.5)
+
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 

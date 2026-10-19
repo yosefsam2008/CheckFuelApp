@@ -64,7 +64,6 @@ export default function RootLayout() {
       contentStyle: { backgroundColor: '#f5f7fa' }
     }}>
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="addVehicleByPlate" />
       <Stack.Screen name="addVehicle" />
       <Stack.Screen name="LegalScreen" />
     </Stack>

@@ -1,5 +1,5 @@
 // Plate lookup against data.gov.il plus the consumption estimate pipeline. Moved out of
-// app/addVehicleByPlate.tsx; the fallbacks and estimates are unchanged.
+// the former add-by-plate screen; the fallbacks and estimates are unchanged.
 import { calculateEVConsumptionAdvanced } from "../data/advancedEvConsumption";
 import { getKnownEngineCCs, lookupEngineCC } from "../data/engineDatabase";
 import {

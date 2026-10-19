@@ -1,684 +1,294 @@
-// app/AddVehicle.tsx
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Toast from "./Toast";
-import { color } from "../constants/theme";
-import { Vehicle } from "../lib/data/vehiclesData";
+// app/addVehicle.tsx: plate lookup and manual entry behind one segmented control
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { ChevronDown, Info, Search, WifiOff } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
+import { HeroHeader } from '../components/calculator/HeroHeader';
+import { PressableScale } from '../components/calculator/PressableScale';
+import { SlidingSegment } from '../components/calculator/SlidingSegment';
+import { LtrText } from '../components/history/LtrText';
+import { Field, Message } from '../components/vehicles/AddFields';
+import { consumptionUnit, FUEL_LABEL, GradientButton, VehicleTile } from '../components/vehicles/fuel';
+import { dur, haptic, useEnter } from '../constants/motion';
+import { LTR, NO_OUTLINE } from '../constants/rtl';
+import { colors, Heebo, radius, shadow, space } from '../constants/theme';
+import { useOpenInfoMenu } from '../hooks/use-info-menu';
+import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
+import type { Vehicle } from '../lib/data/vehiclesData';
+import { isValidConsumption, parseDecimal, toDisplay, toStored } from '../lib/vehicles/consumption';
+import { lookupPlate, plateDigits } from '../lib/vehicles/plateLookup';
 
-// Unified Lucide Icons
-import {
-  ArrowRight,
-  Car,
-  Building2,
-  Zap,
-  Fuel,
-  Droplet,
-  Save,
-  CheckCircle2,
-  Info
-} from "lucide-react-native";
-
-// No ad imports needed for manual entry screen
-
-const manufacturers = [
-  "Toyota", "Kia", "Hyundai", "Mazda", "Honda", "Nissan",
-  "Mitsubishi", "Subaru", "Ford", "Chevrolet", "Volkswagen",
-  "Peugeot", "Renault", "Fiat", "Skoda", "Suzuki", "Seat",
-  "BMW", "Mercedes-Benz", "Audi", "Opel",
+const ADDED_FLAG = 'vehicleJustAdded'; // read by the vehicles screen on focus
+const MAKERS = [
+  'Toyota', 'Kia', 'Hyundai', 'Mazda', 'Honda', 'Nissan', 'Mitsubishi', 'Subaru', 'Ford', 'Chevrolet', 'Volkswagen',
+  'Peugeot', 'Renault', 'Fiat', 'Skoda', 'Suzuki', 'Seat', 'BMW', 'Mercedes-Benz', 'Audi', 'Opel',
 ];
+const FUELS = ['Gasoline', 'Diesel', 'Electric'] as const;
 
-type FuelType = "Gasoline" | "Diesel" | "Electric" | "";
+type Tab = 'plate' | 'manual';
+type Phase = 'idle' | 'searching' | 'found' | 'notfound' | 'offline' | 'duplicate';
 
-export default function AddVehicle() {
+/** 7 digits: 12-345-67, 8 digits: 123-45-678, anything shorter stays as typed */
+const formatPlate = (text: string) => {
+  const d = plateDigits(text).slice(0, 8);
+  if (d.length === 7) return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`;
+  if (d.length === 8) return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
+  return d;
+};
+
+const readList = async (): Promise<Vehicle[]> => JSON.parse((await AsyncStorage.getItem('vehicles')) ?? '[]');
+
+export default function AddVehicleScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets(); // שואב את מידות ה"שטח הבטוח" של המסך
+  const openInfo = useOpenInfoMenu();
+  const reduced = useReducedMotion();
+  const foundIn = useEnter(0);
 
-  const [manufacturer, setManufacturer] = useState("");
-  const [filteredManufacturers, setFilteredManufacturers] = useState<string[]>([]);
-  const [plate, setPlate] = useState("");
-  const [model, setModel] = useState("");
-  const [engine, setEngine] = useState("");
-  const [avgConsumption, setAvgConsumption] = useState("");
-  const [year, setYear] = useState("");
-  const [fuelType, setFuelType] = useState<FuelType>("");
-  
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-  
-  // No ad pending state needed
+  const [tab, setTab] = useState<Tab>('plate');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleManufacturerChange = (text: string) => {
-    setManufacturer(text);
-    if (!text) setFilteredManufacturers([]);
-    else {
-      const filtered = manufacturers.filter((item) =>
-        item.toLowerCase().startsWith(text.toLowerCase())
-      );
-      setFilteredManufacturers(filtered);
-    }
-  };
+  // plate tab
+  const [plate, setPlate] = useState('');
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [found, setFound] = useState<Vehicle | null>(null);
+  const [name, setName] = useState('');
+  const [cons, setCons] = useState('');
 
-  const handleManufacturerSelect = (selected: string) => {
-    setManufacturer(selected);
-    setFilteredManufacturers([]);
-  };
+  // manual tab
+  const [maker, setMaker] = useState('');
+  const [fuel, setFuel] = useState<(typeof FUELS)[number] | null>(null);
+  const [mCons, setMCons] = useState('');
+  const [model, setModel] = useState('');
+  const [mPlate, setMPlate] = useState('');
+  const [engine, setEngine] = useState('');
+  const [year, setYear] = useState('');
+  const [more, setMore] = useState(false);
 
-  const showTemporaryToast = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-      setToastMessage("");
-    }, 2500);
-  };
-
-  const validate = () => {
-    if (!manufacturer.trim()) {
-      showTemporaryToast("אנא מלא את היצרן");
-      return false;
-    }
-    if (!fuelType) {
-      showTemporaryToast("אנא בחר סוג דלק");
-      return false;
-    }
-    if (!avgConsumption.trim()) {
-      showTemporaryToast(
-        fuelType === "Electric" ? "אנא מלא את צריכת האנרגיה (kWh/ק״מ)" : "אנא מלא את הצריכה הממוצעת (km/l)"
-      );
-      return false;
-    }
-    if (isNaN(Number(avgConsumption))) {
-      showTemporaryToast("אנא הזן ערך מספרי לצריכה הממוצעת");
-      return false;
-    }
-    return true;
-  };
-
-  const saveVehicleToStorage = async (vehicleToSave: Vehicle) => {
+  const save = async (v: Vehicle) => {
     try {
-      const stored = await AsyncStorage.getItem("vehicles");
-      const existing: Vehicle[] = stored ? JSON.parse(stored) : [];
-      existing.push(vehicleToSave);
-      await AsyncStorage.setItem("vehicles", JSON.stringify(existing));
+      const list = await readList();
+      await AsyncStorage.multiSet([['vehicles', JSON.stringify([...list, v])], ['lastVehicleId', v.id], [ADDED_FLAG, '1']]);
+      haptic.success();
       router.back();
-    } catch (error) {
-      console.error("Error saving vehicle:", error);
-      showTemporaryToast("שגיאה בשמירה");
+    } catch (e) {
+      console.error('Failed to save vehicle:', e);
+      setError(LEGAL_UI_STRINGS.errors.apiError);
     }
   };
 
-  const handleSaveBtnClick = () => {
-    if (!validate()) return;
-
-    const newVehicle: Vehicle = {
-      id: Date.now().toString(),
-      plate: plate.trim() || "",
-      name: manufacturer.trim(),
-      model: model.trim() || "",
-      engine: engine.trim() || "",
-      type: "car",
-      avgConsumption: parseFloat(avgConsumption),
-      fueltype: fuelType || "Gasoline",
-      year: year ? parseInt(year) : new Date().getFullYear(),
-    };
-
-    saveVehicleToStorage(newVehicle);
+  const onPlate = (text: string) => {
+    setPlate(formatPlate(text));
+    setPhase('idle');
+    setFound(null);
+    setError(null);
   };
 
-  const avgPlaceholder = fuelType === "Electric" ? "לדוגמה: 0.15 (kWh/ק״מ)" : "לדוגמה: 16.5 (km/l)";
+  const search = async () => {
+    setPhase('searching');
+    try {
+      const d = plateDigits(plate);
+      if ((await readList()).some((v) => plateDigits(v.plate) === d)) return setPhase('duplicate');
+    } catch (e) {
+      console.error('Error checking duplicates:', e);
+    }
+    const r = await lookupPlate(plate);
+    if (r.status === 'found') {
+      setFound(r.vehicle);
+      setName(r.vehicle.name);
+      setCons(r.vehicle.avgConsumption ? String(toDisplay(r.vehicle.avgConsumption, r.vehicle.fueltype)) : '');
+    }
+    setPhase(r.status);
+  };
+
+  const toManual = () => {
+    setMPlate(plate);
+    setMore(true);
+    setTab('manual');
+  };
+
+  const foundCons = parseDecimal(cons);
+  const saveFound = () => found && save({ ...found, name: name.trim() || found.name, avgConsumption: toStored(foundCons!, found.fueltype) });
+
+  const mFuel = fuel ?? 'Gasoline';
+  const mValue = parseDecimal(mCons);
+  const manualOk = !!maker.trim() && !!fuel && isValidConsumption(mValue);
+  const suggestions = maker.trim() ? MAKERS.filter((m) => m.toLowerCase().startsWith(maker.trim().toLowerCase()) && m !== maker).slice(0, 4) : [];
+  const saveManual = () =>
+    save({
+      id: Date.now().toString(),
+      plate: mPlate.trim().toUpperCase(),
+      name: maker.trim(),
+      model: model.trim(),
+      engine: engine.trim(),
+      type: 'car',
+      avgConsumption: toStored(mValue!, mFuel),
+      fueltype: mFuel,
+      year: year ? parseInt(year, 10) : new Date().getFullYear(),
+    });
+
+  const fade = reduced ? undefined : FadeIn.duration(dur.std);
+  const searching = phase === 'searching';
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.container}
-    >
-      <ScrollView 
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: Math.max(insets.top, 20), // מרחיק אוטומטית מהשעון למעלה
-            paddingBottom: Math.max(insets.bottom + 20, 40) // מרחיק אוטומטית מהפס למטה
-          }
-        ]} 
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header Section */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtnTop} onPress={() => router.back()}>
-            <ArrowRight size={24} color="#333" />
-          </TouchableOpacity>
-          <View style={styles.titleContainer}>
-            <View style={styles.headerIconWrapper}>
-              <Car size={48} color="#009688" />
-            </View>
-            <Text style={styles.title}>הוספת רכב חדש</Text>
-            <Text style={styles.subtitle}>מלא את הפרטים להוספת הרכב שלך</Text>
-          </View>
-        </View>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <HeroHeader onInfo={openInfo} onBack={router.back} title="הוספת רכב" subtitle="מספר רישוי ממלא הכל לבד. אין? מוסיפים ידנית." />
 
+        <View style={styles.card}>
+          <SlidingSegment
+            height={52}
+            accessibilityLabel="דרך הוספה"
+            value={tab}
+            onChange={(t) => {
+              setTab(t);
+              setError(null);
+            }}
+            options={[
+              { value: 'plate', label: 'לפי מספר רישוי' },
+              { value: 'manual', label: 'ידנית' },
+            ]}
+          />
 
-        {/* Form Container */}
-        <View style={styles.formContainer}>
-          {/* Required Fields Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <CheckCircle2 size={18} color="#1F2937" style={{ marginLeft: 8 }} />
-                <Text style={styles.sectionTitle}>פרטים חובה</Text>
-              </View>
-              <View style={styles.requiredBadge}>
-                <Text style={styles.requiredBadgeText}>נדרש</Text>
-              </View>
-            </View>
-
-            {/* Manufacturer Field */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>
-                יצרן <Text style={styles.asterisk}>*</Text>
-              </Text>
+          {tab === 'plate' ? (
+            <Animated.View key="plate" entering={fade}>
+              <Text style={styles.title}>מה מספר הרישוי?</Text>
+              <Text style={styles.sub}>נביא את הדגם, סוג הדלק והצריכה ממאגר משרד התחבורה.</Text>
               <TextInput
-                style={[
-                  styles.input,
-                  focusedField === "manufacturer" && styles.inputFocused,
-                ]}
-                placeholder="חפש או הקלד יצרן..."
-                placeholderTextColor={color.textSecondary}
-                value={manufacturer}
-                onChangeText={handleManufacturerChange}
-                onFocus={() => setFocusedField("manufacturer")}
-                onBlur={() => setFocusedField(null)}
-                returnKeyType="done"
-                textAlign="right"
-              />
-            </View>
-
-            {/* Autocomplete Dropdown */}
-            {filteredManufacturers.length > 0 && (
-              <View style={styles.dropdown}>
-                <ScrollView 
-                  nestedScrollEnabled={true}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {filteredManufacturers.map((item, index) => (
-                    <TouchableOpacity
-                      key={item}
-                      style={[
-                        styles.dropdownItem,
-                        index === filteredManufacturers.length - 1 && styles.dropdownItemLast
-                      ]}
-                      onPress={() => handleManufacturerSelect(item)}
-                      activeOpacity={0.7}
-                    >
-                      <Building2 size={18} color="#6B7280" style={{ marginLeft: 12 }} />
-                      <Text style={styles.dropdownText}>{item}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Fuel Type Selector */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>
-                סוג דלק <Text style={styles.asterisk}>*</Text>
-              </Text>
-              <View style={styles.fuelRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.fuelBtn,
-                    fuelType === "Electric" && styles.fuelBtnActiveElectric
-                  ]}
-                  onPress={() => setFuelType("Electric")}
-                  activeOpacity={0.8}
-                >
-                  <Zap size={28} color={fuelType === "Electric" ? "#F59E0B" : "#6B7280"} style={{ marginBottom: 6 }} />
-                  <Text style={[
-                    styles.fuelBtnText,
-                    fuelType === "Electric" && styles.fuelBtnTextActive
-                  ]}>חשמלי</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.fuelBtn,
-                    fuelType === "Diesel" && styles.fuelBtnActiveDiesel
-                  ]}
-                  onPress={() => setFuelType("Diesel")}
-                  activeOpacity={0.8}
-                >
-                  <Droplet size={28} color={fuelType === "Diesel" ? "#3B82F6" : "#6B7280"} style={{ marginBottom: 6 }} />
-                  <Text style={[
-                    styles.fuelBtnText,
-                    fuelType === "Diesel" && styles.fuelBtnTextActive
-                  ]}>דיזל</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.fuelBtn,
-                    fuelType === "Gasoline" && styles.fuelBtnActiveGasoline
-                  ]}
-                  onPress={() => setFuelType("Gasoline")}
-                  activeOpacity={0.8}
-                >
-                  <Fuel size={28} color={fuelType === "Gasoline" ? "#10B981" : "#6B7280"} style={{ marginBottom: 6 }} />
-                  <Text style={[
-                    styles.fuelBtnText,
-                    fuelType === "Gasoline" && styles.fuelBtnTextActive
-                  ]}>בנזין</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Average Consumption */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>
-                צריכה ממוצעת <Text style={styles.asterisk}>*</Text>
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focusedField === "consumption" && styles.inputFocused,
-                ]}
-                placeholder={avgPlaceholder}
-                placeholderTextColor={color.textSecondary}
-                keyboardType="numeric"
-                inputMode="numeric"
-                returnKeyType="done"
-                value={avgConsumption}
-                onChangeText={setAvgConsumption}
-                onFocus={() => setFocusedField("consumption")}
-                onBlur={() => setFocusedField(null)}
-                textAlign="right"
-              />
-            </View>
-          </View>
-
-          {/* Optional Fields Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <Info size={18} color="#1F2937" style={{ marginLeft: 8 }} />
-                <Text style={styles.sectionTitle}>פרטים נוספים</Text>
-              </View>
-              <View style={styles.optionalBadge}>
-                <Text style={styles.optionalBadgeText}>אופציונלי</Text>
-              </View>
-            </View>
-
-            {/* License Plate */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.labelOptional}>מספר רישוי</Text>
-              <TextInput
-                style={[
-                  styles.inputOptional,
-                  focusedField === "plate" && styles.inputFocused,
-                ]}
-                placeholder="לדוגמה: 12-345-67"
-                placeholderTextColor="#aaa"
+                {...LTR.props}
                 value={plate}
-                onChangeText={setPlate}
-                onFocus={() => setFocusedField("plate")}
-                onBlur={() => setFocusedField(null)}
-                textAlign="right"
+                onChangeText={onPlate}
+                keyboardType="number-pad"
+                maxLength={10}
+                placeholder="12-345-67"
+                placeholderTextColor={colors.textMuted}
+                editable={!searching}
+                style={[styles.plate, NO_OUTLINE, LTR.style]}
+                accessibilityLabel="מספר רישוי"
               />
-            </View>
 
-            {/* Model */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.labelOptional}>דגם</Text>
-              <TextInput
-                style={[
-                  styles.inputOptional,
-                  focusedField === "model" && styles.inputFocused,
-                ]}
-                placeholder="לדוגמה: PICANTO"
-                placeholderTextColor="#aaa"
-                value={model}
-                onChangeText={setModel}
-                onFocus={() => setFocusedField("model")}
-                onBlur={() => setFocusedField(null)}
-                textAlign="right"
-              />
-            </View>
+              {phase === 'found' && found ? (
+                <Animated.View style={[styles.found, foundIn]}>
+                  <View style={styles.foundHead}>
+                    <VehicleTile type={found.type} fuel={found.fueltype} />
+                    <View style={styles.foundText}>
+                      <LtrText style={styles.foundName} numberOfLines={1}>{`${found.name} ${found.model}`.trim()}</LtrText>
+                      <Text style={styles.foundSub} numberOfLines={1}>
+                        <LtrText>{found.year}</LtrText>
+                        {` · ${FUEL_LABEL[found.fueltype ?? ''] ?? 'לא ידוע'}${found.engine && found.engine !== 'לא ידוע' ? ' · ' : ''}`}
+                        {found.engine && found.engine !== 'לא ידוע' && <LtrText>{found.engine}</LtrText>}
+                      </Text>
+                    </View>
+                  </View>
+                  <Field label="שם הרכב" value={name} onChange={setName} ltr />
+                  <Field label="צריכה ממוצעת" value={cons} onChange={setCons} suffix={consumptionUnit(found.fueltype)} keyboardType="decimal-pad" ltr />
+                  <Text style={styles.hint}>הערכה לפי משקל ומנוע. אם אתם יודעים את הצריכה האמיתית, עדיף לתקן.</Text>
+                </Animated.View>
+              ) : phase === 'notfound' ? (
+                <Message
+                  icon={<Search size={22} color={colors.textMuted} strokeWidth={2} />}
+                  title="לא מצאנו רכב עם המספר הזה"
+                  body="כדאי לבדוק את המספר. רכבים חדשים מאוד, אופנועים ורכבים מיובאים לא תמיד מופיעים במאגר."
+                  link="הוספה ידנית עם המספר הזה"
+                  onLink={toManual}
+                />
+              ) : phase === 'offline' ? (
+                <Message icon={<WifiOff size={22} color={colors.textMuted} strokeWidth={2} />} title="אין חיבור לאינטרנט" body="החיפוש צריך רשת. אפשר לנסות שוב, או להוסיף ידנית." link="נסה שוב" onLink={search} />
+              ) : phase === 'duplicate' ? (
+                <Message icon={<Info size={22} color={colors.textMuted} strokeWidth={2} />} title="הרכב הזה כבר שמור אצלך" />
+              ) : null}
 
-            {/* Engine */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.labelOptional}>מנוע</Text>
-              <TextInput
-                style={[
-                  styles.inputOptional,
-                  focusedField === "engine" && styles.inputFocused,
-                ]}
-                placeholder="לדוגמה: G4LA"
-                placeholderTextColor="#aaa"
-                value={engine}
-                onChangeText={setEngine}
-                onFocus={() => setFocusedField("engine")}
-                onBlur={() => setFocusedField(null)}
-                textAlign="right"
-              />
-            </View>
+              <View style={styles.cta}>
+                {phase === 'found' ? (
+                  <GradientButton label="שמור רכב" onPress={saveFound} disabled={!isValidConsumption(foundCons)} />
+                ) : (
+                  <GradientButton label={searching ? 'מחפש…' : 'חפש'} onPress={search} loading={searching} disabled={plateDigits(plate).length < 7} />
+                )}
+              </View>
+            </Animated.View>
+          ) : (
+            <Animated.View key="manual" entering={fade}>
+              <Text style={styles.title}>פרטי הרכב</Text>
+              <Text style={styles.sub}>שלושה שדות חובה, וזהו.</Text>
 
-            {/* Year */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.labelOptional}>שנת ייצור</Text>
-              <TextInput
-                style={[
-                  styles.inputOptional,
-                  focusedField === "year" && styles.inputFocused,
-                ]}
-                placeholder={`לדוגמה: ${new Date().getFullYear()}`}
-                placeholderTextColor="#aaa"
-                keyboardType="numeric"
-                inputMode="numeric"
-                returnKeyType="done"
-                value={year}
-                onChangeText={setYear}
-                onFocus={() => setFocusedField("year")}
-                onBlur={() => setFocusedField(null)}
-                textAlign="right"
-              />
-            </View>
-          </View>
+              <Field label="יצרן" value={maker} onChange={setMaker} ltr />
+              {suggestions.map((m) => (
+                <Pressable key={m} onPress={() => setMaker(m)} style={styles.suggest} accessibilityRole="button">
+                  <LtrText style={styles.suggestText}>{m}</LtrText>
+                </Pressable>
+              ))}
+
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>סוג דלק</Text>
+              <View style={styles.fuels}>
+                {FUELS.map((f) => (
+                  <PressableScale key={f} onPress={() => { haptic.select(); setFuel(f); }} style={[styles.fuelBtn, fuel === f && styles.fuelOn]} accessibilityRole="button" accessibilityState={{ selected: fuel === f }}>
+                    <Text style={[styles.fuelText, fuel === f && { color: colors.selectedText }]}>{FUEL_LABEL[f]}</Text>
+                  </PressableScale>
+                ))}
+              </View>
+
+              <Field label="צריכה ממוצעת" value={mCons} onChange={setMCons} suffix={consumptionUnit(mFuel)} keyboardType="decimal-pad" ltr />
+
+              <Pressable onPress={() => setMore(!more)} style={styles.moreHead} accessibilityRole="button" accessibilityState={{ expanded: more }}>
+                <Text style={styles.moreTitle}>
+                  פרטים נוספים <Text style={styles.moreSub}>· לא חובה</Text>
+                </Text>
+                <ChevronDown size={18} color={colors.textMuted} style={more ? { transform: [{ rotate: '180deg' }] } : undefined} />
+              </Pressable>
+              {more && (
+                <Animated.View entering={fade}>
+                  <Field label="דגם" value={model} onChange={setModel} ltr />
+                  <Field label="מספר רישוי" value={mPlate} onChange={setMPlate} keyboardType="number-pad" ltr />
+                  <View style={styles.pair}>
+                    <View style={styles.half}><Field label="מנוע" value={engine} onChange={setEngine} ltr /></View>
+                    <View style={styles.half}><Field label="שנת ייצור" value={year} onChange={setYear} keyboardType="number-pad" maxLength={4} ltr /></View>
+                  </View>
+                </Animated.View>
+              )}
+
+              <View style={styles.cta}>
+                <GradientButton label="שמור רכב" onPress={saveManual} disabled={!manualOk} />
+              </View>
+            </Animated.View>
+          )}
+
+          {!!error && (
+            <Text style={styles.error} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          )}
         </View>
-
-        {/* Save Button */}
-        <TouchableOpacity 
-          style={styles.saveButton} 
-          onPress={handleSaveBtnClick}
-          activeOpacity={0.9}
-        >
-          <View style={styles.saveButtonContent}>
-            <Save size={22} color="#fff" style={{ marginLeft: 10 }} />
-            <Text style={styles.saveButtonText}>שמור רכב</Text>
-          </View>
-        </TouchableOpacity>
-                
-        {/* Toast */}
-        {showToast && <Toast message={toastMessage || "אנא מלא את השדות הנדרשים"} />}
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFB",
-  },
-  scrollContent: {
-    paddingHorizontal: 20, // שינינו ל-Horizontal כי ה-Top וה-Bottom מחושבים דינאמית למעלה
-  },
-  header: {
-    marginBottom: 20,
-    alignItems: "center",
-    position: "relative",
-  },
-  backBtnTop: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  titleContainer: {
-    alignItems: "center",
-    marginTop: 8,
-  },
-  headerIconWrapper: {
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    marginBottom: 6,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#6B7280",
-    textAlign: "center",
-  },
-  formContainer: {
-    marginBottom: 20,
-  },
-  section: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  sectionTitleRow: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  requiredBadge: {
-    backgroundColor: "#FEE2E2",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  requiredBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#DC2626",
-  },
-  optionalBadge: {
-    backgroundColor: "#E0F2FE",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  optionalBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#0284C7",
-  },
-  fieldContainer: {
-    marginBottom: 18,
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 10,
-    writingDirection: "rtl",
-    textAlign: "right",  
-  },
-  labelOptional: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#6B7280",
-    marginBottom: 10,
-    writingDirection: "rtl",
-    textAlign: "right",
-  },
-  asterisk: {
-    color: "#DC2626",
-    writingDirection: "rtl", 
-    textAlign: "right",
-    fontSize: 16,
-  },
-  input: {
-    backgroundColor: "#F9FAFB",
-    borderRadius: 14,
-    padding: 16,
-    fontSize: 16,
-    color: "#1F2937",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    fontWeight: "500",
-    textAlign: 'right',
-  },
-  inputOptional: {
-    backgroundColor: "#FAFBFC",
-    borderRadius: 14,
-    padding: 16,
-    fontSize: 16,
-    color: "#1F2937",
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    textAlign: 'right',
-  },
-  inputFocused: {
-    borderColor: "#009688",
-    backgroundColor: "#fff",
-    shadowColor: "#009688",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  dropdown: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    marginTop: -10,
-    marginBottom: 18,
-    maxHeight: 200,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-    overflow: "hidden",
-  },
-  dropdownItem: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  dropdownItemLast: {
-    borderBottomWidth: 0,
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: "#1F2937",
-    fontWeight: "500",
-    textAlign: 'right',
-  },
-  fuelRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  fuelBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 80,
-  },
-  fuelBtnActiveElectric: {
-    backgroundColor: "#FEF3C7",
-    borderColor: "#F59E0B",
-    shadowColor: "#F59E0B",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  fuelBtnActiveDiesel: {
-    backgroundColor: "#DBEAFE",
-    borderColor: "#3B82F6",
-    shadowColor: "#3B82F6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  fuelBtnActiveGasoline: {
-    backgroundColor: "#D1FAE5",
-    borderColor: "#10B981",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  fuelBtnText: {
-    fontWeight: "700",
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  fuelBtnTextActive: {
-    color: "#1F2937",
-  },
-  saveButton: {
-    backgroundColor: "#009688",
-    borderRadius: 18,
-    padding: 18,
-    marginTop: 8,
-    shadowColor: "#009688",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  saveButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  bannerWrapper: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 12,
-    backgroundColor: "transparent",
-  },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingBottom: 48 },
+  card: { zIndex: 2, backgroundColor: colors.surface, borderRadius: radius.card, marginTop: -44, marginHorizontal: space.gutter, paddingVertical: 16, paddingHorizontal: 20, ...shadow.card },
+  title: { fontFamily: Heebo.extra, fontSize: 20, color: colors.text, marginTop: 20 },
+  sub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 4 },
+  plate: { height: 64, marginTop: 16, borderRadius: radius.tile, backgroundColor: colors.bg, textAlign: 'center', fontFamily: Heebo.extra, fontSize: 28, color: colors.text },
+  cta: { marginTop: 20 },
+  found: { marginTop: 16, padding: 16, borderRadius: radius.tile, backgroundColor: colors.bg },
+  foundHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  foundText: { flex: 1, minWidth: 0 },
+  foundName: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
+  foundSub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 2 },
+  hint: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted, marginTop: 12 },
+  suggest: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  suggestText: { fontFamily: Heebo.semi, fontSize: 15, color: colors.text },
+  fieldLabel: { fontFamily: Heebo.semi, fontSize: 14, color: colors.textMuted, marginBottom: 6 },
+  fuels: { flexDirection: 'row', gap: 8 },
+  fuelBtn: { flex: 1, height: 48, borderRadius: radius.tile, borderWidth: 1.5, borderColor: 'transparent', backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
+  fuelOn: { backgroundColor: colors.selectedFill, borderColor: colors.selectedBorder },
+  fuelText: { fontFamily: Heebo.bold, fontSize: 15, color: colors.textMuted },
+  moreHead: { minHeight: 52, marginTop: 18, borderTopWidth: 1, borderTopColor: colors.divider, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  moreTitle: { fontFamily: Heebo.bold, fontSize: 15, color: colors.text },
+  moreSub: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted },
+  pair: { flexDirection: 'row', gap: 12 },
+  half: { flex: 1 },
+  error: { fontFamily: Heebo.bold, fontSize: 14, color: colors.error, marginTop: 12, textAlign: 'center' },
 });

@@ -83,6 +83,8 @@ export const colors = {
 
   ecoText: '#1FA855',
   sportText: '#FF9500',
+  warnBg: '#FFF4E5',
+  warnText: '#B25E00',
   error: '#FF3B30',
   white: '#FFFFFF',
 

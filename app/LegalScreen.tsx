@@ -1,759 +1,152 @@
-// app/LegalScreen.tsx
-/**
- * ============================================================================
- * Legal Compliance Screen Component
- * ============================================================================
- * A complete, production-ready React Native component for legal disclosures.
- * * Features:
- * - Privacy Policy (Hebrew + English)
- * - Terms of Service (Hebrew + English)
- * - About & Attributions
- * - First-launch acceptance flow
- * - Professional design with teal theme
- * - Full Hebrew RTL support (Integrated with I18nManager)
- * - No external dependencies (React Native core only)
- * - AsyncStorage for acceptance tracking
- * ============================================================================
- */
+// Legal info: terms, privacy and data sources, in the calculator's design language.
+import { router } from 'expo-router';
+import { Calculator, ChevronDown, Database, ExternalLink, Fuel, Mail, MapPin, ShieldCheck, Smartphone, TriangleAlert, Trash2 } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { HeroHeader } from '../components/calculator/HeroHeader';
+import { PressableScale } from '../components/calculator/PressableScale';
+import { SlidingSegment } from '../components/calculator/SlidingSegment';
+import { colors, Heebo, radius, shadow, space } from '../constants/theme';
+import { Block, BriefIcon, CONTACT_EMAIL, LEGAL_DOCS, LEGAL_UPDATED, LegalTab, OPERATOR } from '../legal/LEGAL_CONTENT_HE';
+import { PRIVACY_POLICY_URL } from '../legal/LEGAL_UI_STRINGS_HE';
 
-import { color } from '../constants/theme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  I18nManager
-} from 'react-native';
+const TABS: { value: LegalTab; label: string }[] = [
+  { value: 'terms', label: 'תנאי שימוש' },
+  { value: 'privacy', label: 'פרטיות' },
+  { value: 'sources', label: 'מקורות' },
+];
 
-interface LegalScreenProps {
-  onAccept?: () => void;
-  onClose?: () => void;
-  requireAcceptance?: boolean;
-  showCloseButton?: boolean;
-}
-
-type TabType = 'privacy' | 'terms' | 'about';
-
-const COLORS = {
-  primary: '#009688',
-  primaryDark: '#00796b',
-  primaryLight: '#e0f2f1',
-  background: '#f5f5f5',
-  card: '#ffffff',
-  text: '#212121',
-  textSecondary: '#666666',
-  textLight: color.textSecondary,
-  border: '#e0e0e0',
-  success: '#4caf50',
-  error: '#f44336',
+const ICONS: Record<BriefIcon, typeof Calculator> = {
+  calc: Calculator, warn: TriangleAlert, shield: ShieldCheck, phone: Smartphone, pin: MapPin, trash: Trash2, db: Database, fuel: Fuel,
 };
 
-const PRIVACY_POLICY_HE = `
-מדיניות פרטיות
-
-1. הקדמה
-ברוכים הבאים לאפליקציית מחשבון עלויות נסיעה. אנו מחויבים להגן על פרטיותך.
-
-2. אילו נתונים אנחנו אוספים?
-• מספר לוחית רכב - לשליפת נתוני רכב
-• פרטי רכב - שם יצרן, דגם, שנה, סוג דלק, צריכה
-• מחיר דלק/חשמל - המחיר הנוכחי
-• מרחק נסיעה - לצורך חישוב עלויות
-• היסטוריית חישובים - מרחק, עלות, צריכה
-
-שימו לב: אנחנו לא אוספים שם, טלפון, דוא"ל, או מיקום.
-
-3. איך אנחנו שומרים את הנתונים?
-כל הנתונים נשמרים רק בהתקן שלך - לא בשום שרת.
-• נשתמש AsyncStorage (מסד נתונים מקומי)
-• אתה בעל הנתונים בלבד
-• כאשר אתה מוחק את האפליקציה, כל הנתונים נמחקים
-
-4. איך אנחנו משתמשים בנתונים?
-• חישוב עלויות נסיעה
-• שמירת היסטוריה
-• שיפור חוויית המשתמש
-
-אנחנו לא מוכרים את הנתונים שלך, והרכבים וההיסטוריה שלך לא נשלחים לשרת שלנו.
-
-5. שירותים חיצוניים
-• פרסומות: האפליקציה מציגה פרסומות של Google AdMob. גוגל עשויה לאסוף מזהי מכשיר ונתוני שימוש כדי להציג ולמדוד פרסומות. הפרסומות אינן מותאמות אישית. מידע נוסף: https://policies.google.com/technologies/ads
-• data.gov.il: בעת חיפוש רכב לפי לוחית נשלח אליו מספר הלוחית בלבד (מאגר ממשלתי)
-• checkfuel-data.vercel.app: משם מורדים מחירי דלק וחשמל. לא נשלח אליו מידע אישי
-
-6. זכויות שלך
-• זכות לראות את הנתונים שלך בכל עת
-• זכות למחוק רכב או חישוב בודד
-• זכות למחוק את כל הנתונים: בתפריט המידע, "מחק את כל הנתונים שלי", או בהסרת האפליקציה
-
-7. אבטחה
-אנחנו משתמשים במנגנוני האבטחה של מערכת ההפעלה:
-• AsyncStorage מוצפן על ידי iOS/Android
-• אנחנו לא משדרים נתונים ללא הצפנה
-
-8. שינויים
-אנחנו עשוים לעדכן מדיניות זו. אם יש שינויים משמעותיים, אתה תקבל הודעה.
-
-9. ציות לחוק
-אנחנו שומרים על דרישות:
-• חוק הגנת הפרטיות (1981)
-• חוק הגנת הצרכן
-• מדיניות Google Play
-
-10. צור קשר
-שאלות? צור קשר דרך Google Play. מדיניות מלאה: https://sites.google.com/view/checkfuelpolicy/home
-`;
-
-const PRIVACY_POLICY_EN = `
-Privacy Policy
-
-1. Introduction
-Welcome to the Fuel Cost Calculator App. We are committed to protecting your privacy.
-
-2. What Data Do We Collect?
-• Vehicle license plate - to retrieve vehicle data
-• Vehicle details - manufacturer, model, year, fuel type, consumption
-• Fuel/electricity price - current price
-• Trip distance - for cost calculation
-• Calculation history - distance, cost, consumption
-
-Note: We do not collect name, phone, email, or location.
-
-3. How Do We Store Your Data?
-All your data is stored only on your device - not on any server.
-• We use AsyncStorage (local database)
-• You own the data exclusively
-• When you uninstall the App, all data is deleted
-
-4. How Do We Use Your Data?
-• Calculate trip costs
-• Maintain history
-• Improve user experience
-
-We do not sell your data, and your vehicles and history are not sent to our servers.
-
-5. External Services
-• Ads: the App shows Google AdMob ads. Google may collect device identifiers and usage data to serve and measure ads. Ads are non-personalized. More: https://policies.google.com/technologies/ads
-• data.gov.il: when you look up a vehicle by plate, only the plate number is sent (Israeli government database)
-• checkfuel-data.vercel.app: fuel and electricity prices are downloaded from here. No personal data is sent
-
-6. Your Rights
-• Right to view your data anytime
-• Right to delete a single vehicle or calculation
-• Right to delete all data: in the info menu, "Delete all my data", or by uninstalling the App
-
-7. Security
-We use operating system security mechanisms:
-• AsyncStorage is encrypted by iOS/Android
-• We do not transmit data without encryption
-
-8. Changes
-We may update this policy. If there are significant changes, you will be notified.
-
-9. Legal Compliance
-We comply with:
-• Israeli Privacy Protection Law (1981)
-• Consumer Protection Law
-• Google Play Store Policies
-
-10. Contact Us
-Questions? Contact us via Google Play. Full policy: https://sites.google.com/view/checkfuelpolicy/home
-`;
-
-const TERMS_OF_SERVICE_HE = `
-תנאי השירות
-
-1. סיוג חשוב - תוצאות הערכה בלבד
-
-כל התוצאות של האפליקציה הן הערכות משוערות, לא מדויקות:
-• צריכת דלק משתנה בהתאם לנהיגה
-• עלויות דלק משתנות יומי בשוק
-• נתוני צריכה עלולים להיות ישנים או אינם מדויקים
-• אנחנו לא מביאים בחשבון בלאי או שינויים בתנאים
-
-אל תסתמוך על הנתונים בלבד לקבלת החלטות פיננסיות גדולות.
-
-2. אתה אחראי לאימות
-• בדוק את מחיר הדלק בתחנות בפועל
-• בדוק את צריכת הרכב שלך מחשבוניות בנזיקה
-• השתמש בנתונים כעזר בלבד
-
-3. הדחה מלאה של אחריות
-
-אנחנו לא אחראים ל:
-• הפסדים כספיים מחישובים שגויים
-• החלטות שעשית על בסיס הנתונים
-• נזק לרכב שלך
-• טעויות בחישובים
-
-4. שם יצרנים
-• כל שמות יצרנים הם סימנים מסחריים של החברות שלהם
-• אנחנו משתמשים בשמות אלה רק לצורך הזמנה
-• אנחנו לא קשורים לאף יצרן
-
-5. נתונים מממשלתיים
-• נתוני רכב מגיעים מהמאגר הממשלתי
-• אנחנו לא אחראים לשגיאות בנתוני המממשלה
-• יתכן שנתונים אלה ישנים או אינם מדויקים
-
-6. זכויות שלנו
-• אנחנו יכולים לעדכן את האפליקציה בכל עת
-• אנחנו יכולים להוסיף או להסיר תכונות
-• אנחנו יכולים להפסיק את השירות עם הודעה מקדימה
-
-7. דין וישפט
-• תנאים אלה נשלטים על ידי חוקי ישראל
-• בתי משפט בישראל יהיו בעלות שיפוט
-
-8. אישור
-בשימוש בנוסח:
-• אתה מסכים לכל התנאים
-• אתה מבין שהחישובים הם הערכות בלבד
-• אתה אחראי לאימות הנתונים
-`;
-
-const TERMS_OF_SERVICE_EN = `
-Terms of Service
-
-1. Important Disclaimer - Results Are Estimates Only
-
-All App results are approximations, not exact:
-• Fuel consumption varies based on driving conditions
-• Fuel prices change daily
-• Consumption data may be outdated or inaccurate
-• We do not account for wear or environmental changes
-
-Do not rely solely on this data for major financial decisions.
-
-2. You Are Responsible for Verification
-• Check actual fuel prices at gas stations
-• Check your vehicle's consumption from fuel receipts
-• Use this as a tool only
-
-3. Complete Disclaimer of Warranties
-
-We are not responsible for:
-• Financial losses from incorrect calculations
-• Decisions based on the App's data
-• Damage to your vehicle
-• Calculation errors
-
-4. Manufacturer Names
-• All manufacturer names are trademarks of their companies
-• We use them only for identification
-• We are not affiliated with any manufacturer
-
-5. Government Data
-• Vehicle data comes from the government database
-• We are not responsible for government data errors
-• This data may be outdated or inaccurate
-
-6. Our Rights
-• We can update the App anytime
-• We can add or remove features
-• We can discontinue service with notice
-
-7. Governing Law
-• These terms are governed by Israeli law
-• Israeli courts have jurisdiction
-
-8. Acknowledgment
-By using the App:
-• You agree to all terms
-• You understand calculations are estimates only
-• You are responsible for data verification
-`;
-
-const ABOUT_CONTENT_HE = `
-אודות ופיקוח
-
-1. מקורות נתונים
-
-אנחנו משתמשים בנתונים מהמקורות הבאים:
-
-📊 data.gov.il
-מאגר נתונים פתוח של ממשלת ישראל
-• טבלת רכבים (סוגים שונים)
-• עדכון תקופתי
-• גישה חינם לציבור
-
-🔧 נתוני צריכה
-הערכות צריכה מחושבות בתוך האפליקציה לפי נתוני הרכב מהמאגר הממשלתי
-
-⛽ מחירי דלק וחשמל
-• דלק: data.gov.il, משרד האנרגיה (מחירי שער בית זיקוק ומס הבלו)
-• חשמל: הלמ"ס, מדד מחירי החשמל לצריכה ביתית
-• כל המחירים הם הערכה
-• בנזין 95: המחיר המרבי בשירות עצמי שקובעת המדינה
-• סולר: הערכה בלבד, כי מחירו אינו בפיקוח. המחיר בתחנה עשוי להיות שונה
-
-2. אנא שימו לב
-
-✓ הנתונים משתמשים בהסכמתם של מקורות אלה
-✓ כל השימוש עומד בתנאי המקורות
-✓ אנחנו עומדים בדרישות data.gov.il
-
-3. טיב נתונים
-
-כל נתון שנדפיס בנוסח הוא הערכה בלבד.
-אנחנו עושים כל מה שביכולתנו לשמור על דיוק, אך:
-• נתונים עלולים להיות ישנים
-• נתונים עלולים להיות אינם מדויקים
-• זה לא חלופי לאימות חיצוני
-
-4. משוב ובעיות
-
-אם מצאת שגיאה בנתונים:
-• דווח דרך חנות Google Play
-• תן לנו לדעת איזה רכב או נתונים שגויים
-• אנחנו נבדוק ונתקן בעדכון הבא
-
-5. תודות
-
-תודה שאתה משתמש באפליקציה!
-• אנחנו עובדים בתמידות לשפר את הנתונים
-• הערות שלך עוזרות לנו להתפתח
-• התמדתך מעודדת אותנו
-`;
-
-const ABOUT_CONTENT_EN = `
-About & Credits
-
-1. Data Sources
-
-We use data from the following sources:
-
-📊 data.gov.il
-Israel's open government database
-• Vehicle registry (various types)
-• Regular updates
-• Free public access
-
-🔧 Consumption data
-Consumption estimates are calculated inside the App from the government vehicle data
-
-⛽ Fuel and Electricity Prices
-• Fuel: data.gov.il, Ministry of Energy (refinery-gate prices and excise)
-• Electricity: Central Bureau of Statistics (הלמ"ס), home-electricity price index
-• All prices are estimates
-• Gasoline 95: the regulated self-service maximum price
-• Diesel: an estimate only, as its price is not regulated. The price at the pump may differ
-
-2. Please Note
-
-✓ Data is used with permission from these sources
-✓ All usage complies with source terms
-✓ We comply with data.gov.il requirements
-
-3. Data Quality
-
-Every data point in this App is an estimate only.
-We do our best to maintain accuracy, but:
-• Data may be outdated
-• Data may be inaccurate
-• This is not a substitute for external verification
-
-4. Feedback and Issues
-
-If you found an error in the data:
-• Report via Google Play Store
-• Tell us which vehicle or data is wrong
-• We will check and fix it in the next update
-
-5. Thank You
-
-Thank you for using the App!
-• We work continuously to improve data
-• Your feedback helps us grow
-• Your support encourages us
-`;
-
-export default function LegalScreen({
-  onAccept,
-  onClose,
-  requireAcceptance = false,
-  showCloseButton = true,
-}: LegalScreenProps) {
-  const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<TabType>('privacy');
-  const [isHebrewMode, setIsHebrewMode] = useState(true);
-  const [hasAccepted, setHasAccepted] = useState(false);
-  const [showAcceptCheckbox, setShowAcceptCheckbox] = useState(requireAcceptance);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  
-
-  // --- לוגיקת הכיווניות החכמה ---
-  // בודק אם האפליקציה נמצאת במצב RTL כללי (I18nManager)
-  const isGlobalRTL = I18nManager.isRTL;
-
-  // מחשב את כיוון ה-Flex המתאים:
-  // אם אנחנו צריכים עברית (RTL), והאפליקציה כבר ב-RTL, משתמשים ב-row.
-  // אם לא, הופכים ל-row-reverse. (ולהפך עבור אנגלית)
-  const dynamicFlexRow = isHebrewMode
-    ? (isGlobalRTL ? 'row' : 'row-reverse')
-    : (isGlobalRTL ? 'row-reverse' : 'row');
-
-  // מחשב יישור לצד ימין או שמאל:
-  // צד ימין במסך RTL הוא flex-start. צד ימין במסך LTR הוא flex-end.
-  const dynamicAlignItems = isHebrewMode
-    ? (isGlobalRTL ? 'flex-start' : 'flex-end')
-    : (isGlobalRTL ? 'flex-end' : 'flex-start');
-
-  const dynamicTextAlign = isHebrewMode ? 'right' : 'left';
-  const dynamicWritingDirection = isHebrewMode ? 'rtl' : 'ltr';
-
-  useEffect(() => {
-    if (requireAcceptance) {
-      AsyncStorage.getItem('legal_acceptance').then((value) => {
-        if (value === 'true') {
-          setHasAccepted(true);
-          setShowAcceptCheckbox(false);
-        }
-      });
-    }
-
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleAccept = async () => {
-    if (!requireAcceptance || hasAccepted) {
-      if (onClose) onClose();
-      return;
-    }
-
-    if (!hasAccepted) {
-      alert('אנא אשר את תנאי השימוש\nPlease accept the terms');
-      return;
-    }
-
-    try {
-      await AsyncStorage.setItem('legal_acceptance', 'true');
-      setShowAcceptCheckbox(false);
-      if (onAccept) onAccept();
-    } catch (error) {
-      console.error('Error saving acceptance:', error);
-    }
-  };
-
-  const renderContent = () => {
-    let content = '';
-    if (activeTab === 'privacy') content = isHebrewMode ? PRIVACY_POLICY_HE : PRIVACY_POLICY_EN;
-    else if (activeTab === 'terms') content = isHebrewMode ? TERMS_OF_SERVICE_HE : TERMS_OF_SERVICE_EN;
-    else content = isHebrewMode ? ABOUT_CONTENT_HE : ABOUT_CONTENT_EN;
-    return content;
-  };
-
-  const getTabLabel = (tab: TabType): string => {
-    if (isHebrewMode) {
-      switch (tab) {
-        case 'privacy': return 'פרטיות';
-        case 'terms': return 'תנאים';
-        case 'about': return 'אודות';
-      }
-    } else {
-      switch (tab) {
-        case 'privacy': return 'Privacy';
-        case 'terms': return 'Terms';
-        case 'about': return 'About';
-      }
-    }
-  };
+function Body({ blocks }: { blocks: Block[] }) {
+  return (
+    <View style={styles.body}>
+      {blocks.map((b, i) =>
+        typeof b === 'string' ? (
+          <Text key={i} style={styles.p}>{b}</Text>
+        ) : 'note' in b ? (
+          <Text key={i} style={styles.note}>{b.note}</Text>
+        ) : (
+          <View key={i} style={{ gap: 6 }}>
+            {b.bullets.map((t) => (
+              <View key={t} style={styles.bulletRow}>
+                <View style={styles.dot} />
+                <Text style={[styles.p, { flex: 1 }]}>{t}</Text>
+              </View>
+            ))}
+          </View>
+        ),
+      )}
+    </View>
+  );
+}
+
+function Row({ title, blocks, open, onToggle, first }: { title: string; blocks: Block[]; open: boolean; onToggle: () => void; first: boolean }) {
+  return (
+    <View style={!first && styles.divider}>
+      <Pressable onPress={onToggle} style={styles.rowHead} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <ChevronDown size={18} color={colors.textMuted} strokeWidth={2.2} style={open && { transform: [{ rotate: '180deg' }] }} />
+      </Pressable>
+      {open && <Body blocks={blocks} />}
+    </View>
+  );
+}
+
+export default function LegalScreen({ onClose }: { onClose?: () => void }) {
+  const [tab, setTab] = useState<LegalTab>('terms');
+  const [open, setOpen] = useState(0);
+  const doc = LEGAL_DOCS[tab];
 
   return (
-   <Animated.View 
-  style={[
-    styles.container, 
-    { 
-      opacity: fadeAnim,
-      
-      // כופה על כל המסך הזה להתנהג מימין לשמאל או משמאל לימין לפי השפה
-      direction: isHebrewMode ? 'ltr' : 'rtl' 
-    }
-  ]}
->
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) + 12 }]}>
-        <View style={[styles.headerContent, { flexDirection: dynamicFlexRow }]}>
-          <Text style={styles.headerTitle}>
-            {isHebrewMode ? '⚖️ תנאים משפטיים' : '⚖️ Legal'}
-          </Text>
-          {showCloseButton && (
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        {/* opened from the info menu (onClose) or as a route */}
+        <HeroHeader onInfo={() => {}} onBack={onClose ?? router.back} title="מידע משפטי" subtitle={`עודכן לאחרונה ב־${LEGAL_UPDATED}`} />
+
+        <View style={[styles.card, styles.first]}>
+          <View style={{ padding: 16 }}>
+            <SlidingSegment
+              accessibilityLabel="מסמך"
+              height={36}
+              options={TABS}
+              value={tab}
+              onChange={(t) => {
+                setTab(t);
+                setOpen(0);
+              }}
+            />
+          </View>
+          <Text style={styles.briefLabel}>בקצרה</Text>
+          {doc.brief.map((b, i) => {
+            const Icon = ICONS[b.icon];
+            const warn = b.icon === 'warn';
+            return (
+              <View key={b.title} style={[styles.brief, i > 0 && styles.divider]}>
+                <View style={[styles.icon, warn && { backgroundColor: colors.warnBg }]}>
+                  <Icon size={18} color={warn ? colors.warnText : colors.selectedText} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.briefTitle}>{b.title}</Text>
+                  <Text style={styles.briefText}>{b.text}</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
 
-        {/* Tab Navigation */}
-        <View style={[styles.tabContainer, { flexDirection: dynamicFlexRow }]}>
-          {(['privacy', 'terms', 'about'] as TabType[]).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-                {getTabLabel(tab)}
-              </Text>
-            </TouchableOpacity>
+        <View style={styles.card}>
+          {doc.sections.map((s, i) => (
+            <Row key={`${tab}-${s.title}`} title={s.title} blocks={s.body} first={i === 0} open={open === i} onToggle={() => setOpen(open === i ? -1 : i)} />
           ))}
         </View>
 
-        {/* Language Toggle */}
-        <TouchableOpacity
-          style={styles.languageToggle}
-          onPress={() => setIsHebrewMode(!isHebrewMode)}
-        >
-          <Text style={styles.languageToggleText}>
-            {isHebrewMode ? '🇬🇧 EN' : '🇮🇱 עברית'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Content Scroll View */}
-      <ScrollView
-        style={styles.contentScroll}
-        contentContainerStyle={[
-          styles.contentContainer,
-          { alignItems: dynamicAlignItems },
-        ]}
-      >
-        <Text
-  style={[
-    styles.contentText,
-    { 
-      textAlign: isHebrewMode ? 'right' : 'right', 
-      writingDirection: isHebrewMode ? 'rtl' : 'ltr' 
-    },
-  ]}
->
-  {renderContent()}
-</Text>
-      </ScrollView>
-
-      {/* Footer with Accept Button */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
-        {showAcceptCheckbox && (
-          <TouchableOpacity
-            style={[styles.checkboxContainer, { flexDirection: dynamicFlexRow }]}
-            onPress={() => setHasAccepted(!hasAccepted)}
-          >
-            <View style={[styles.checkbox, hasAccepted && styles.checkboxChecked]}>
-              {hasAccepted && <Text style={styles.checkboxCheck}>✓</Text>}
+        <View style={styles.card}>
+          <PressableScale style={styles.link} onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=CheckFuel`)} accessibilityRole="link" accessibilityLabel={`שליחת מייל ל־${CONTACT_EMAIL}`}>
+            <View style={[styles.icon, { backgroundColor: colors.infoBg }]}>
+              <Mail size={18} color={colors.infoText} strokeWidth={2} />
             </View>
-            <Text
-              style={[
-                styles.checkboxLabel,
-                { 
-                  textAlign: dynamicTextAlign, 
-                  writingDirection: dynamicWritingDirection 
-                },
-              ]}
-            >
-              {isHebrewMode ? 'אני מסכים לתנאים' : 'I agree to the terms'}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={[styles.buttonContainer, { flexDirection: dynamicFlexRow }]}>
-          {showAcceptCheckbox && (
-            <TouchableOpacity
-              style={[styles.button, styles.secondaryButton]}
-              onPress={onClose}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {isHebrewMode ? 'ביטול' : 'Cancel'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.primaryButton,
-              !hasAccepted && showAcceptCheckbox && styles.primaryButtonDisabled,
-            ]}
-            onPress={showAcceptCheckbox ? handleAccept : onClose}
-            disabled={!hasAccepted && showAcceptCheckbox}
-          >
-            <Text style={styles.primaryButtonText}>
-              {showAcceptCheckbox
-                ? (isHebrewMode ? 'אשר' : 'Accept')
-                : (isHebrewMode ? 'הבנתי' : 'Got it')}
-            </Text>
-          </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.briefTitle}>שאלות או טעות בנתונים?</Text>
+              <Text style={styles.briefText}>{CONTACT_EMAIL}</Text>
+            </View>
+          </PressableScale>
+          <PressableScale style={[styles.link, styles.divider]} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} accessibilityRole="link">
+            <View style={[styles.icon, { backgroundColor: colors.infoBg }]}>
+              <ExternalLink size={18} color={colors.infoText} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.briefTitle}>מדיניות הפרטיות המלאה</Text>
+              <Text style={styles.briefText}>באתר, בעברית ובאנגלית</Text>
+            </View>
+          </PressableScale>
         </View>
-      </View>
-    </Animated.View>
+
+        <Text style={styles.foot}>CheckFuel · {OPERATOR}</Text>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  header: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  headerContent: {
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 20,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  tabContainer: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#fff',
-  },
-  tabLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-  },
-  tabLabelActive: {
-    color: COLORS.primary,
-  },
-  languageToggle: {
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 6,
-  },
-  languageToggleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  contentScroll: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-  },
-  contentText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: COLORS.text,
-  },
-  footer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  checkboxContainer: {
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-  },
-  checkboxCheck: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  checkboxLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
-  },
-  buttonContainer: {
-    gap: 10,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButton: {
-    backgroundColor: COLORS.primary,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  secondaryButton: {
-    backgroundColor: COLORS.background,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-}); 
+  screen: { flex: 1, backgroundColor: colors.bg },
+  card: { backgroundColor: colors.surface, borderRadius: radius.card, marginHorizontal: space.gutter, marginTop: space.cardGap, overflow: 'hidden', ...shadow.card },
+  first: { marginTop: -44, zIndex: 2 },
+  divider: { borderTopWidth: 1, borderTopColor: colors.divider },
+  briefLabel: { fontFamily: Heebo.bold, fontSize: 13, color: colors.textMuted, paddingHorizontal: 20, paddingBottom: 4 },
+  brief: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12, marginHorizontal: 20 },
+  icon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
+  briefTitle: { fontFamily: Heebo.extra, fontSize: 15, color: colors.text },
+  briefText: { fontFamily: Heebo.regular, fontSize: 13, lineHeight: 19, color: colors.textMuted, marginTop: 1 },
+  rowHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 52, paddingVertical: 12, paddingHorizontal: 20 },
+  rowTitle: { flex: 1, fontFamily: Heebo.extra, fontSize: 16, color: colors.text },
+  body: { paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
+  p: { fontFamily: Heebo.regular, fontSize: 15, lineHeight: 23, color: colors.text },
+  note: { fontFamily: Heebo.medium, fontSize: 14, lineHeight: 21, color: colors.infoText, backgroundColor: colors.infoBg, borderRadius: radius.tile, padding: 12, overflow: 'hidden' },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.textMuted, marginTop: 10 },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 12, paddingHorizontal: 20 },
+  foot: { fontFamily: Heebo.regular, fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 20 },
+});

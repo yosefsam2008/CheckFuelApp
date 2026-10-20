@@ -1,4 +1,4 @@
-// Driving route provider. The Google key lives server-side in the checkfuel-data Vercel function (server/checkfuel-data/api/route.js).
+// Driving route provider. The Google key lives server-side in the checkfuel-data Vercel function (api/route.js in the checkfuel-data repo).
 export interface LatLng {
   latitude: number;
   longitude: number;

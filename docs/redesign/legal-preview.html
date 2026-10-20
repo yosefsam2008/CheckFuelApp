@@ -1,0 +1,235 @@
+<title>CheckFuel Legal Screen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&family=Nunito:wght@800&display=swap">
+<style>
+/* Layout: review notes beside a live phone mockup of the screen; the mockup uses the app's own tokens (constants/theme.ts) */
+:root {
+  --page: #EEF1EE; --ink: #10201A; --muted: #5B6B64; --line: #D5DDD8; --panel: #FFFFFF; --flag: #B4261C; --flagBg: #FDECEA; --ok: #1B7A3E; --okBg: #E3F6EA;
+  /* app tokens, light only, as in the app */
+  --bg: #F2F2F7; --surface: #FFFFFF; --text: #000000; --textMuted: #6E6E73; --divider: #E5E5EA;
+  --green: #34C759; --teal: #00C7BE; --selFill: #A8E6CF; --selBorder: #34C759; --selText: #248A3D; --infoBg: #E8F4FF; --infoText: #0060CC; --error: #D70015;
+  --f: 'Heebo', 'Arial Hebrew', Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0E1512; --ink: #E6EEEA; --muted: #9AACA4; --line: #26332D; --panel: #16201B; --flag: #FF8A80; --flagBg: #3A1614; --ok: #7FDCA0; --okBg: #12301F; color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0E1512; --ink: #E6EEEA; --muted: #9AACA4; --line: #26332D; --panel: #16201B; --flag: #FF8A80; --flagBg: #3A1614; --ok: #7FDCA0; --okBg: #12301F; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--page); color: var(--ink); font-family: var(--f); margin: 0; direction: rtl }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 40px; align-items: start }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr) } .phoneCol { justify-self: center; position: static !important } }
+h1 { font-weight: 900; font-size: 28px; margin: 0 0 6px; text-wrap: balance }
+.lede { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 0 24px; max-width: 62ch }
+h2 { font-weight: 800; font-size: 18px; margin: 28px 0 10px }
+.risk { display: grid; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden }
+.risk > div { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 14px 16px; border-top: 1px solid var(--line) }
+.risk > div:first-child { border-top: 0 }
+.tag { font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 999px; height: fit-content; white-space: nowrap }
+.tag.hi { background: var(--flagBg); color: var(--flag) } .tag.fix { background: var(--okBg); color: var(--ok) }
+.risk b { display: block; font-size: 15px; margin-bottom: 2px }
+.risk p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55 }
+.q { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px }
+.q li { padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.55; color: var(--ink) } .q li:first-child { border-top: 0 }
+.q ul { list-style: none; margin: 0; padding: 0 }
+.note { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 18px; max-width: 62ch }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; direction: ltr; unicode-bidi: embed }
+
+/* ---------- phone ---------- */
+.phoneCol { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px) }
+.phone { width: 390px; max-width: 100%; height: 800px; border-radius: 48px; background: #000; padding: 10px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.35) }
+.screen { position: relative; height: 100%; border-radius: 39px; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--f) }
+.island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 34px; border-radius: 20px; background: #000; z-index: 5 }
+.scroll { height: 100%; overflow-y: auto; scrollbar-width: none }
+.scroll::-webkit-scrollbar { display: none }
+.hero { background: linear-gradient(225deg, var(--green), var(--teal)); padding: 71px 20px 70px; color: #fff }
+.topRow { height: 44px; display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; margin-bottom: 28px; direction: ltr }
+.word { font-family: 'Nunito', var(--f); font-weight: 800; font-size: 22px; direction: ltr; text-shadow: 0 1px 3px rgba(0,0,0,.12) }
+.back { width: 44px; height: 44px; border-radius: 22px; background: rgba(255,255,255,.18); display: grid; place-items: center; border: 0; color: #fff; cursor: pointer }
+.hero h3 { font-weight: 800; font-size: 30px; line-height: 38px; margin: 0 }
+.hero .sub { font-size: 14px; color: rgba(255,255,255,.85); margin-top: 4px }
+.cards { padding: 0 16px 32px; display: grid; gap: 16px; margin-top: -54px; position: relative }
+.card { background: var(--surface); border-radius: 22px; box-shadow: 0 6px 18px -8px rgba(0,0,0,.12) }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bg); border-radius: 14px; padding: 3px; margin: 16px; position: relative }
+.seg button { height: 36px; border: 1.5px solid transparent; background: none; border-radius: 11px; font-family: var(--f); font-weight: 700; font-size: 14px; color: var(--textMuted); cursor: pointer }
+.seg button[aria-selected="true"] { background: var(--selFill); border-color: var(--selBorder); color: var(--selText) }
+.brief { padding: 0 16px 6px }
+.brief .lbl { font-size: 13px; font-weight: 700; color: var(--textMuted); padding: 2px 4px 6px }
+.bRow { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 12px; align-items: start; padding: 10px 4px; border-top: 1px solid var(--divider) }
+.bRow:first-of-type { border-top: 0 }
+.ic { width: 32px; height: 32px; border-radius: 10px; background: var(--bg); display: grid; place-items: center; color: var(--selText) }
+.ic.warn { background: #FFF4E5; color: #B25E00 }
+.bRow b { display: block; font-size: 15px; font-weight: 800 }
+.bRow span { font-size: 13px; color: var(--textMuted); line-height: 1.45 }
+.acc { padding: 0 }
+.acc details { border-top: 1px solid var(--divider) } .acc details:first-child { border-top: 0 }
+.acc summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 12px 20px; cursor: pointer; font-weight: 800; font-size: 16px }
+.acc summary::-webkit-details-marker { display: none }
+.acc summary svg { flex: none; color: var(--textMuted); transition: transform .2s }
+.acc details[open] summary svg { transform: rotate(180deg) }
+.acc .body { padding: 0 20px 16px; font-size: 14.5px; line-height: 1.6; color: #2C2C2E }
+.acc .body p { margin: 0 0 8px }
+.acc .body ul { margin: 0 0 8px; padding: 0 18px 0 0 }
+.acc .body li { margin-bottom: 4px }
+.acc .body .callout { background: var(--infoBg); color: #00336E; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; margin: 6px 0 10px }
+.flow { display: grid; gap: 0; border: 1px solid var(--divider); border-radius: 14px; overflow: hidden; margin: 4px 0 10px }
+.flow div { padding: 10px 12px; border-top: 1px solid var(--divider); font-size: 13.5px } .flow div:first-child { border-top: 0 }
+.flow b { display: block; font-size: 14px }
+.flow span { color: var(--textMuted) }
+.ph { background: #FFF4E5; color: #8A4B00; border-radius: 6px; padding: 0 4px; font-weight: 700 }
+.contact { display: flex; align-items: center; gap: 12px; padding: 16px 20px }
+.contact .ic { color: var(--infoText); background: var(--infoBg) }
+.contact b { display: block; font-size: 15px } .contact span { font-size: 13px; color: var(--textMuted) }
+.foot { text-align: center; font-size: 12px; color: var(--textMuted); padding: 4px 0 8px }
+.ltr { direction: ltr; unicode-bidi: isolate }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--infoText); outline-offset: 2px }
+@media (prefers-reduced-motion: reduce) { .acc summary svg { transition: none } }
+</style>
+
+<div class="wrap">
+  <div class="phoneCol">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="scroll">
+        <div class="hero">
+          <div class="topRow">
+            <button class="back" aria-label="חזרה"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            <div class="word">Checkfuel</div>
+          </div>
+          <h3>מידע משפטי</h3>
+          <div class="sub">עודכן לאחרונה ב־20 באוקטובר 2026</div>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <div class="seg" role="tablist" aria-label="מסמך">
+              <button role="tab" aria-selected="true" data-tab="terms">תנאי שימוש</button>
+              <button role="tab" aria-selected="false" data-tab="privacy">פרטיות</button>
+              <button role="tab" aria-selected="false" data-tab="sources">מקורות</button>
+            </div>
+            <div class="brief" id="brief"></div>
+          </div>
+          <div class="card acc" id="acc"></div>
+          <div class="card contact">
+            <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></div>
+            <div><b>שאלות או טעות בנתונים?</b><span class="ltr"><span class="ph">[contact email]</span></span></div>
+          </div>
+          <div class="foot">CheckFuel <span class="ltr">v1.x</span> · <span class="ph">[שם המפעיל]</span></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <div>
+    <h1>מסך המידע המשפטי: עיצוב ותוכן חדשים</h1>
+    <p class="lede">המסך נבנה מהרכיבים של המחשבון: ה־HeroHeader עם כפתור חזרה, ה־SlidingSegment, ורשימה מקובצת עם קווים מפרידים. בראש כל לשונית יש סיכום קצר, ומתחתיו הסעיפים המלאים, שנפתחים בלחיצה. התוכן נכתב מחדש לפי מה שהאפליקציה עושה בפועל היום. אפשר ללחוץ על הלשוניות ועל הסעיפים בטלפון.</p>
+
+    <h2>מה בטקסט הנוכחי חושף אתכם לתביעה</h2>
+    <div class="risk">
+      <div><span class="tag hi">חמור</span><div><b>"אנחנו לא אוספים מיקום": לא נכון</b><p>המחשבון מבקש הרשאת GPS ושולח את הקואורדינטות ואת היעד לשרת שלכם ב־Vercel, ומשם ל־Google Routes. מדיניות פרטיות שסותרת את מה שהאפליקציה עושה היא הטעיה, לפי חוק הגנת הפרטיות וחוק הגנת הצרכן, וגם עילה להסרה מהחנויות. הטקסט החדש מפרט בדיוק מה נשלח, לאן ולמה.</p></div></div>
+      <div><span class="tag hi">חמור</span><div><b>"AsyncStorage מוצפן על ידי iOS/Android": לא נכון</b><p>באנדרואיד הנתונים לא מוצפנים ברמת האפליקציה. הבטחת אבטחה שלא מתקיימת היא חשיפה ישירה. הטקסט החדש אומר רק מה שנכון: אחסון פרטי של האפליקציה ותעבורה ב־HTTPS.</p></div></div>
+      <div><span class="tag hi">חמור</span><div><b>אין סעיף נהיגה בטוחה</b><p>אפליקציה שמחשבת מסלול, בלי אזהרה לא להשתמש בה בזמן נהיגה. נוסף סעיף מפורש.</p></div></div>
+      <div><span class="tag hi">חמור</span><div><b>פטור גורף מכל אחריות</b><p>בחוזה אחיד, פטור מוחלט עלול להיחשב תנאי מקפח ולהתבטל, ואז לא נשאר שום הגנה. הנוסח החדש מגביל אחריות "במידה המרבית שהדין מתיר", ומחריג במפורש את מה שאי אפשר לפטור לפי דין. נוסח כזה מחזיק יותר טוב בבית משפט.</p></div></div>
+      <div><span class="tag hi">חמור</span><div><b>אין דרך ליצור קשר ואין מפעיל מזוהה</b><p>"צרו קשר דרך Google Play" לא מספיק. חוק הגנת הפרטיות, ובמיוחד תיקון 13, וגם החנויות, דורשים לזהות את מי שאחראי למידע ולתת כתובת לפניות. צריך ממך מייל ושם.</p></div></div>
+      <div><span class="tag fix">חשוב</span><div><b>המחיר מוצג כ"מחירים אחרונים מהשוק", אבל הוא מחושב</b><p>מחיר הבנזין מחושב מהמאגרים עם מרווח שיווק משוער, הסולר הוא הערכה, והחשמל לפי התעריף הביתי, שונה ממה שעולה טעינה ציבורית. כל זה מפורט עכשיו.</p></div></div>
+      <div><span class="tag fix">חשוב</span><div><b>"הנתונים בשימוש בהסכמת המקורות" ו־"אנחנו עומדים בדרישות data.gov.il"</b><p>אלה טענות שאי אפשר להוכיח. במקומן כתוב מה בדיוק משתמשים בו, ושהשימוש הוא לפי תנאי הרישיון של כל מקור.</p></div></div>
+      <div><span class="tag fix">חשוב</span><div><b>"מחיקת האפליקציה מוחקת הכל"</b><p>גיבוי של iCloud או של Google עשוי לשמור עותק. הניסוח תוקן.</p></div></div>
+      <div><span class="tag fix">חשוב</span><div><b>חסרים סעיפים: גיל, פרסומות, שימוש אסור, קניין רוחני, זמינות השירות, שינוי התנאים, ילדים</b><p>כולם נוספו.</p></div></div>
+    </div>
+
+    <h2>סיכונים שטקסט לא פותר</h2>
+    <div class="risk">
+      <div><span class="tag hi">לבדוק</span><div><b>המפה הקטנה מציירת מסלול של Google על מפה שאינה של Google</b><p>תנאי Google Maps Platform אוסרים להציג תוכן של Routes API על מפה שאינה של Google, ומחייבים קרדיט ל־Google. שווה לבדוק את זה מול התנאים, או להציג קו כללי במקום הקו האמיתי. בינתיים הוספתי קרדיט במסך המקורות.</p></div></div>
+      <div><span class="tag hi">רק אתה</span><div><b>Data Safety ו־App Privacy</b><p>בקונסולות צריך להצהיר עכשיו על מיקום שנאסף ונשלח ל־Google לצורך הפעולה. אם ההצהרה בחנות סותרת את המדיניות, זו עילה להסרה.</p></div></div>
+      <div><span class="tag hi">רק אתה</span><div><b>הדף ב־Google Sites</b><p>הקישור במדיניות פרטיות מוביל לגרסה הישנה. צריך להעתיק לשם את הטקסט החדש.</p></div></div>
+    </div>
+
+    <h2>מה אני צריך ממך לפני הקוד</h2>
+    <div class="q"><ul>
+      <li><b>כתובת מייל לפניות</b>, שתופיע במסך ובמדיניות.</li>
+      <li><b>שם המפעיל:</b> השם הפרטי שלך, או שם עסק אם יש.</li>
+      <li><b>להשאיר את הגרסה האנגלית?</b> ההמלצה שלי היא עברית בלבד, כי האפליקציה בעברית. שתי גרסאות הן שני מסמכים שצריך לשמור מסונכרנים, ופער ביניהם הוא עוד חשיפה.</li>
+      <li><b>האם יש אפשרות להסיר פרסומות בתשלום?</b> אם כן, צריך להוסיף סעיף על החזרים.</li>
+    </ul></div>
+    <p class="note">אני לא עורך דין. הטקסט מכסה כל נקודה שמצאתי בקוד, והוא מדויק לגבי מה שהאפליקציה עושה, אבל לפני שחרור לחנות כדאי שעורך דין שמתמחה בפרטיות יעבור עליו, במיוחד על הגבלת האחריות ועל ההתאמה לתיקון 13.</p>
+  </div>
+</div>
+
+<script>
+const chev = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+const I = {
+  calc: '<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h2M14 12h2M8 16h2M14 16h2"/>',
+  warn: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  phone: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
+  pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+  fuel: '<path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M3 22h12M15 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/>',
+};
+const ico = (k, cls='') => `<div class="ic ${cls}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg></div>`;
+const PH = (t) => `<span class="ph">${t}</span>`;
+
+const DOCS = {
+  terms: {
+    brief: [
+      ['calc', 'התוצאה היא הערכה', 'המחיר, הצריכה והמסלול משוערים. לפני תשלום או התחשבנות, בדקו בעצמכם.'],
+      ['warn', 'לא בזמן נהיגה', 'הזינו את הפרטים לפני היציאה לדרך, או תנו לנוסע לעשות את זה.', 'warn'],
+      ['shield', 'בחינם, כמו שהיא', 'האחריות שלנו מוגבלת, במידה שהחוק מתיר.'],
+    ],
+    sections: [
+      ['מי אנחנו ומתי התנאים חלים', `<p>CheckFuel ("האפליקציה") מופעלת על ידי ${PH('[שם המפעיל]')} ("אנחנו"). השימוש באפליקציה הוא הסכמה לתנאים האלה ולמדיניות הפרטיות. אם אינכם מסכימים, אל תשתמשו באפליקציה.</p><p>האפליקציה מיועדת לבני 18 ומעלה. מי שצעיר יותר משתמש בה באישור הורה.</p>`],
+      ['מה האפליקציה עושה', `<p>האפליקציה מחשבת הערכה של עלות הדלק או החשמל לנסיעה. החישוב מבוסס על המרחק, על נתוני הרכב ועל מחיר משוער לליטר או לקוט"ש. היא כלי עזר לתכנון, ולא מקור רשמי למחירים או לנתוני רכב.</p>`],
+      ['התוצאות הן הערכה בלבד', `<div class="callout">אל תסתמכו על התוצאה לחיוב לקוח, להחזר הוצאות, לדיווח למס או להתחשבנות בין אנשים, בלי לבדוק את הנתונים בעצמכם.</div><p>כמה דברים יכולים לגרום לתוצאה להיות שונה מהעלות בפועל:</p><ul><li>הצריכה מחושבת במודל לפי נתוני הרכב. היא לא נמדדה ברכב שלכם.</li><li>מחיר הבנזין מחושב מנתונים ממשלתיים, בתוספת מרווח תחנה משוער. מחיר הסולר משוער. מחיר החשמל מבוסס על התעריף הביתי, וטעינה בעמדה ציבורית עולה אחרת.</li><li>המסלול הוא המסלול שמציעה Google, והדרך שתיסעו בפועל עשויה להיות שונה.</li><li>עומסי תנועה, משקל, מיזוג, לחץ אוויר בצמיגים וסגנון הנהיגה משנים את הצריכה.</li></ul>`],
+      ['נהיגה בטוחה', `<p>אל תשתמשו באפליקציה בזמן נהיגה. הזינו יעד ופרטים לפני שיוצאים לדרך, או תנו לנוסע לעשות את זה. המסלול נועד לחישוב מרחק בלבד, והוא לא הוראות ניווט. צריך תמיד לציית לחוקי התנועה ולשלטים בדרך.</p>`],
+      ['מידע מצדדים שלישיים', `<p>נתוני הרכב מגיעים ממשרד התחבורה דרך data.gov.il. נתוני המחיר מגיעים מ־data.gov.il ומהלשכה המרכזית לסטטיסטיקה, והמסלולים מ־Google. אנחנו לא שולטים במקורות האלה, ולא אחראים לטעויות, לעיכובים או להפסקות בהם.</p>`],
+      ['פרסומות', `<p>באפליקציה מוצגות פרסומות של Google AdMob. אנחנו לא ממליצים על המפרסמים ולא אחראים לתוכן הפרסומות. כל התקשרות עם מפרסם היא ביניכם לבינו.</p>`],
+      ['שימוש מותר', `<p>מותר להשתמש באפליקציה לשימוש אישי. אסור:</p><ul><li>להעתיק את האפליקציה, לפרק אותה או לבצע בה הנדסה לאחור</li><li>לשלוח בקשות אוטומטיות לשירותים שלה, או להשתמש בהם מחוץ לאפליקציה</li><li>להשתמש בה בניגוד לחוק</li></ul>`],
+      ['קניין רוחני', `<p>האפליקציה, העיצוב והקוד שייכים לנו. שמות יצרנים ודגמים הם סימני מסחר של בעליהם, והם מופיעים רק כדי לזהות את הרכב. אין לנו קשר ליצרני רכב, ל־Google או לגופי ממשלה.</p>`],
+      ['הגבלת אחריות', `<p>האפליקציה ניתנת בחינם, "כמות שהיא" (AS IS), בלי התחייבות שתהיה מדויקת, זמינה או נקייה מתקלות. במידה המרבית שהדין מתיר, אנחנו לא אחראים:</p><ul><li>לנזק עקיף או תוצאתי</li><li>לאובדן כסף</li><li>להחלטות שהתקבלו על סמך התוצאות</li></ul><p>אין באמור כדי לפטור אותנו מאחריות שהדין לא מאפשר לפטור ממנה.</p>`],
+      ['שינויים בשירות ובתנאים', `<p>אנחנו רשאים לשנות, להשעות או להפסיק כל חלק באפליקציה. חישוב המחירים והמסלולים תלוי בשירותים חיצוניים, ואלה עשויים להפסיק לפעול.</p><p>כשהתנאים משתנים, נעדכן את תאריך העדכון. על שינוי מהותי נודיע באפליקציה. המשך השימוש אחרי ההודעה הוא הסכמה לתנאים החדשים.</p>`],
+      ['דין וסמכות שיפוט', `<p>על התנאים האלה חלים דיני מדינת ישראל. הסמכות הבלעדית נתונה לבתי המשפט המוסמכים בישראל. אין בכך כדי לגרוע מזכות שנתונה לצרכן לפי דין.</p>`],
+    ],
+  },
+  privacy: {
+    brief: [
+      ['phone', 'הנתונים שלך נשארים במכשיר', 'רכבים, היסטוריה ויעדים אחרונים נשמרים במכשיר שלך, לא אצלנו. אין חשבון משתמש.'],
+      ['pin', 'מיקום רק לחישוב מסלול', 'נשלח רק כשמחשבים לפי יעד, ולא נשמר אצלנו.'],
+      ['trash', 'מחיקה בלחיצה', 'בתפריט המידע: "מחק את כל הנתונים שלי".'],
+    ],
+    sections: [
+      ['מה נשמר במכשיר שלך', `<p>האפליקציה שומרת במכשיר שלך:</p><ul><li>את הרכבים שהוספת: לוחית רישוי, יצרן, דגם, שנה, סוג דלק וצריכה</li><li>את היסטוריית החישובים</li><li>את היעדים האחרונים</li><li>את ההעדפות שלך</li><li>מונה חישובים, שמשמש לקביעת תדירות הפרסומות</li></ul><p>המידע הזה לא נשלח אלינו. אנחנו לא מבקשים שם, טלפון או דוא"ל.</p>`],
+      ['מה יוצא מהמכשיר, לאן ולמה', `<div class="flow">
+        <div><b>מספר לוחית רישוי ← data.gov.il</b><span>כשמחפשים רכב לפי לוחית, כדי לקבל את נתוני הרכב ממאגר משרד התחבורה.</span></div>
+        <div><b>מיקום ויעד ← השרת שלנו ← Google</b><span>כשמחשבים לפי יעד, כדי לחשב את מרחק הנסיעה. השרת שלנו (Vercel) מעביר את הבקשה ל־Google Routes API. הוא שומר תוצאות בזיכרון זמני כדי לא לחשב שוב את אותה בקשה, לפי מיקום שמעוגל לכ־100 מטר וטקסט היעד. הזיכרון הזה לא נכתב למסד נתונים, ונמחק כשהשרת מופעל מחדש.</span></div>
+        <div><b>בקשת מחירים ← השרת שלנו</b><span>להורדת מחירי הדלק והחשמל. לא נשלח מידע אישי.</span></div>
+        <div><b>פרסומות ← Google AdMob</b><span>Google עשויה לאסוף מזהה פרסום, כתובת IP ופרטי מכשיר, כדי להציג ולמדוד פרסומות. אנחנו מבקשים פרסומות לא מותאמות אישית. במקומות שהחוק מחייב, תתבקשו לתת הסכמה.</span></div>
+      </div><p>כמו בכל בקשה באינטרנט, כתובת ה־IP שלך מגיעה לשרתים שמטפלים בבקשה. למידע נוסף על Google: policies.google.com/technologies/partner-sites</p>`],
+      ['הרשאת מיקום', `<ul><li>האפליקציה מבקשת את המיקום רק כשמחשבים לפי יעד, ורק בזמן שהיא פתוחה. היא לא משתמשת במיקום ברקע.</li><li>אפשר לסרב ולהזין מרחק ידני.</li><li>אפשר לבטל את ההרשאה בכל רגע בהגדרות המכשיר.</li></ul>`],
+      ['מה אנחנו לא עושים', `<ul><li>לא מוכרים מידע</li><li>לא בונים פרופיל משתמש</li><li>לא משתמשים בכלי אנליטיקה</li><li>לא משתפים מידע, מלבד מה שמפורט בסעיף "מה יוצא מהמכשיר"</li></ul>`],
+      ['שמירה ומחיקה', `<p>המידע במכשיר נשמר עד שתמחק אותו. אפשר למחוק רכב או חישוב בודד, למחוק הכל דרך "מחק את כל הנתונים שלי" בתפריט המידע, או להסיר את האפליקציה.</p><p>אם גיבוי המכשיר (iCloud או Google) פעיל, ייתכן שעותק נשמר בגיבוי שלך, בשליטתך.</p>`],
+      ['אבטחה', `<p>המידע נשמר באחסון הפרטי של האפליקציה, שאפליקציות אחרות לא יכולות לקרוא. כל התקשורת עוברת ב־HTTPS. אף שיטת אבטחה לא מושלמת, ואנחנו לא יכולים להבטיח הגנה מלאה.</p>`],
+      ['ילדים', `<p>האפליקציה לא מיועדת לילדים מתחת לגיל 13, ואנחנו לא אוספים ביודעין מידע עליהם.</p>`],
+      ['הזכויות שלך', `<p>לפי חוק הגנת הפרטיות, התשמ"א־1981, יש לך זכות לעיין במידע עליך ולבקש לתקן אותו. רוב המידע נמצא במכשיר שלך ובשליטתך. לשאלות ולבקשות: ${PH('[contact email]')}.</p>`],
+      ['האחראי למידע ושינויים במדיניות', `<p>האחראי למידע: ${PH('[שם המפעיל]')}, ${PH('[contact email]')}. כשהמדיניות משתנה, נעדכן את התאריך. על שינוי מהותי נודיע באפליקציה.</p>`],
+    ],
+  },
+  sources: {
+    brief: [
+      ['db', 'נתונים ממקורות פתוחים', 'נתוני הרכב והמחירים מגיעים ממאגרים ממשלתיים, לפי תנאי השימוש של כל מאגר.'],
+      ['fuel', 'המחיר מחושב, לא נמדד בתחנה', 'אצלכם בתחנה המחיר עשוי להיות שונה.'],
+    ],
+    sections: [
+      ['נתוני רכב', `<p>הנתונים נלקחים ממאגר כלי הרכב של משרד התחבורה ב־data.gov.il, לפי תנאי השימוש של האתר. הצריכה מוערכת במודל שלנו לפי נתוני הרכב: סוג, משקל ומנוע.</p>`],
+      ['מחירי דלק וחשמל', `<ul><li><b>בנזין 95:</b> מחושב ממחיר שער בית הזיקוק ומהבלו, שמתפרסמים ב־data.gov.il, בתוספת מרווח שיווק משוער. המחיר המפוקח מתפרסם פעם בחודש על ידי משרד האנרגיה.</li><li><b>סולר:</b> הערכה, כי המחיר בתחנות לא מפוקח.</li><li><b>חשמל:</b> התעריף הביתי, לפי מדד המחירים של הלשכה המרכזית לסטטיסטיקה. מתעדכן באיחור של כמה שבועות. טעינה בעמדה ציבורית עולה אחרת.</li></ul>`],
+      ['מסלולים', `<p>המרחק והמסלול מחושבים בעזרת Google Maps Platform. Powered by Google.</p>`],
+      ['דיווח על טעות', `<p>מצאתם רכב עם נתונים שגויים, או מחיר שלא מתאים? כתבו לנו ל־${PH('[contact email]')}, וציינו את הדגם או המחיר.</p>`],
+    ],
+  },
+};
+
+function render(tab) {
+  const d = DOCS[tab];
+  document.getElementById('brief').innerHTML = '<div class="lbl">בקצרה</div>' + d.brief.map(([k, t, s, c]) => `<div class="bRow">${ico(k, c)}<div><b>${t}</b><span>${s}</span></div></div>`).join('');
+  document.getElementById('acc').innerHTML = d.sections.map(([t, b], i) => `<details${i === 0 ? ' open' : ''}><summary>${t}${chev}</summary><div class="body">${b}</div></details>`).join('');
+  document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+}
+document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => render(b.dataset.tab)));
+render('terms');
+</script>

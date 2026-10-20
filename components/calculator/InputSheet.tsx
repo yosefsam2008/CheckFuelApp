@@ -26,7 +26,7 @@ const SheetInput = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
 export function InputSheet({ sheetRef, title, placeholder, initial, numeric, suffix, cta, onSubmit, recent = [] }: Props) {
   const [text, setText] = useState(initial);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ElementRef<typeof BottomSheetTextInput>>(null);
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.45} pressBehavior="close" />,
     [],

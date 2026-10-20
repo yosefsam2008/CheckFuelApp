@@ -1,354 +1,111 @@
-//c
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Animated,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { color } from "../../constants/theme";
-import { LEGAL_UI_STRINGS } from "../../legal/LEGAL_UI_STRINGS_HE";
+// Welcome sheet: three key points + click-to-accept terms and privacy. Shown on first launch and after a LEGAL_VERSION bump.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Calculator, Smartphone, TriangleAlert } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Image, Modal, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LegalScreen from '../../app/LegalScreen';
+import { haptic } from '../../constants/motion';
+import { colors, Heebo, radius, shadow } from '../../constants/theme';
+import { LEGAL_VERSION, LegalTab } from '../../legal/LEGAL_CONTENT_HE';
+import { PressableScale } from '../calculator/PressableScale';
 
-const COLORS = {
-  primary: "#34C759",
-  primaryStrong: color.brandGreenStrong, // fills that carry white text
-  primaryDark: "#248A3D",
-  primaryLight: "#A8E6CF",
-  accent: "#007AFF",
-  accentLight: "#E8F4FF",
-  success: "#34C759",
-  warning: "#FF9500",
-  error: "#FF3B30",
-  background: "#F2F2F7",
-  card: "#FFFFFF",
-  cardBorder: "rgba(0, 0, 0, 0.04)",
-  textPrimary: "#000000",
-  textSecondary: color.textSecondary,
-  textTertiary: color.textSecondary,
-  textOnPrimary: "#FFFFFF",
-  overlay: "rgba(0, 0, 0, 0.4)",
-  shadow: "#000000",
-};
+export const LEGAL_VERSION_KEY = 'legal_accepted_version';
 
-interface FirstLaunchModalProps {
-  visible: boolean;
-  onAccept: () => void;
-}
+const POINTS = [
+  { Icon: Calculator, warn: false, title: 'התוצאה היא הערכה', text: 'המחיר והצריכה משוערים. לפני תשלום או התחשבנות, בדקו בעצמכם.' },
+  { Icon: TriangleAlert, warn: true, title: 'לא בזמן נהיגה', text: 'הזינו את היעד לפני שיוצאים לדרך.' },
+  { Icon: Smartphone, warn: false, title: 'הנתונים נשארים אצלכם', text: 'רכבים והיסטוריה נשמרים במכשיר. המיקום נשלח רק לחישוב מרחק.' },
+];
 
-export const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({
-  visible,
-  onAccept,
-}) => {
-  const [accepted, setAccepted] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
+export function FirstLaunchModal({ visible, onAccept }: { visible: boolean; onAccept: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [reading, setReading] = useState<LegalTab | null>(null);
 
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      scaleAnim.setValue(0);
-      opacityAnim.setValue(0);
-    }
-  }, [visible, scaleAnim, opacityAnim]);
-
-  const handleAccept = async () => {
+  const accept = async () => {
+    haptic.press();
     try {
-      await AsyncStorage.setItem("app_launched", "true");
-      await AsyncStorage.setItem("legal_accepted_date", new Date().toISOString());
+      await AsyncStorage.multiSet([
+        ['app_launched', 'true'],
+        [LEGAL_VERSION_KEY, LEGAL_VERSION],
+        ['legal_accepted_date', new Date().toISOString()],
+      ]);
       onAccept();
-    } catch (error) {
-      console.error("Failed to save acceptance:", error);
-      // FIXED: Show error alert with retry option to prevent being stuck on modal
-      Alert.alert(
-        "שגיאה בשמירה",
-        "לא הצלחנו לשמור את האישור. אנא נסה שוב.",
-        [
-          {
-            text: "נסה שוב",
-            onPress: handleAccept,
-          },
-          {
-            text: "המשך בכל זאת",
-            onPress: onAccept,
-            style: "destructive",
-          },
-        ]
-      );
+    } catch {
+      Alert.alert('שגיאה בשמירה', 'לא הצלחנו לשמור את האישור. נסו שוב.', [
+        { text: 'נסה שוב', onPress: accept },
+        { text: 'המשך בכל זאת', onPress: onAccept, style: 'destructive' },
+      ]);
     }
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      hardwareAccelerated={true}
-    >
-      <View style={styles.overlay}>
-        {/* Backdrop */}
-        <Animated.View
-          style={[styles.backdrop, { opacity: opacityAnim }]}
-        />
-
-        {/* Modal Content */}
-        <Animated.View
-          style={[
-            styles.centeredView,
-            {
-              opacity: opacityAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          <View style={styles.modalContent}>
-            {/* Header Icon */}
-            <Text style={styles.headerIcon}>📜</Text>
-
-            {/* Title */}
-            <Text style={styles.title}>
-              {LEGAL_UI_STRINGS.firstLaunch.title}
+    // onRequestClose is a no-op: the Android back button must not skip acceptance
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => (reading ? setReading(null) : undefined)} statusBarTranslucent>
+      {reading ? (
+        // same Modal: iOS can't present a second modal on top of this one
+        <LegalScreen initialTab={reading} onClose={() => setReading(null)} />
+      ) : (
+        <View style={styles.scrim}>
+          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+            <Image source={require('../../assets/images/logo-mark.png')} style={styles.logo} accessibilityIgnoresInvertColors />
+            <Text style={styles.title} accessibilityRole="header">
+              ברוכים הבאים ל־CheckFuel
             </Text>
+            <Text style={styles.sub}>לפני שמתחילים, שלושה דברים חשובים:</Text>
 
-            {/* Message */}
-            <Text style={styles.message}>
-              {LEGAL_UI_STRINGS.firstLaunch.message}
-            </Text>
-
-            {/* Scrollable Legal Text */}
-            <ScrollView
-              style={styles.legalTextContainer}
-              showsVerticalScrollIndicator={true}
-            >
-              <View style={styles.legalSection}>
-                <Text style={styles.legalSectionTitle}>📋 תנאי השימוש</Text>
-                <Text style={styles.legalSectionText}>
-                  • החישובים באפליקציה מבוססים על נתונים המוזנים על ידי המשתמש ונוסחאות כלליות.{"\n\n"}
-                  • התוצאות מהוות הערכה בלבד ואינן תחליף לבדיקת צריכה בפועל.{"\n"}
-                  • מפתח האפליקציה אינו נושא באחריות לנזק, הפסד או שגיאות חישוב כלשהן.{"\n"}
-                  • אנחנו לא אחראים לשגיאות חישוביות{"\n"}
-                  • השימוש באפליקציה מותר לצרכים אישיים ושאינם מסחריים בלבד.
-                </Text>
-              </View>
-
-              <View style={styles.legalSection}>
-                <Text style={styles.legalSectionTitle}>🔒 מדיניות הפרטיות</Text>
-                <Text style={styles.legalSectionText}>
-                  הנתונים שלך:
-                  {"\n\n"}
-                  • הרכבים וההיסטוריה נשמרים רק בהתקן שלך{"\n"}
-                  • האפליקציה מציגה פרסומות של Google AdMob (לא מותאמות אישית), וגוגל עשויה לאסוף מזהי מכשיר ונתוני שימוש{"\n"}
-                  • בחיפוש לפי לוחית נשלח מספר הלוחית בלבד ל-data.gov.il{"\n"}
-                  • אפשר למחוק את כל הנתונים בכל עת מתפריט המידע
-                </Text>
-              </View>
-
-              <View style={styles.legalSection}>
-                <Text style={styles.legalSectionTitle}>
-                  ⚠️ הבהרה חשובה
-                </Text>
-                <Text style={styles.legalSectionText}>
-                  התוצאות המוצגות בחישוב הן הערכות משוערות בלבד. אל תסתמוך עליהן כמקור יחידה. בדוק תמיד עם תחנת דלק או סוכן בפועל.
-                </Text>
-              </View>
-            </ScrollView>
-
-            {/* Checkbox */}
-            <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => setAccepted(!accepted)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  accepted && styles.checkboxChecked,
-                ]}
-              >
-                {accepted && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
-              </View>
-              <Text style={styles.checkboxLabel}>
-                {LEGAL_UI_STRINGS.firstLaunch.checkboxLabel}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Buttons */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.acceptButton,
-                  !accepted && styles.acceptButtonDisabled,
-                ]}
-                onPress={handleAccept}
-                disabled={!accepted}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.acceptButtonText}>
-                  {LEGAL_UI_STRINGS.firstLaunch.buttonAccept}
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.points}>
+              {POINTS.map(({ Icon, warn, title, text }, i) => (
+                <View key={title} style={[styles.point, i > 0 && styles.divider]}>
+                  <View style={[styles.icon, warn && { backgroundColor: colors.warnBg }]}>
+                    <Icon size={18} color={warn ? colors.warnText : colors.selectedText} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pointTitle}>{title}</Text>
+                    <Text style={styles.pointText}>{text}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
+
+            <Text style={styles.legal}>
+              בלחיצה על "מסכים וממשיך" אתם מאשרים שאתם בני 18 ומעלה, ושקראתם ואתם מסכימים ל
+              <Text style={styles.link} onPress={() => setReading('terms')} accessibilityRole="link">
+                תנאי השימוש
+              </Text>
+              {' '}ול
+              <Text style={styles.link} onPress={() => setReading('privacy')} accessibilityRole="link">
+                מדיניות הפרטיות
+              </Text>
+              .
+            </Text>
+
+            <PressableScale onPress={accept} style={[styles.cta, shadow.cta]} accessibilityRole="button">
+              <LinearGradient colors={colors.ctaGradient} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+              <Text style={styles.ctaText}>מסכים וממשיך</Text>
+            </PressableScale>
           </View>
-        </Animated.View>
-      </View>
+        </View>
+      )}
     </Modal>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  backdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: COLORS.overlay,
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    paddingHorizontal: 16,
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 500,
-    maxHeight: "85%",
-    backgroundColor: COLORS.card,
-    borderRadius: 20,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 20,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  headerIcon: {
-    fontSize: 48,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: COLORS.textPrimary,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  message: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  legalTextContainer: {
-    maxHeight: 200,
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  legalSection: {
-    marginBottom: 16,
-  },
-  legalSectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
-    marginBottom: 8,
-    textAlign: "right",
-  },
-  legalSectionText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
-    textAlign: "right",
-  },
-  checkboxContainer: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    paddingVertical: 12,
-    marginBottom: 20,
-    paddingHorizontal: 12,
-    backgroundColor: "#F9F9FB",
-    borderRadius: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: COLORS.textTertiary,
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primaryStrong,
-    borderColor: COLORS.primaryStrong,
-  },
-  checkmark: {
-    color: COLORS.textOnPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  checkboxLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    fontWeight: "500",
-    textAlign: "right",
-  },
-  buttonContainer: {
-    alignItems: "center",
-  },
-  acceptButton: {
-    width: "100%",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: COLORS.primaryStrong,
-    alignItems: "center",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  acceptButtonDisabled: {
-    backgroundColor: COLORS.textTertiary,
-    shadowOpacity: 0,
-  },
-  acceptButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.textOnPrimary,
-  },
+  scrim: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.scrim },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingTop: 28, paddingHorizontal: 20, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  logo: { width: 44, height: 48, alignSelf: 'center', marginBottom: 12 },
+  title: { fontFamily: Heebo.extra, fontSize: 24, lineHeight: 32, color: colors.text, textAlign: 'center' },
+  sub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 2 },
+  points: { marginTop: 16 },
+  point: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12 },
+  divider: { borderTopWidth: 1, borderTopColor: colors.divider },
+  icon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
+  pointTitle: { fontFamily: Heebo.extra, fontSize: 15, color: colors.text },
+  pointText: { fontFamily: Heebo.regular, fontSize: 13, lineHeight: 19, color: colors.textMuted, marginTop: 1 },
+  legal: { fontFamily: Heebo.regular, fontSize: 13, lineHeight: 20, color: colors.textMuted, marginTop: 12 },
+  link: { fontFamily: Heebo.bold, color: colors.infoText, textDecorationLine: 'underline' },
+  cta: { height: 56, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginTop: 16 },
+  ctaText: { fontFamily: Heebo.extra, fontSize: 17, color: colors.white, textShadowColor: colors.textShadow, textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
 });

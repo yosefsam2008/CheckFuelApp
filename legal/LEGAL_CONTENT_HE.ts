@@ -1,5 +1,7 @@
 // In-app legal text (Hebrew). Privacy mirrors legal/privacy-policy.html: change both together.
 export const LEGAL_UPDATED = '20 באוקטובר 2026';
+/** bump only on a material change: every user sees the welcome sheet again and re-accepts */
+export const LEGAL_VERSION = '2';
 export const OPERATOR = 'yoyosamaApps';
 export const CONTACT_EMAIL = 'yosef2030485@gmail.com';
 

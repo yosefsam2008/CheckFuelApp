@@ -7,7 +7,8 @@ import { Alert, Linking, Modal, Pressable, StyleSheet, Text, TouchableOpacity, V
 import * as Updates from 'expo-updates';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckFuelTabBar } from '../../components/nav/CheckFuelTabBar';
-import { FirstLaunchModal } from '../../components/modals/FirstLaunchModal';
+import { FirstLaunchModal, LEGAL_VERSION_KEY } from '../../components/modals/FirstLaunchModal';
+import { LEGAL_VERSION } from '../../legal/LEGAL_CONTENT_HE';
 import { InfoMenuContext } from '../../hooks/use-info-menu';
 import { PRIVACY_POLICY_URL } from '../../legal/LEGAL_UI_STRINGS_HE';
 import { privacyOptionsRequired, showPrivacyOptions } from '../../lib/ads/initAds';
@@ -92,35 +93,15 @@ export default function TabsLayout() {
 
 
   useEffect(() => {
-    const checkFirstLaunch = async () => {
-      try {
-        const hasLaunched = await AsyncStorage.getItem('app_launched');
-        if (!hasLaunched) {
-          setShowFirstLaunch(true);
-        }
-      } catch (error) {
-        console.error('Error checking first launch:', error);
-        setShowFirstLaunch(true);
-      }
-    };
-
-    checkFirstLaunch();
+    // first launch, or accepted an older version of the terms
+    AsyncStorage.getItem(LEGAL_VERSION_KEY)
+      .then((v) => setShowFirstLaunch(v !== LEGAL_VERSION))
+      .catch(() => setShowFirstLaunch(true));
   }, []);
-
-  const handleAccept = async () => {
-    try {
-      await AsyncStorage.setItem('app_launched', 'true');
-      await AsyncStorage.setItem('legal_accepted_date', new Date().toISOString());
-      setShowFirstLaunch(false);
-    } catch (error) {
-      console.error('Error saving acceptance:', error);
-      setShowFirstLaunch(false);
-    }
-  };
 
   return (
     <InfoMenuContext.Provider value={openMenu}>
-      <FirstLaunchModal visible={showFirstLaunch} onAccept={handleAccept} />
+      <FirstLaunchModal visible={showFirstLaunch} onAccept={() => setShowFirstLaunch(false)} />
       <SideMenu visible={menuOpen} onClose={() => setMenuOpen(false)} onDataDeleted={() => setShowFirstLaunch(true)} />
 
       <Tabs

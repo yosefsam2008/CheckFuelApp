@@ -55,8 +55,8 @@ function Row({ title, blocks, open, onToggle, first }: { title: string; blocks: 
   );
 }
 
-export default function LegalScreen({ onClose }: { onClose?: () => void }) {
-  const [tab, setTab] = useState<LegalTab>('terms');
+export default function LegalScreen({ onClose, initialTab = 'terms' }: { onClose?: () => void; initialTab?: LegalTab }) {
+  const [tab, setTab] = useState<LegalTab>(initialTab);
   const [open, setOpen] = useState(0);
   const doc = LEGAL_DOCS[tab];
 

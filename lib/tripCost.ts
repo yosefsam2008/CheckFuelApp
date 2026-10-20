@@ -74,8 +74,13 @@ export type Octane = '95' | '98';
 
 /** Same price pick as the old wizard's auto-fill; 98 only applies to petrol. */
 export function priceFor(vehicle: Vehicle, prices: FuelPrices, octane: Octane = '95'): number {
-  if (vehicle.fueltype === 'Electric') return prices.Electric;
+  const field = priceField(vehicle);
+  return prices[field] + (field === 'Gasoline' && octane === '98' ? OCTANE_98_PREMIUM : 0);
+}
+
+/** Which price feed field a vehicle uses; trucks count as diesel. */
+export function priceField(vehicle: Vehicle): keyof FuelPrices {
+  if (vehicle.fueltype === 'Electric') return 'Electric';
   const isTruck = /truck|lorry/i.test(vehicle.type ?? '');
-  if (vehicle.fueltype === 'Diesel' || isTruck) return prices.Diesel;
-  return prices.Gasoline + (octane === '98' ? OCTANE_98_PREMIUM : 0);
+  return vehicle.fueltype === 'Diesel' || isTruck ? 'Diesel' : 'Gasoline';
 }

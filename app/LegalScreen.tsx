@@ -287,7 +287,11 @@ const ABOUT_CONTENT_HE = `
 הערכות צריכה מחושבות בתוך האפליקציה לפי נתוני הרכב מהמאגר הממשלתי
 
 ⛽ מחירי דלק וחשמל
-מחירים אחרונים מהשוק בישראל
+• דלק: data.gov.il, משרד האנרגיה (מחירי שער בית זיקוק ומס הבלו)
+• חשמל: הלמ"ס, מדד מחירי החשמל לצריכה ביתית
+• כל המחירים הם הערכה
+• בנזין 95: המחיר המרבי בשירות עצמי שקובעת המדינה
+• סולר: הערכה בלבד, כי מחירו אינו בפיקוח. המחיר בתחנה עשוי להיות שונה
 
 2. אנא שימו לב
 
@@ -335,7 +339,11 @@ Israel's open government database
 Consumption estimates are calculated inside the App from the government vehicle data
 
 ⛽ Fuel and Electricity Prices
-Current market prices in Israel
+• Fuel: data.gov.il, Ministry of Energy (refinery-gate prices and excise)
+• Electricity: Central Bureau of Statistics (הלמ"ס), home-electricity price index
+• All prices are estimates
+• Gasoline 95: the regulated self-service maximum price
+• Diesel: an estimate only, as its price is not regulated. The price at the pump may differ
 
 2. Please Note
 

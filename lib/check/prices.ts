@@ -63,6 +63,26 @@ const good = { Gasoline: '7.29', Diesel: '9.70', Electric: '0.62' };
     assert.equal(s[CACHE_KEY], old[CACHE_KEY]);
   }
 
+  // new optional fields pass through live, fresh cache and stale cache; junk in them is dropped
+  const full = { ...good, effectiveFrom: '2026-10-05', source: 'data.gov.il', computed: { Gasoline: true, Diesel: true, Electric: false, x: 1 } };
+  const n = mk(full);
+  r = await getPrices(n.io, undefined, T0);
+  const info = { effectiveFrom: '2026-10-05', source: 'data.gov.il', computed: { Gasoline: true, Diesel: true, Electric: false } };
+  assert.deepEqual(r.info, info);
+  r = await getPrices(mk(new Error('offline'), n.store).io, undefined, T0 + 1);
+  assert.deepEqual([r.source, r.info], ['cache', info]);
+  r = await getPrices(mk(new Error('offline'), n.store).io, undefined, T0 + CACHE_TTL_MS + 1);
+  assert.deepEqual([r.source, r.info], ['cache-stale', info]);
+  r = await getPrices(mk({ ...good, effectiveFrom: '5.10', computed: 'yes' }).io, undefined, T0);
+  assert.equal(r.info, undefined);
+
+  // old 3-field server and an old cache entry without info: prices load, info stays unset
+  r = await getPrices(mk(good).io, undefined, T0);
+  assert.deepEqual([r.source, r.prices.Gasoline, r.info], ['live', 7.29, undefined]);
+  const legacy = { [CACHE_KEY]: JSON.stringify({ prices: { Gasoline: 7.1, Diesel: 9, Electric: 0.6 }, fetchedAt: T0 }) };
+  r = await getPrices(mk(new Error('offline'), legacy).io, undefined, T0 + CACHE_TTL_MS + 1);
+  assert.deepEqual([r.source, r.prices.Gasoline, r.info], ['cache-stale', 7.1, undefined]);
+
   // offline and nothing cached: defaults; corrupt cache counts as nothing cached
   r = await getPrices(mk(new Error('offline')).io, undefined, T0);
   assert.deepEqual([r.source, r.prices], ['default', DEFAULT_PRICES]);

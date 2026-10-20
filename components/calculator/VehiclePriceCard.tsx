@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useEnter } from '../../constants/motion';
 import { colors, Heebo, radius, shadow, space } from '../../constants/theme';
-import type { Octane, Vehicle } from '../../lib/tripCost';
+import { priceField, type Octane, type Vehicle } from '../../lib/tripCost';
 import { FuelPriceDisplay, PriceStatus } from './FuelPriceDisplay';
 import { PressableScale } from './PressableScale';
 import { SlidingSegment } from './SlidingSegment';
@@ -17,6 +17,7 @@ interface Props {
   price: string;
   onPriceChange: (text: string) => void;
   priceStatus: PriceStatus;
+  priceDate?: string;
   octane: Octane;
   onOctane: (o: Octane) => void;
   highlightKey: number;
@@ -72,7 +73,7 @@ export function VehiclePriceCard(p: Props) {
       {v ? (
         <>
           <View style={{ marginTop: space.block }}>
-            <FuelPriceDisplay price={p.price} onPriceChange={p.onPriceChange} unit={isElectric ? 'לקוט״ש' : 'לליטר'} status={p.priceStatus} />
+            <FuelPriceDisplay price={p.price} onPriceChange={p.onPriceChange} unit={isElectric ? 'לקוט״ש' : 'לליטר'} status={p.priceStatus} effectiveFrom={p.priceDate} estimate={priceField(v) === 'Diesel'} />
           </View>
           {isPetrol && (
             <View style={{ marginTop: space.block }}>

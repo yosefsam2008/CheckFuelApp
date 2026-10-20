@@ -15,12 +15,19 @@ export interface PriceResult {
   source: PriceSource;
   fetchedAt?: number;
   offline?: boolean; // cache-stale only: the request never reached the server (vs. a bad response)
+  info?: PriceInfo;
+}
+// optional fields from the computing server; old servers and old caches send none of them
+export interface PriceInfo {
+  effectiveFrom?: string; // YYYY-MM-DD
+  source?: string;
+  computed?: Partial<Record<keyof Prices, boolean>>; // false = the server fell back to a fixed value
 }
 export interface PriceIO {
   fetchJson: (url: string, signal: AbortSignal) => Promise<unknown>;
   storage: { get: (k: string) => Promise<string | null>; set: (k: string, v: string) => Promise<void> };
 }
-interface Cache { prices: Prices; fetchedAt: number; previous?: Prices }
+interface Cache { prices: Prices; fetchedAt: number; previous?: Prices; info?: PriceInfo }
 
 class BadResponse extends Error {}
 
@@ -41,12 +48,21 @@ export function parsePrices(data: any): Prices {
   return p;
 }
 
-const same = (a: Prices, b: Prices) => a.Gasoline === b.Gasoline && a.Diesel === b.Diesel && a.Electric === b.Electric;
+export function parseInfo(data: any): PriceInfo | undefined {
+  const info: PriceInfo = {};
+  if (typeof data?.effectiveFrom === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.effectiveFrom)) info.effectiveFrom = data.effectiveFrom;
+  if (typeof data?.source === 'string') info.source = data.source;
+  const fields = (['Gasoline', 'Diesel', 'Electric'] as const).filter((f) => typeof data?.computed?.[f] === 'boolean');
+  if (fields.length) info.computed = Object.fromEntries(fields.map((f) => [f, data.computed[f]]));
+  return Object.keys(info).length ? info : undefined;
+}
+
+const same =(a: Prices, b: Prices) => a.Gasoline === b.Gasoline && a.Diesel === b.Diesel && a.Electric === b.Electric;
 
 async function readCache(io: PriceIO): Promise<Cache | null> {
   try {
     const c = JSON.parse((await io.storage.get(CACHE_KEY)) ?? 'null');
-    return c && typeof c.fetchedAt === 'number' ? { prices: parsePrices(c.prices), fetchedAt: c.fetchedAt, previous: c.previous && parsePrices(c.previous) } : null;
+    return c && typeof c.fetchedAt === 'number' ? { prices: parsePrices(c.prices), fetchedAt: c.fetchedAt, previous: c.previous && parsePrices(c.previous), info: parseInfo(c.info) } : null;
   } catch {
     return null; // corrupt cache = no cache
   }
@@ -56,10 +72,12 @@ async function fetchLive(io: PriceIO, cached: Cache | null, now: number): Promis
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const prices = parsePrices(await io.fetchJson(PRICES_URL, ctl.signal));
+    const data = await io.fetchJson(PRICES_URL, ctl.signal);
+    const prices = parsePrices(data);
+    const info = parseInfo(data);
     const previous = cached && !same(cached.prices, prices) ? cached.prices : cached?.previous;
-    await io.storage.set(CACHE_KEY, JSON.stringify({ prices, fetchedAt: now, previous })).catch(() => {});
-    return { prices, previous, source: 'live', fetchedAt: now };
+    await io.storage.set(CACHE_KEY, JSON.stringify({ prices, fetchedAt: now, previous, info })).catch(() => {});
+    return { prices, previous, source: 'live', fetchedAt: now, info };
   } finally {
     clearTimeout(timer);
   }
@@ -70,12 +88,12 @@ export async function getPrices(io: PriceIO = defaultIO, onUpdate?: (r: PriceRes
   const cached = await readCache(io);
   if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
     fetchLive(io, cached, now).then(onUpdate, () => {});
-    return { prices: cached.prices, previous: cached.previous, source: 'cache', fetchedAt: cached.fetchedAt };
+    return { prices: cached.prices, previous: cached.previous, source: 'cache', fetchedAt: cached.fetchedAt, info: cached.info };
   }
   try {
     return await fetchLive(io, cached, now);
   } catch (e) {
-    if (cached) return { prices: cached.prices, previous: cached.previous, source: 'cache-stale', fetchedAt: cached.fetchedAt, offline: !(e instanceof BadResponse) };
+    if (cached) return { prices: cached.prices, previous: cached.previous, source: 'cache-stale', fetchedAt: cached.fetchedAt, info: cached.info, offline: !(e instanceof BadResponse) };
     return { prices: DEFAULT_PRICES, source: 'default' };
   }
 }

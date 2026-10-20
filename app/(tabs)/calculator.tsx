@@ -23,9 +23,9 @@ import { colors, Heebo, radius, space } from '../../constants/theme';
 import { useOpenInfoMenu } from '../../hooks/use-info-menu';
 import { LEGAL_UI_STRINGS } from '../../legal/LEGAL_UI_STRINGS_HE';
 import { getRoute, LatLng, RouteResult, routeProviderConfigured } from '../../lib/route';
-import { computeTrip, DEFAULT_PREFS, FuelPrices, Octane, priceFor, TripPrefs, Vehicle } from '../../lib/tripCost';
+import { computeTrip, DEFAULT_PREFS, FuelPrices, Octane, priceField, priceFor, TripPrefs, Vehicle } from '../../lib/tripCost';
 import { NO_TOUCH } from '../../constants/rtl';
-import { DEFAULT_PRICES, defaultIO, getPrices, PriceResult } from '../../lib/prices';
+import { DEFAULT_PRICES, defaultIO, getPrices, PriceInfo, PriceResult } from '../../lib/prices';
 
 // Conditional imports for ads - only load on native platforms
 const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
@@ -83,13 +83,18 @@ export default function CalculatorScreen() {
 
   // ---------- fuel price ----------
   const [livePrices, setLivePrices] = useState<FuelPrices | null>(null);
+  const [priceInfo, setPriceInfo] = useState<PriceInfo>();
   const [pricesLoading, setPricesLoading] = useState(true);
   const [octane, setOctane] = useState<Octane>('95');
   const [fuelPrice, setFuelPrice] = useState(DEFAULT_PRICES.Gasoline.toFixed(2));
 
   useEffect(() => {
     let cancelled = false;
-    const apply = (r: PriceResult) => !cancelled && setLivePrices(r.source === 'default' ? null : r.prices);
+    const apply = (r: PriceResult) => {
+      if (cancelled) return;
+      setLivePrices(r.source === 'default' ? null : r.prices);
+      setPriceInfo(r.info);
+    };
     getPrices(defaultIO, apply)
       .then(apply)
       .finally(() => !cancelled && setPricesLoading(false));
@@ -306,7 +311,14 @@ export default function CalculatorScreen() {
               onGoToVehicles={() => router.navigate('/vehicles')}
               price={fuelPrice}
               onPriceChange={setFuelPrice}
-              priceStatus={pricesLoading ? 'loading' : !livePrices ? 'fallback' : octane === '98' && vehicle?.fueltype !== 'Diesel' ? 'estimate' : 'live'}
+              priceStatus={
+                pricesLoading ? 'loading'
+                : !livePrices ? 'fallback'
+                : octane === '98' && vehicle?.fueltype !== 'Diesel' ? 'estimate'
+                : vehicle && priceInfo?.computed?.[priceField(vehicle)] === false ? 'estimate' // server sent its fixed fallback
+                : 'live'
+              }
+              priceDate={vehicle && priceField(vehicle) === 'Gasoline' ? priceInfo?.effectiveFrom : undefined} // the feed's date is the gasoline row's
               octane={octane}
               onOctane={setOctane}
               highlightKey={vehicleHl}

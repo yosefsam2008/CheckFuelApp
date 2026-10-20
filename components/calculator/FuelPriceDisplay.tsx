@@ -13,6 +13,8 @@ interface Props {
   onPriceChange: (text: string) => void;
   unit: string; // "לליטר" / "לקוט״ש"
   status: PriceStatus;
+  effectiveFrom?: string; // YYYY-MM-DD from the price feed; old feeds send none
+  estimate?: boolean; // diesel: not price-controlled, so there is no official price
 }
 
 function PulseDot() {
@@ -36,7 +38,13 @@ const STATUS_TEXT: Record<PriceStatus, string> = {
   fallback: 'מחיר משוער',
 };
 
-export function FuelPriceDisplay({ price, onPriceChange, unit, status }: Props) {
+function caption(status: PriceStatus, effectiveFrom?: string, estimate?: boolean) {
+  if (status !== 'live') return STATUS_TEXT[status];
+  const base = effectiveFrom ? `מחיר מ-${effectiveFrom.slice(8, 10)}.${effectiveFrom.slice(5, 7)}` : estimate ? 'מחיר עדכני' : STATUS_TEXT.live;
+  return estimate ? `${base} · הערכה` : base;
+}
+
+export function FuelPriceDisplay({ price, onPriceChange, unit, status, effectiveFrom, estimate }: Props) {
   return (
     <View style={styles.row}>
       <View style={styles.priceRow}>
@@ -50,7 +58,7 @@ export function FuelPriceDisplay({ price, onPriceChange, unit, status }: Props) 
       <View style={styles.status}>
         {status === 'live' && <PulseDot />}
         <Text style={styles.statusText} numberOfLines={1}>
-          {STATUS_TEXT[status]}
+          {caption(status, effectiveFrom, estimate)}
         </Text>
       </View>
     </View>

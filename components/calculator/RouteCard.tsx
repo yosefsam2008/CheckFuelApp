@@ -1,6 +1,6 @@
 import { Clock, RotateCw, Search } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, interpolateColor, useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';
 import { haptic, useEnter } from '../../constants/motion';
 import { NO_OUTLINE } from '../../constants/rtl';
@@ -110,9 +110,11 @@ function Skeleton({ w, h }: { w: number; h: number }) {
 function Distance({ p }: { p: Props }) {
   const manual = p.mode === 'manual';
   const hasRoute = !manual && p.routeStatus === 'ok' && p.km > 0;
+  // phones under 360pt wide (SE 1st gen, small Androids): narrower column so the destination field keeps room
+  const narrow = useWindowDimensions().width < 360;
   return (
-    <View style={styles.distance}>
-      {!manual && <RouteMiniMap active={hasRoute} polyline={hasRoute ? p.route?.polyline : undefined} />}
+    <View style={[styles.distance, narrow && { width: 84 }]}>
+      {!manual && <RouteMiniMap width={narrow ? 74 : undefined} active={hasRoute} polyline={hasRoute ? p.route?.polyline : undefined} />}
       {!manual && p.routeStatus === 'loading' ? (
         <View style={{ gap: 6, alignItems: 'center' }} accessible accessibilityLabel="מחשב מסלול">
           <Skeleton w={70} h={30} />
@@ -146,7 +148,7 @@ function DestinationBlock({ p }: { p: Props }) {
           <Search size={20} color={colors.textMuted} strokeWidth={2} />
           <View style={{ flex: 1 }}>
             {has && <Text style={styles.label}>לאן</Text>}
-            <Text style={[styles.value, !has && { color: colors.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.value, !has && { color: colors.textMuted }]} numberOfLines={2}>
               {has ? p.destination : 'לאן נוסעים?'}
             </Text>
           </View>

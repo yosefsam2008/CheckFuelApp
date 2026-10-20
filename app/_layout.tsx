@@ -7,6 +7,7 @@ import {
   Heebo_900Black,
   useFonts,
 } from '@expo-google-fonts/heebo';
+import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -19,7 +20,7 @@ import { runAutoMigration } from '../lib/utils/evDataMigration';
 import * as Updates from 'expo-updates';
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold, Heebo_900Black });
+  const [fontsLoaded] = useFonts({ Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold, Heebo_900Black, Nunito_800ExtraBold });
 
   useEffect(() => {
     const initializeApp = async () => {

@@ -42,7 +42,7 @@ export function PassengerStepper({ count, onChange }: { count: number; onChange:
     <Animated.View style={[styles.card, shadow.card, ent]}>
       <View style={{ flex: 1 }}>
         <Text style={styles.title}>כמה נוסעים ברכב?</Text>
-        <Text style={styles.hint} numberOfLines={1}>{count === 1 ? 'אפשר לחלק את העלות עם חברים' : 'העלות מתחלקת שווה בשווה'}</Text>
+        <Text style={styles.hint} numberOfLines={2}>{count === 1 ? 'אפשר לחלק את העלות עם חברים' : 'העלות מתחלקת שווה בשווה'}</Text>
       </View>
       <Animated.View
         style={[styles.capsule, bumpStyle]}

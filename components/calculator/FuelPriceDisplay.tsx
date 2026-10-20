@@ -42,8 +42,8 @@ export function FuelPriceDisplay({ price, onPriceChange, unit, status }: Props) 
       <View style={styles.priceRow}>
         {/* the digits lead: ₪ is 70% size, weight 600 */}
         <View {...LTR.props} style={styles.amount}>
-          <Text style={styles.currency}>₪</Text>
-          <TextInput value={price} onChangeText={onPriceChange} keyboardType="decimal-pad" returnKeyType="done" style={styles.price} accessibilityLabel={`מחיר ${unit}`} />
+          <Text style={styles.currency} maxFontSizeMultiplier={1.2}>₪</Text>
+          <TextInput value={price} onChangeText={onPriceChange} keyboardType="decimal-pad" returnKeyType="done" style={styles.price} maxFontSizeMultiplier={1.2} accessibilityLabel={`מחיר ${unit}`} />
         </View>
         <Text style={styles.unit}>{unit}</Text>
       </View>

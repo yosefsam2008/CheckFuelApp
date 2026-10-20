@@ -8,6 +8,7 @@ import { haptic, spring } from '../../constants/motion';
 import { colors, Heebo } from '../../constants/theme';
 import { LTR, NO_TOUCH } from '../../constants/rtl';
 
+// shortcut: fixed-height boxes cap system font scale (1.2-1.3x); other text scales freely.
 const BAR = 64;
 const PILL_H = 48;
 
@@ -31,7 +32,7 @@ function Tab({ focused, label, icon, onPress, onLayout, accessibilityLabel }: {
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, off]}>{icon(colors.textMuted)}</Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, on]}>{icon(colors.selectedText)}</Animated.View>
       </Animated.View>
-      <Animated.Text style={[styles.label, text]} numberOfLines={1}>
+      <Animated.Text style={[styles.label, text]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
         {label}
       </Animated.Text>
     </Pressable>

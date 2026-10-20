@@ -1,7 +1,7 @@
 // Small bottom sheet with one input: used for the destination search and the manual km fallback
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Clock } from 'lucide-react-native';
-import React, { RefObject, useCallback, useState } from 'react';
+import React, { RefObject, useCallback, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NO_OUTLINE } from '../../constants/rtl';
 import { colors, Heebo, radius } from '../../constants/theme';
@@ -26,6 +26,7 @@ const SheetInput = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
 export function InputSheet({ sheetRef, title, placeholder, initial, numeric, suffix, cta, onSubmit, recent = [] }: Props) {
   const [text, setText] = useState(initial);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<TextInput>(null);
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.45} pressBehavior="close" />,
     [],
@@ -48,7 +49,13 @@ export function InputSheet({ sheetRef, title, placeholder, initial, numeric, suf
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheet}
       handleIndicatorStyle={styles.handle}
-      onChange={(i) => i >= 0 && (setText(initial), setError(null))}
+      onChange={(i) => {
+        if (i < 0) return;
+        setText(initial);
+        setError(null);
+        // focus only once the sheet has settled; autoFocus opens the keyboard mid-animation and the sheet misses its height
+        inputRef.current?.focus();
+      }}
     >
       <BottomSheetView style={styles.body}>
         <Text style={styles.title} accessibilityRole="header">
@@ -64,7 +71,7 @@ export function InputSheet({ sheetRef, title, placeholder, initial, numeric, suf
             returnKeyType={numeric ? 'done' : 'search'}
             onSubmitEditing={() => submit(text)}
             style={styles.input}
-            autoFocus
+            ref={inputRef}
             accessibilityLabel={title}
           />
           {!!suffix && <Text style={styles.suffix}>{suffix}</Text>}

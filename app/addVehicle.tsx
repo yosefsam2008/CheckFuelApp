@@ -165,6 +165,7 @@ export default function AddVehicleScreen() {
                 placeholderTextColor={colors.textMuted}
                 editable={!searching}
                 style={[styles.plate, NO_OUTLINE, LTR.style]}
+                maxFontSizeMultiplier={1.3}
                 accessibilityLabel="מספר רישוי"
               />
 

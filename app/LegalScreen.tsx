@@ -475,7 +475,7 @@ export default function LegalScreen({
   ]}
 >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) + 12 }]}>
         <View style={[styles.headerContent, { flexDirection: dynamicFlexRow }]}>
           <Text style={styles.headerTitle}>
             {isHebrewMode ? '⚖️ תנאים משפטיים' : '⚖️ Legal'}
@@ -598,7 +598,6 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: COLORS.primary,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
     paddingHorizontal: 16,
     paddingBottom: 16,
     shadowColor: '#000',

@@ -13,7 +13,8 @@ const ROUTE_URL = process.env.EXPO_PUBLIC_ROUTE_URL;
 
 export const routeProviderConfigured = !!ROUTE_URL;
 
-export async function getRoute(origin: LatLng, destination: string): Promise<RouteResult> {
+/** origin is GPS coords or a typed address */
+export async function getRoute(origin: LatLng | string, destination: string): Promise<RouteResult> {
   if (!ROUTE_URL) throw new Error('Route provider not configured');
   const res = await fetch(ROUTE_URL, {
     method: 'POST',

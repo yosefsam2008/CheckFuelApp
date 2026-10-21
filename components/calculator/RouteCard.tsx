@@ -21,6 +21,8 @@ interface Props {
   mode: InputMode;
   onMode: (m: InputMode) => void;
   originStatus: OriginStatus;
+  originText: string; // '' = current GPS location
+  onOpenOrigin: () => void;
   destination: string;
   onOpenDestination: () => void;
   recent: string[];
@@ -140,10 +142,12 @@ function DestinationBlock({ p }: { p: Props }) {
   return (
     <>
       <Rows p={p}>
-        <View style={styles.originText}>
+        <Pressable onPress={p.onOpenOrigin} style={styles.originText} accessibilityRole="button" accessibilityLabel="שינוי נקודת מוצא">
           <Text style={styles.label}>מאיפה</Text>
-          <Text style={styles.value}>{ORIGIN_TEXT[p.originStatus]}</Text>
-        </View>
+          <Text style={styles.value} numberOfLines={1}>
+            {p.originText || ORIGIN_TEXT[p.originStatus]}
+          </Text>
+        </Pressable>
         <PressableScale onPress={p.onOpenDestination} style={styles.destination} accessibilityRole="button" accessibilityLabel="בחירת יעד">
           <Search size={20} color={colors.textMuted} strokeWidth={2} />
           <View style={{ flex: 1 }}>

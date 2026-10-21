@@ -70,7 +70,7 @@ export function FirstLaunchModal({ visible, onAccept }: { visible: boolean; onAc
             </View>
 
             <Text style={styles.legal}>
-              בלחיצה על "מסכים וממשיך" אתם מאשרים שאתם בני 18 ומעלה, ושקראתם ואתם מסכימים ל
+              בלחיצה על {'"מסכים וממשיך"'} אתם מאשרים שאתם בני 18 ומעלה, ושקראתם ואתם מסכימים ל
               <Text style={styles.link} onPress={() => setReading('terms')} accessibilityRole="link">
                 תנאי השימוש
               </Text>

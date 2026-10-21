@@ -33,6 +33,7 @@ const InterstitialAd = Platform.OS === 'web' ? () => null : require('../../compo
 
 const MAX_KM = 5000;
 const RECENT_KEY = 'recentDestinations';
+const MY_LOCATION = 'המיקום שלי';
 
 type ToastMsg = { text: string; type: 'success' | 'error' };
 
@@ -42,6 +43,7 @@ export default function CalculatorScreen() {
   const resultSheet = useRef<BottomSheetModal>(null);
   const vehicleSheet = useRef<BottomSheetModal>(null);
   const destinationSheet = useRef<BottomSheetModal>(null);
+  const originSheet = useRef<BottomSheetModal>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const [toast, setToast] = useState<ToastMsg | null>(null);
@@ -110,6 +112,7 @@ export default function CalculatorScreen() {
   // ---------- route ----------
   const [originStatus, setOriginStatus] = useState<OriginStatus>('locating');
   const [origin, setOrigin] = useState<LatLng | null>(null);
+  const [originText, setOriginText] = useState(''); // typed start point; '' = GPS
   const [destination, setDestination] = useState('');
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteStatus>('idle');
@@ -137,7 +140,7 @@ export default function CalculatorScreen() {
     })();
   }, []);
 
-  const searchRoute = async (dest: string) => {
+  const searchRoute = async (dest: string, from = originText) => {
     const q = dest.trim();
     if (!q) return;
     Keyboard.dismiss();
@@ -149,8 +152,9 @@ export default function CalculatorScreen() {
     setRouteError(null);
     try {
       if (!routeProviderConfigured) throw new Error('not_configured');
-      if (!origin) throw new Error('no_origin');
-      const r = await getRoute(origin, q);
+      const start = from || origin;
+      if (!start) throw new Error('no_origin');
+      const r = await getRoute(start, q);
       if (id !== routeRequest.current) return;
       setRoute(r);
       setRouteStatus('ok');
@@ -163,7 +167,7 @@ export default function CalculatorScreen() {
       setRouteStatus('error');
       setRouteError(
         msg === 'not_configured' ? 'חישוב מסלול עדיין לא מחובר. אפשר להקליד מרחק ידנית'
-        : msg === 'no_origin' ? 'אין גישה למיקום. אפשר להקליד מרחק ידנית'
+        : msg === 'no_origin' ? 'אין גישה למיקום. אפשר לבחור נקודת מוצא או להקליד מרחק ידנית'
         : 'לא הצלחנו לחשב את המסלול',
       );
     }
@@ -172,6 +176,14 @@ export default function CalculatorScreen() {
   const submitDestination = (text: string) => {
     if (!text.trim()) return 'הקלד כתובת או מקום';
     searchRoute(text);
+    return null;
+  };
+
+  // empty or the "my location" chip goes back to GPS
+  const submitOrigin = (text: string) => {
+    const t = text.trim() === MY_LOCATION ? '' : text.trim();
+    setOriginText(t);
+    if (destination) searchRoute(destination, t);
     return null;
   };
 
@@ -287,6 +299,8 @@ export default function CalculatorScreen() {
           mode={inputMode}
           onMode={setInputMode}
           originStatus={originStatus}
+          originText={originText}
+          onOpenOrigin={() => originSheet.current?.present()}
           destination={destination}
           onOpenDestination={() => destinationSheet.current?.present()}
           recent={recent}
@@ -358,6 +372,15 @@ export default function CalculatorScreen() {
         cta="חשב מסלול"
         onSubmit={submitDestination}
         recent={recent}
+      />
+      <InputSheet
+        sheetRef={originSheet}
+        title="מאיפה יוצאים?"
+        placeholder="כתובת או מקום, ריק = המיקום שלי"
+        initial={originText}
+        cta="עדכן נקודת מוצא"
+        onSubmit={submitOrigin}
+        recent={[MY_LOCATION, ...recent.filter((r) => r !== originText)]}
       />
       <VehicleSheet sheetRef={vehicleSheet} vehicles={vehicles} selectedId={vehicle?.id} onSelect={selectVehicle} onManage={() => router.navigate('/vehicles')} />
       <ResultSheet sheetRef={resultSheet} data={resultData} onSave={saveToHistory} banner={<BannerAd style={{ marginTop: 8 }} />} />

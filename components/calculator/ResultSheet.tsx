@@ -1,19 +1,20 @@
 // Result drawer: total rolls digit by digit, then metrics, eco comparison, split, navigation and save
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Navigation, Share2 } from 'lucide-react-native';
+import { ChevronLeft, Navigation, Users } from 'lucide-react-native';
 import React, { RefObject, useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { captureRef } from 'react-native-view-shot';
 import { haptic, spring, useEnter } from '../../constants/motion';
 import { colors, Heebo, radius, shadow } from '../../constants/theme';
-import { formatAmount } from '../../lib/format';
+import { formatAmount, formatShare } from '../../lib/format';
 import type { CalculationResult, DriveMode, Vehicle } from '../../lib/tripCost';
 import { CornerArcs } from './Halo';
 import { chooseNavApp, NavApp, NavSheet } from './navApps';
 import { PressableScale } from './PressableScale';
 import { SlidingDigits } from './SlidingDigits';
+import { SplitSheet } from './SplitSheet';
 import { LTR } from '../../constants/rtl';
 
 const ROLL_DELAY = 300;
@@ -27,7 +28,9 @@ export interface ResultData {
   vehicle: Vehicle;
   roundTrip: boolean;
   passengers: number;
-  destination: string;
+  destination: string; // navigation query; empty in manual-distance mode
+  from: string; // place names for the split message
+  to: string;
 }
 
 interface Props {
@@ -53,16 +56,16 @@ function Metric({ label, value, delay }: { label: string; value: string; delay: 
 }
 
 function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: () => void; onClose: () => void; banner?: React.ReactNode }) {
-  const { result, ecoCost, mode, unitPrice, vehicle, roundTrip, passengers, destination } = data;
+  const { result, ecoCost, mode, unitPrice, vehicle, roundTrip, passengers, destination, from, to } = data;
   const heroRef = useRef<View>(null);
   const isElectric = result.energyType === 'electricity';
   const total = formatAmount(result.totalCost);
-  const perPerson = formatAmount(result.totalCost / passengers);
   const ecoIn = useEnter(900);
   const navIn = useEnter(1100);
   const saveIn = useEnter(1150);
   const linkIn = useEnter(1200);
   const [navApps, setNavApps] = useState<NavApp[] | null>(null);
+  const splitSheet = useRef<BottomSheetModal>(null);
   const bigSize = total.replace(/\D/g, '').length >= 5 ? 60 : 72;
 
   useEffect(() => {
@@ -74,17 +77,7 @@ function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: 
 
   const trip = `${Math.round(result.distance)} ק״מ${roundTrip ? ' הלוך-חזור' : ''}`;
 
-  const share = async () => {
-    const message = ['חישוב עלות נסיעה ב-CheckFuel', `${trip} · ${vehicle.name}`, `עלות כוללת: ₪${total}`, `מתחלקים ב-${passengers}: ₪${perPerson} לכל אחד`].join('\n');
-    let url: string | undefined;
-    try {
-      url = await captureRef(heroRef, { format: 'png', quality: 0.9 });
-    } catch {
-      // the image is a bonus; the text still goes out
-    }
-    // shortcut: RN Share attaches the image on iOS only, Android sends text; switch to react-native-share if Android needs the image
-    await Share.share(Platform.OS === 'ios' && url ? { message, url } : { message }).catch(() => {});
-  };
+  const capture = () => captureRef(heroRef, { format: 'png', quality: 0.9 }); // the image is a bonus; the text goes out regardless
 
   return (
     <BottomSheetScrollView contentContainerStyle={styles.content}>
@@ -120,18 +113,14 @@ function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: 
         {mode === 'eco' ? 'מצוין, זו הנסיעה החסכונית ביותר' : `במצב Eco היית משלם ${shekel(ecoCost)} · חיסכון של ${shekel(result.totalCost - ecoCost)}`}
       </Animated.Text>
 
-      {passengers > 1 && (
-        <Animated.View entering={ZoomIn.delay(1000).springify().damping(spring.bouncy.damping).stiffness(spring.bouncy.stiffness)} style={styles.split}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.splitLabel}>מתחלקים ב-{passengers} · לכל אחד</Text>
-            <SlidingDigits prefix="₪" value={perPerson} fontSize={26} color={colors.selectedText} fontFamily={Heebo.black} />
-          </View>
-          <PressableScale style={styles.shareButton} onPress={share} accessibilityRole="button">
-            <Share2 size={18} color={colors.white} strokeWidth={2} />
-            <Text style={styles.shareText}>שלח לחברים</Text>
-          </PressableScale>
-        </Animated.View>
-      )}
+      <Animated.View entering={ZoomIn.delay(1000).springify().damping(spring.bouncy.damping).stiffness(spring.bouncy.stiffness)}>
+        <PressableScale style={styles.split} onPress={() => splitSheet.current?.present()} accessibilityRole="button">
+          <Users size={20} color={colors.selectedText} strokeWidth={2} />
+          <Text style={styles.splitLabel}>חלק עם הנוסעים</Text>
+          {passengers > 1 && <Text style={styles.splitHint}>₪{formatShare(result.totalCost, passengers)} × {passengers}</Text>}
+          <ChevronLeft size={18} color={colors.selectedText} strokeWidth={2} />
+        </PressableScale>
+      </Animated.View>
 
       {/* action area: at most two filled buttons + a text link, entering after the content */}
       <View style={styles.actions}>
@@ -156,6 +145,16 @@ function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: 
         </Animated.View>
       </View>
       <NavSheet apps={navApps} onClose={() => setNavApps(null)} />
+      <SplitSheet
+        sheetRef={splitSheet}
+        total={result.totalCost}
+        km={result.distance}
+        roundTrip={roundTrip}
+        from={from}
+        to={to}
+        initialCount={passengers > 1 ? passengers : 2}
+        capture={capture}
+      />
       {banner}
     </BottomSheetScrollView>
   );
@@ -197,10 +196,9 @@ const styles = StyleSheet.create({
   metricValue: { fontFamily: Heebo.extra, fontSize: 20, color: colors.text, fontVariant: ['tabular-nums'] },
   metricLabel: { fontFamily: Heebo.regular, fontSize: 12, color: colors.textMuted, marginTop: 2 },
   eco: { fontFamily: Heebo.bold, fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 4 },
-  split: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.selectedFill, borderRadius: 18, padding: 16 },
-  splitLabel: { fontFamily: Heebo.medium, fontSize: 13, color: colors.selectedText },
-  shareButton: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 44, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.brandGreen },
-  shareText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.white },
+  split: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, backgroundColor: colors.selectedFill, borderRadius: 18, paddingHorizontal: 16 },
+  splitLabel: { flex: 1, fontFamily: Heebo.bold, fontSize: 15, color: colors.selectedText },
+  splitHint: { fontFamily: Heebo.medium, fontSize: 13, color: colors.selectedText, fontVariant: ['tabular-nums'] },
   actions: { gap: 12, marginTop: 4 },
   navigate: { height: 48, borderRadius: radius.pill, backgroundColor: colors.selectedFill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   navigateText: { fontFamily: Heebo.bold, fontSize: 15, color: colors.selectedText },

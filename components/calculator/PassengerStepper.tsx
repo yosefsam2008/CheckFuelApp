@@ -8,7 +8,6 @@ import { PressableScale } from './PressableScale';
 import { SlidingDigits } from './SlidingDigits';
 
 const MIN = 1;
-const MAX = 5;
 
 function RoundButton({ icon, label, disabled, onPress }: { icon: React.ReactNode; label: string; disabled: boolean; onPress: () => void }) {
   return (
@@ -25,13 +24,13 @@ function RoundButton({ icon, label, disabled, onPress }: { icon: React.ReactNode
   );
 }
 
-export function PassengerStepper({ count, onChange }: { count: number; onChange: (n: number) => void }) {
+export function PassengerStepper({ count, onChange, max = 8 }: { count: number; onChange: (n: number) => void; max?: number }) {
   const ent = useEnter(300);
   const bump = useSharedValue(1);
   const bumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: bump.value }] }));
 
   const step = (d: number) => {
-    const next = Math.min(MAX, Math.max(MIN, count + d));
+    const next = Math.min(max, Math.max(MIN, count + d));
     if (next === count) return;
     haptic.select();
     bump.value = withSequence(withSpring(0.9, spring.snappy), withSpring(1, spring.snappy));
@@ -48,7 +47,7 @@ export function PassengerStepper({ count, onChange }: { count: number; onChange:
         style={[styles.capsule, bumpStyle]}
         accessibilityRole="adjustable"
         accessibilityLabel="מספר נוסעים"
-        accessibilityValue={{ min: MIN, max: MAX, now: count }}
+        accessibilityValue={{ min: MIN, max, now: count }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
       >
@@ -56,7 +55,7 @@ export function PassengerStepper({ count, onChange }: { count: number; onChange:
         <View style={styles.count}>
           <SlidingDigits value={String(count)} fontSize={22} color={colors.text} fontFamily={Heebo.extra} />
         </View>
-        <RoundButton label="יותר נוסעים" disabled={count === MAX} onPress={() => step(1)} icon={<Plus size={20} color={colors.text} strokeWidth={2} />} />
+        <RoundButton label="יותר נוסעים" disabled={count === max} onPress={() => step(1)} icon={<Plus size={20} color={colors.text} strokeWidth={2} />} />
       </Animated.View>
     </Animated.View>
   );

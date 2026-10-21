@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 require.cache[require.resolve('@react-native-async-storage/async-storage')] = { exports: { default: {} } } as NodeModule;
 const P = require('./places') as typeof import('./places');
-const { roundHalf } = require('./format') as typeof import('./format');
+const { roundHalf, formatShare, splitMessage } = require('./format') as typeof import('./format');
 
 const NOW = 1_800_000_000_000;
 const DAY = 24 * 3600 * 1000;
@@ -48,5 +48,11 @@ assert.equal(P.restoreOrigin(null, NOW), null);
 
 // split: nearest ₪0.5
 assert.deepEqual([roundHalf(33.24), roundHalf(33.26), roundHalf(33.75), roundHalf(10)], [33, 33.5, 34, 10]);
+assert.deepEqual([formatShare(100, 3), formatShare(66, 2), formatShare(2468.4, 2)], ['33.5', '33', '1,234']);
+assert.equal(
+  splitMessage({ total: 123.4, km: 84.6, roundTrip: true, from: 'בית', to: 'עזריאלי' }, 3),
+  ['🚗 בית ← עזריאלי (הלוך-חזור)', '85 ק"מ | ₪123.40', 'כל אחד מ-3 הנוסעים: ₪41', 'חושב ב-CheckFuel'].join('\n'),
+);
+assert.ok(splitMessage({ total: 50, km: 10, roundTrip: false, from: '', to: '' }, 2).startsWith('🚗 נסיעה\n'));
 
 console.log('places.check: ok');

@@ -296,7 +296,13 @@ export default function CalculatorScreen() {
     Keyboard.dismiss();
     const result = computeTrip(vehicle, km, price, prefs);
     const ecoCost = computeTrip(vehicle, km, price, { ...prefs, mode: 'eco' }).totalCost;
-    setResultData({ result, ecoCost, mode: prefs.mode, unitPrice: price, vehicle, roundTrip, passengers, destination });
+    const routed = !manual && !!destPlace;
+    setResultData({
+      result, ecoCost, mode: prefs.mode, unitPrice: price, vehicle, roundTrip, passengers,
+      destination: routed ? destination : '',
+      from: routed ? (originPlace?.main ?? MY_LOCATION) : '',
+      to: routed ? destPlace.main : '',
+    });
 
     if (Platform.OS === 'web') return openResult();
     try {

@@ -47,6 +47,13 @@ These share the same state block in `calculator.tsx` and can't be split into sep
 - **Phase 4.** ⇅ button on the dotted line in `RouteCard.tsx`. Round trip is persisted under `roundTrip`. `getRoute(Endpoint, Endpoint)` sends `originPlaceId`/`destPlaceId` or coords, never text. An in-app route cache makes swapping back free.
 - `tsc` clean. `expo lint`: 0 errors; the 14 warnings are pre-existing and none are in new code.
 
+## Phase 5: trip split
+
+- New `components/calculator/SplitSheet.tsx`. In `ResultSheet.tsx`, the split card is now a "חלק עם הנוסעים" row (shown on every result). It opens the sheet, which has a 1–8 stepper (reusing `PassengerStepper` with a `max` prop), a live per-person amount rounded to ₪0.5, and `Share`. The iOS image attachment is kept.
+- `lib/format.ts`: `roundHalf`, `formatShare`, `splitMessage`, covered by `places.check.ts`.
+- `ResultData` gains `from`/`to` place names. In manual-distance mode, `destination` is now empty, which also fixes a bug: "נווט ליעד" used to point at a stale route destination after switching to a manual distance.
+- `tsc` clean, lint 0 errors, self-checks pass.
+
 ## Decisions made
 
 - **Upstash REST over `fetch`, no `@upstash/redis`.** The repo has no `package.json`, and one REST call is a few lines. It reads `UPSTASH_REDIS_REST_*` or Vercel KV's `KV_REST_API_*`.
@@ -62,3 +69,45 @@ These share the same state block in `calculator.tsx` and can't be split into sep
 - **Card chips under the destination field** show only recents that have a placeId (max 5). Old text-only recents appear in the sheet, where picking one resolves it via autocomplete + details.
 - **Swap with a GPS origin** takes a fresh GPS fix and makes it a fixed "המיקום שלי" coords destination. Swapping back turns it into GPS again. "Navigate to destination" for that case uses `lat,lng`.
 - **Bias uses the GPS fix** (30km circle). A custom origin does not move the bias.
+- **The split sheet starts at** the calculator's passenger count when it is above 1, otherwise at 2. The calculator's own stepper stays, now with a max of 8 to match. The share message's first line reads "🚗 נסיעה" when there are no place names (manual distance). A GPS origin is named "המיקום שלי".
+- **The server still accepts text addresses** so app builds already in users' hands keep working. The new app never sends one.
+
+## Dependencies added
+
+- App: `expo-crypto ~15.0.8` (via `npx expo install`). `expo-haptics` was already installed.
+- Server: none. KV is accessed with plain `fetch` to Upstash's REST API.
+
+## checkfuel-data environment / KV setup
+
+1. **Google key:** in Google Cloud, enable **Places API (New)** on the key the server already uses. Optionally store it as `GOOGLE_MAPS_API_KEY`; the old `GOOGLE_ROUTES_API_KEY` still works. The key is read from `process.env` only.
+2. **KV (optional, fail-open):** Vercel → project checkfuel-data → Storage → add an **Upstash for Redis** (Marketplace) database and connect it to the project. That injects `KV_REST_API_URL` + `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`. Either pair works. Without them, every request goes straight to Google.
+3. Redeploy. Check in Vercel → Logs that you see `route cache: miss`, then `route cache: hit` for the same trip.
+
+## Deploy order
+
+1. **Server first:** push `checkfuel-data` (`main`) so Vercel deploys `api/places/*` and the new `route.js`. Old app builds keep working because the route input and response shapes are backward compatible.
+2. **Then the app:** build/submit. The app derives `…/api/places` from the existing `EXPO_PUBLIC_ROUTE_URL`, so no new app env var is needed.
+
+## Manual test checklist (device)
+
+1. Destination → type "עזריאלי": Google suggestions appear about 0.3s after you stop typing, the match is highlighted, the city shows in gray. Pick one → route + km appear.
+2. Type nonsense ("קקקקזזז") → "לא נמצאו תוצאות, נסו ניסוח אחר". Press return → "בחרו מקום מהרשימה" and no route call.
+3. Reopen destination → the recent appears at the top. Pick it → in Metro: `[places] select: local place, no API call`, and no `autocomplete call` / `details call` lines.
+4. One search + pick → Metro shows N × `autocomplete call` and exactly one `details call (closes session)`.
+5. Pick the same destination again → Vercel log `route cache: hit` (with KV configured).
+6. Long-press a recent → "שמור כבית" → the בית chip turns green in both sheets. Tap an unset "הוסף עבודה" → title "איפה העבודה?" → pick → saved and used.
+7. Origin → pick a place → route recalculates. Force-quit, reopen within 6h → the origin is still set. Change the device clock forward 7h → back to GPS.
+8. Origin sheet: empty field + return, or the "המיקום שלי" chip → GPS.
+9. ⇅ with a GPS origin → origin becomes the place, destination "המיקום שלי", route recalculates. ⇅ again → back to GPS origin, instant (app cache).
+10. Toggle הלוך-חזור → km ×2. Force-quit and reopen → the toggle is still on.
+11. Calculate → "חלק עם הנוסעים" → stepper 1–8 starts at 2, the amount updates live in ₪0.5 steps → "שלח לנוסעים" → WhatsApp text matches the template, with real place names.
+12. Airplane mode → open the sheet and type → offline notice, recents only. Recents still route if the route is cached in the app; otherwise an error with "נסה שוב".
+13. Old install upgrade: an install that had text recents shows them in the sheet, and picking one resolves it (autocomplete + details) and routes.
+14. Mixed text: a place like "Azrieli Mall 132" or "דיזנגוף 50" reads right-to-left with the number in place.
+
+## Not completed / not verified
+
+- **Not run on a device or simulator, and not against live Google or Upstash.** Verified by `tsc`, lint, `lib/places.check.ts`, and the server's `node --test` (fetch faked: cache hit, fail-open, session token, field masks, error shape). The "≈0.5s suggestions" criterion is the 300ms debounce plus network, so it needs a device check.
+- **Google ToS caching TTLs** were not checked against the live terms page (it could not be fetched). See Decisions.
+- The rate limit is per instance and not shared.
+- The bidi behavior of `writingDirection` differs on Android (it ignores it); the RLM prefix is what handles Android. Needs a visual check (test 14).

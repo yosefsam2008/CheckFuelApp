@@ -1,10 +1,11 @@
-import { Clock, RotateCw, Search } from 'lucide-react-native';
+import { ArrowUpDown, Clock, RotateCw, Search } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, interpolateColor, useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';
 import { haptic, useEnter } from '../../constants/motion';
 import { NO_OUTLINE } from '../../constants/rtl';
 import { colors, Heebo, radius, shadow, space } from '../../constants/theme';
+import type { Place } from '../../lib/places';
 import type { RouteResult } from '../../lib/route';
 import { PressableScale } from './PressableScale';
 import { RouteMiniMap } from './RouteMiniMap';
@@ -25,8 +26,10 @@ interface Props {
   onOpenOrigin: () => void;
   destination: string;
   onOpenDestination: () => void;
-  recent: string[];
-  onPickRecent: (place: string) => void;
+  /** shown once there is a destination */
+  onSwap?: () => void;
+  recent: Place[];
+  onPickRecent: (place: Place) => void;
   routeStatus: RouteStatus;
   routeError: string | null;
   onRetry: () => void;
@@ -48,6 +51,7 @@ const CHIPS = [5, 10, 25, 50, 100];
 const ORIGIN_TEXT: Record<OriginStatus, string> = { locating: 'מאתר מיקום…', ok: 'המיקום שלי', denied: 'אין גישה למיקום' };
 const formatKm = (km: number) => (km < 100 ? km.toFixed(1) : String(Math.round(km)));
 const SLOT = 20;
+const SWAP = 24;
 
 type Row = { y: number; h: number };
 
@@ -84,6 +88,25 @@ function Rows({ p, children }: { p: Props; children: React.ReactNode }) {
         </View>
         {second}
       </View>
+      {o && d && p.onSwap && (
+        // sits on the dotted line, halfway between the two markers
+        <View style={[styles.swapLayer, { top: (top + bottom) / 2 - SWAP / 2 }]} pointerEvents="box-none">
+          <View style={styles.slot}>
+            <Pressable
+              onPress={() => {
+                haptic.select();
+                p.onSwap?.();
+              }}
+              hitSlop={12}
+              style={styles.swap}
+              accessibilityRole="button"
+              accessibilityLabel="החלפת מוצא ויעד"
+            >
+              <ArrowUpDown size={13} color={colors.text} strokeWidth={2.4} />
+            </Pressable>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -161,10 +184,11 @@ function DestinationBlock({ p }: { p: Props }) {
       {p.recent.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} keyboardShouldPersistTaps="handled" style={{ marginTop: 12 }}>
           {p.recent.map((r) => (
-            <Pressable key={r} style={styles.recent} onPress={() => p.onPickRecent(r)} accessibilityRole="button" accessibilityLabel={`יעד אחרון: ${r}`}>
+            <Pressable key={r.placeId ?? r.main} style={styles.recent} onPress={() => p.onPickRecent(r)} accessibilityRole="button" accessibilityLabel={`יעד אחרון: ${r.main}`}>
               <Clock size={14} color={colors.textMuted} strokeWidth={2} />
               <Text style={styles.recentText} numberOfLines={1}>
-                {r}
+                {'‏'}
+                {r.main}
               </Text>
             </Pressable>
           ))}
@@ -269,6 +293,8 @@ const styles = StyleSheet.create({
   square: { width: 12, height: 12, borderRadius: 3, backgroundColor: colors.text },
   lineLayer: { ...StyleSheet.absoluteFillObject, flexDirection: 'row' },
   line: { width: 2, alignItems: 'center', justifyContent: 'space-evenly' },
+  swapLayer: { position: 'absolute', left: 0, right: 0, flexDirection: 'row' },
+  swap: { width: SWAP, height: SWAP, borderRadius: SWAP / 2, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center' },
   lineDot: { width: 2, height: 2, borderRadius: 1, backgroundColor: colors.divider },
   originText: { flex: 1, minHeight: 48, justifyContent: 'center' },
   destination: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.tile, backgroundColor: colors.bg },

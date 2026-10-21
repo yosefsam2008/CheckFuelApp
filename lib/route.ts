@@ -13,13 +13,20 @@ const ROUTE_URL = process.env.EXPO_PUBLIC_ROUTE_URL;
 
 export const routeProviderConfigured = !!ROUTE_URL;
 
-/** origin is GPS coords or a typed address */
-export async function getRoute(origin: LatLng | string, destination: string): Promise<RouteResult> {
+/** A route end: a Google placeId (hits the server cache) or coords. Never free text. */
+export type Endpoint = { placeId: string } | LatLng;
+
+export const endpointKey = (e: Endpoint) => ('placeId' in e ? e.placeId : `${e.latitude.toFixed(3)},${e.longitude.toFixed(3)}`);
+
+export async function getRoute(origin: Endpoint, destination: Endpoint): Promise<RouteResult> {
   if (!ROUTE_URL) throw new Error('Route provider not configured');
   const res = await fetch(ROUTE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ origin, destination }),
+    body: JSON.stringify({
+      ...('placeId' in origin ? { originPlaceId: origin.placeId } : { origin }),
+      ...('placeId' in destination ? { destPlaceId: destination.placeId } : { destination }),
+    }),
   });
   if (!res.ok) throw new Error(`Route request failed: ${res.status}`);
   const data = (await res.json()) as RouteResult;

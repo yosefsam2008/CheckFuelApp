@@ -13,16 +13,17 @@ import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { CalculateButton } from '../../components/calculator/CalculateButton';
 import { DriveModeCard } from '../../components/calculator/DriveModeCard';
 import { HeroHeader } from '../../components/calculator/HeroHeader';
-import { InputSheet } from '../../components/calculator/InputSheet';
 import { PassengerStepper } from '../../components/calculator/PassengerStepper';
 import { ResultData, ResultSheet } from '../../components/calculator/ResultSheet';
+import { PlaceSheet } from '../../components/calculator/PlaceSheet';
 import { InputMode, OriginStatus, RouteCard, RouteStatus } from '../../components/calculator/RouteCard';
 import { VehiclePriceCard } from '../../components/calculator/VehiclePriceCard';
 import { VehicleSheet } from '../../components/calculator/VehicleSheet';
 import { colors, Heebo, radius, space } from '../../constants/theme';
 import { useOpenInfoMenu } from '../../hooks/use-info-menu';
 import { LEGAL_UI_STRINGS } from '../../legal/LEGAL_UI_STRINGS_HE';
-import { getRoute, LatLng, RouteResult, routeProviderConfigured } from '../../lib/route';
+import { addRecent, Favorites, FavKey, isGpsPlace, loadFavorites, loadOrigin, loadRecents, MY_LOCATION, Place, placeEndpoint, placeLabel, saveFavorites, saveOrigin, saveRecents } from '../../lib/places';
+import { endpointKey, getRoute, LatLng, RouteResult, routeProviderConfigured } from '../../lib/route';
 import { computeTrip, DEFAULT_PREFS, FuelPrices, Octane, priceField, priceFor, TripPrefs, Vehicle } from '../../lib/tripCost';
 import { NO_TOUCH } from '../../constants/rtl';
 import { DEFAULT_PRICES, defaultIO, getPrices, PriceInfo, PriceResult } from '../../lib/prices';
@@ -32,8 +33,7 @@ const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/
 const InterstitialAd = Platform.OS === 'web' ? () => null : require('../../components/InterstitialAd').default;
 
 const MAX_KM = 5000;
-const RECENT_KEY = 'recentDestinations';
-const MY_LOCATION = 'המיקום שלי';
+const ROUND_TRIP_KEY = 'roundTrip';
 
 type ToastMsg = { text: string; type: 'success' | 'error' };
 
@@ -111,81 +111,140 @@ export default function CalculatorScreen() {
 
   // ---------- route ----------
   const [originStatus, setOriginStatus] = useState<OriginStatus>('locating');
-  const [origin, setOrigin] = useState<LatLng | null>(null);
-  const [originText, setOriginText] = useState(''); // typed start point; '' = GPS
-  const [destination, setDestination] = useState('');
+  const [here, setHere] = useState<LatLng | null>(null); // GPS
+  const [originPlace, setOriginPlace] = useState<Place | null>(null); // null = GPS
+  const [destPlace, setDestPlace] = useState<Place | null>(null);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteStatus>('idle');
   const [routeError, setRouteError] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>('route');
   const [manualText, setManualText] = useState('');
   const [roundTrip, setRoundTrip] = useState(false);
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recents, setRecents] = useState<Place[]>([]);
+  const [favorites, setFavorites] = useState<Favorites>({});
   const routeRequest = useRef(0);
+  const routeCache = useRef(new Map<string, RouteResult>()); // per app session, so swapping back costs nothing
+
+  const locate = async (): Promise<LatLng | null> => {
+    try {
+      const { granted } = await Location.requestForegroundPermissionsAsync();
+      if (!granted) throw new Error('denied');
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const p = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      setHere(p);
+      setOriginStatus('ok');
+      return p;
+    } catch {
+      setOriginStatus('denied');
+      return null;
+    }
+  };
 
   useEffect(() => {
-    AsyncStorage.getItem(RECENT_KEY)
-      .then((s) => s && setRecent(JSON.parse(s)))
+    loadRecents().then(setRecents);
+    loadFavorites().then(setFavorites);
+    loadOrigin().then((p) => p && setOriginPlace(p));
+    AsyncStorage.getItem(ROUND_TRIP_KEY)
+      .then((v) => setRoundTrip(v === '1'))
       .catch(() => {});
-    (async () => {
-      try {
-        const { granted } = await Location.requestForegroundPermissionsAsync();
-        if (!granted) throw new Error('denied');
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setOrigin({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-        setOriginStatus('ok');
-      } catch {
-        setOriginStatus('denied');
-      }
-    })();
+    locate();
   }, []);
 
-  const searchRoute = async (dest: string, from = originText) => {
-    const q = dest.trim();
-    if (!q) return;
+  const changeRoundTrip = (on: boolean) => {
+    setRoundTrip(on);
+    AsyncStorage.setItem(ROUND_TRIP_KEY, on ? '1' : '0').catch(() => {});
+  };
+
+  /** `from` null = GPS. Only placeIds or coords reach the route API. */
+  const searchRoute = async (from: Place | null, to: Place) => {
     Keyboard.dismiss();
-    setDestination(q);
     setInputMode('route');
     const id = ++routeRequest.current;
-    setRoute(null);
-    setRouteStatus('loading');
     setRouteError(null);
     try {
       if (!routeProviderConfigured) throw new Error('not_configured');
-      const start = from || origin;
-      if (!start) throw new Error('no_origin');
-      const r = await getRoute(start, q);
+      const a = from ? placeEndpoint(from) : here;
+      const b = placeEndpoint(to);
+      if (!a && !from) throw new Error('no_origin');
+      if (!a || !b) throw new Error('unresolved');
+      const key = `${endpointKey(a)}|${endpointKey(b)}`;
+      const hit = routeCache.current.get(key);
+      if (hit) {
+        setRoute(hit);
+        setRouteStatus('ok');
+        return;
+      }
+      setRoute(null);
+      setRouteStatus('loading');
+      const r = await getRoute(a, b);
       if (id !== routeRequest.current) return;
+      routeCache.current.set(key, r);
       setRoute(r);
       setRouteStatus('ok');
-      const next = [q, ...recent.filter((x) => x !== q)].slice(0, 5);
-      setRecent(next);
-      AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next)).catch(() => {});
     } catch (e) {
       if (id !== routeRequest.current) return;
       const msg = (e as Error).message;
+      setRoute(null);
       setRouteStatus('error');
       setRouteError(
         msg === 'not_configured' ? 'חישוב מסלול עדיין לא מחובר. אפשר להקליד מרחק ידנית'
         : msg === 'no_origin' ? 'אין גישה למיקום. אפשר לבחור נקודת מוצא או להקליד מרחק ידנית'
+        : msg === 'unresolved' ? 'בחרו את המקום מחדש מהחיפוש'
         : 'לא הצלחנו לחשב את המסלול',
       );
     }
   };
 
-  const submitDestination = (text: string) => {
-    if (!text.trim()) return 'הקלד כתובת או מקום';
-    searchRoute(text);
-    return null;
+  // the updater writes storage too: harmless if StrictMode runs it twice, and never works from a stale list
+  const remember = (p: Place) =>
+    setRecents((prev) => {
+      const next = addRecent(prev, p);
+      saveRecents(next);
+      return next;
+    });
+
+  const saveFavorite = (k: FavKey, p: Place) =>
+    setFavorites((prev) => {
+      const next = { ...prev, [k]: { ...p, lastUsed: p.lastUsed ?? Date.now() } };
+      saveFavorites(next);
+      return next;
+    });
+
+  const pickDestination = (p: Place | null) => {
+    if (!p) return;
+    remember(p);
+    setDestPlace(p);
+    searchRoute(originPlace, p);
   };
 
-  // empty or the "my location" chip goes back to GPS
-  const submitOrigin = (text: string) => {
-    const t = text.trim() === MY_LOCATION ? '' : text.trim();
-    setOriginText(t);
-    if (destination) searchRoute(destination, t);
-    return null;
+  const pickOrigin = (p: Place | null) => {
+    if (p) remember(p);
+    setOriginPlace(p);
+    saveOrigin(p);
+    if (destPlace) searchRoute(p, destPlace);
   };
+
+  // GPS origin becomes a fixed "my location" destination, so take a fresh fix first
+  const swap = async () => {
+    if (!destPlace) return;
+    const nextOrigin = isGpsPlace(destPlace) ? null : destPlace;
+    let nextDest = originPlace;
+    if (!nextDest) {
+      const pos = await locate();
+      if (!pos) {
+        setRouteStatus('error');
+        setRouteError('אין גישה למיקום, אי אפשר להחליף כיוון');
+        return;
+      }
+      nextDest = { main: MY_LOCATION, lat: pos.latitude, lng: pos.longitude };
+    }
+    setOriginPlace(nextOrigin);
+    saveOrigin(nextOrigin);
+    setDestPlace(nextDest);
+    searchRoute(nextOrigin, nextDest);
+  };
+
+  const destination = destPlace ? (isGpsPlace(destPlace) ? `${destPlace.lat},${destPlace.lng}` : placeLabel(destPlace)) : '';
 
   const manual = inputMode === 'manual';
   const manualValue = parseFloat(manualText);
@@ -299,22 +358,23 @@ export default function CalculatorScreen() {
           mode={inputMode}
           onMode={setInputMode}
           originStatus={originStatus}
-          originText={originText}
+          originText={originPlace ? placeLabel(originPlace) : ''}
           onOpenOrigin={() => originSheet.current?.present()}
-          destination={destination}
+          destination={destPlace ? placeLabel(destPlace) : ''}
           onOpenDestination={() => destinationSheet.current?.present()}
-          recent={recent}
-          onPickRecent={searchRoute}
+          onSwap={destPlace ? swap : undefined}
+          recent={recents.filter((r) => r.placeId).slice(0, 5)}
+          onPickRecent={pickDestination}
           routeStatus={routeStatus}
           routeError={routeError}
-          onRetry={() => searchRoute(destination)}
+          onRetry={() => destPlace && searchRoute(originPlace, destPlace)}
           route={route}
           manualText={manualText}
           onManualText={setManualText}
           manualError={manualError}
           km={km}
           roundTrip={roundTrip}
-          onRoundTrip={setRoundTrip}
+          onRoundTrip={changeRoundTrip}
           highlightKey={routeHl}
         />
         <View style={styles.cards} onLayout={(e) => setCardsY(e.nativeEvent.layout.y)}>
@@ -364,23 +424,26 @@ export default function CalculatorScreen() {
         </Animated.View>
       )}
 
-      <InputSheet
+      <PlaceSheet
         sheetRef={destinationSheet}
         title="לאן נוסעים?"
-        placeholder="כתובת או מקום, למשל: דיזנגוף 50, תל אביב"
-        initial={destination}
-        cta="חשב מסלול"
-        onSubmit={submitDestination}
-        recent={recent}
+        placeholder="חפשו כתובת או מקום"
+        recents={recents}
+        favorites={favorites}
+        bias={here}
+        onPick={pickDestination}
+        onSaveFavorite={saveFavorite}
       />
-      <InputSheet
+      <PlaceSheet
         sheetRef={originSheet}
         title="מאיפה יוצאים?"
-        placeholder="כתובת או מקום, ריק = המיקום שלי"
-        initial={originText}
-        cta="עדכן נקודת מוצא"
-        onSubmit={submitOrigin}
-        recent={[MY_LOCATION, ...recent.filter((r) => r !== originText)]}
+        placeholder="חפשו כתובת או מקום"
+        allowMyLocation
+        recents={recents}
+        favorites={favorites}
+        bias={here}
+        onPick={pickOrigin}
+        onSaveFavorite={saveFavorite}
       />
       <VehicleSheet sheetRef={vehicleSheet} vehicles={vehicles} selectedId={vehicle?.id} onSelect={selectVehicle} onManage={() => router.navigate('/vehicles')} />
       <ResultSheet sheetRef={resultSheet} data={resultData} onSave={saveToHistory} banner={<BannerAd style={{ marginTop: 8 }} />} />

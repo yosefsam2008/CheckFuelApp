@@ -160,7 +160,7 @@ export function VehicleFoundCard({ vehicle, title, first }: Props) {
         )}
         <View style={styles.foundText}>
           <View style={styles.titleClip} onLayout={(e) => (titleW.value = e.nativeEvent.layout.width)}>
-            <LtrText style={styles.foundName} numberOfLines={1}>{title}</LtrText>
+            <LtrText style={styles.foundName} numberOfLines={2}>{title}</LtrText>
             {play && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.mask, maskStyle]} />}
           </View>
           <View style={styles.chips}>
@@ -205,7 +205,8 @@ const styles = StyleSheet.create({
   wheel: { position: 'absolute', width: WHEEL, height: WHEEL },
   puff: { position: 'absolute', backgroundColor: colors.textMuted },
   foundText: { flex: 1, minWidth: 0 },
-  titleClip: { overflow: 'hidden' },
+  // hugs the text at the inline start (next to the car), like the badge and the chips
+  titleClip: { alignSelf: 'flex-start', maxWidth: '100%', overflow: 'hidden' },
   mask: { backgroundColor: colors.surface },
   foundName: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
   chips: { flexDirection: 'row', gap: 6, marginTop: 4 },

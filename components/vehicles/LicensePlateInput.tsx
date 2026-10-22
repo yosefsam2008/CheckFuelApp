@@ -3,9 +3,6 @@ import { BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-con
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
-  FadeIn,
-  Keyframe,
-  LayoutAnimationConfig,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -20,22 +17,6 @@ import { PlateScanBeam } from './PlateScanBeam';
 
 const FONT = 42;
 const PLACEHOLDER = '00-000-00';
-
-const drop = (delay: number) =>
-  new Keyframe({
-    // starts smaller, not larger: a 1.5x glyph spilled over its neighbours while typing
-    0: { opacity: 0, transform: [{ translateY: -FONT * 0.5 }, { scale: 0.8 }] },
-    100: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }], easing: ease.pop },
-  })
-    .duration(revealDur.digitDrop)
-    .delay(delay);
-
-const lift = new Keyframe({
-  0: { opacity: 1, transform: [{ translateY: 0 }] },
-  100: { opacity: 0, transform: [{ translateY: FONT * 0.3 }] },
-}).duration(revealDur.digitExit);
-
-const dashIn = FadeIn.duration(revealDur.digitExit);
 
 interface Props {
   /** the screen's plate state, drawn exactly as stored (dashes included) */
@@ -58,6 +39,11 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
   // digits at or past this index arrived in the latest change; a paste staggers them
   const prevCount = useRef(digits.length);
   const firstNew = prevCount.current;
+  // nothing animates on the plate's own mount (e.g. coming back from the manual tab)
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+  }, []);
 
   const press = useSharedValue(1);
   useEffect(() => {
@@ -93,13 +79,10 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
   const glyphs = [...value].map((ch) => {
     const isDigit = /\d/.test(ch);
     const key = isDigit ? `n${n}` : `s${n}`;
-    const entering = reduced ? undefined : isDigit ? drop(Math.max(0, n - firstNew) * revealDur.digitStep) : dashIn;
+    const play = !reduced && mounted.current && (!isDigit || n >= firstNew);
+    const delay = isDigit ? Math.max(0, n - firstNew) * revealDur.digitStep : 0;
     if (isDigit) n++;
-    return (
-      <Animated.Text key={key} entering={entering} exiting={reduced ? undefined : lift} style={[styles.glyph, glyphFont]} maxFontSizeMultiplier={1}>
-        {ch}
-      </Animated.Text>
-    );
+    return <Glyph key={key} ch={ch} play={play} delay={delay} font={glyphFont} />;
   });
 
   return (
@@ -111,7 +94,7 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
           <Text style={styles.country} maxFontSizeMultiplier={1}>ישראל</Text>
         </View>
         <View style={[styles.row, NO_TOUCH]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <LayoutAnimationConfig skipEntering>{glyphs}</LayoutAnimationConfig>
+          {glyphs}
           {focused && <Caret />}
           {!value && (
             <Text style={[styles.glyph, glyphFont, styles.placeholder]} maxFontSizeMultiplier={1}>
@@ -137,6 +120,30 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
         />
       </Animated.View>
     </View>
+  );
+}
+
+/**
+ * One plate character that drops in on mount. A shared-value style, not a Reanimated `entering`/`exiting`
+ * layout animation: on web those took the glyphs out of the row and stacked them on top of each other.
+ * shortcut: a deleted digit just disappears (the 120ms exit needed `exiting`); revisit if layout animations get fixed on web.
+ */
+function Glyph({ ch, play, delay, font }: { ch: string; play: boolean; delay: number; font: { fontFamily: string } }) {
+  const t = useSharedValue(play ? 0 : 1);
+  useEffect(() => {
+    if (play) t.value = withDelay(delay, withTiming(1, { duration: revealDur.digitDrop, easing: ease.pop }));
+    // mount-only: a glyph animates once, when it arrives
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // starts smaller, not larger, so it never covers its neighbours
+  const style = useAnimatedStyle(() => ({
+    opacity: Math.min(1, t.value * 2),
+    transform: [{ translateY: (1 - t.value) * -FONT * 0.5 }, { scale: 0.8 + 0.2 * t.value }],
+  }));
+  return (
+    <Animated.Text style={[styles.glyph, font, style]} maxFontSizeMultiplier={1}>
+      {ch}
+    </Animated.Text>
   );
 }
 

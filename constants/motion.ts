@@ -31,7 +31,7 @@ export const ease = {
   inOutQuint: Easing.bezier(0.65, 0, 0.35, 1),
 };
 
-/** Add-vehicle reveal (signature moment 2). Every value is at most 700ms; reduced motion swaps them for 150ms fades. */
+/** Add-vehicle reveal (signature moment 2). Every value is at most 700ms; under reduced motion everything shows at once. */
 export const revealDur = {
   digitDrop: 300,
   digitExit: 120,
@@ -50,7 +50,6 @@ export const revealDur = {
   ctaDrain: 300,
   follow: 150, // gauge debounce while typing
   shake: 240,
-  reducedFade: 150,
 };
 
 /**

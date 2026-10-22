@@ -11,6 +11,7 @@ import { SlidingSegment } from '../components/calculator/SlidingSegment';
 import { LtrText } from '../components/history/LtrText';
 import { Field, Message } from '../components/vehicles/AddFields';
 import { LicensePlateInput } from '../components/vehicles/LicensePlateInput';
+import { VehicleCardSkeleton } from '../components/vehicles/VehicleCardSkeleton';
 import { consumptionUnit, FUEL_LABEL, GradientButton, VehicleTile } from '../components/vehicles/fuel';
 import { dur, haptic, useEnter } from '../constants/motion';
 import { colors, Heebo, radius, shadow, space } from '../constants/theme';
@@ -19,6 +20,7 @@ import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
 import type { Vehicle } from '../lib/data/vehiclesData';
 import { isValidConsumption, parseDecimal, toDisplay, toStored } from '../lib/vehicles/consumption';
 import { lookupPlate, plateDigits } from '../lib/vehicles/plateLookup';
+import { derivePhase, formatPlate } from '../lib/vehicles/reveal';
 
 const ADDED_FLAG = 'vehicleJustAdded'; // read by the vehicles screen on focus
 const MAKERS = [
@@ -29,14 +31,6 @@ const FUELS = ['Gasoline', 'Diesel', 'Electric'] as const;
 
 type Tab = 'plate' | 'manual';
 type Phase = 'idle' | 'searching' | 'found' | 'notfound' | 'offline' | 'duplicate';
-
-/** 7 digits: 12-345-67, 8 digits: 123-45-678, anything shorter stays as typed */
-const formatPlate = (text: string) => {
-  const d = plateDigits(text).slice(0, 8);
-  if (d.length === 7) return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`;
-  if (d.length === 8) return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
-  return d;
-};
 
 /** Registry models arrive in caps ("COROLLA"): Title-case words, leave codes with digits ("CX-5", "i30") alone */
 const titleCase = (s: string) => s.replace(/[^\s]+/g, (w) => (/\d/.test(w) ? w : w[0].toUpperCase() + w.slice(1).toLowerCase()));
@@ -135,6 +129,7 @@ export default function AddVehicleScreen() {
 
   const fade = reduced ? undefined : FadeIn.duration(dur.std);
   const searching = phase === 'searching';
+  const reveal = derivePhase({ plate, status: phase, hasResult: !!found });
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -160,9 +155,11 @@ export default function AddVehicleScreen() {
             <Animated.View key="plate" entering={fade}>
               <Text style={styles.title}>מה מספר הרישוי?</Text>
               <Text style={styles.sub}>נביא את הדגם, סוג הדלק והצריכה ממאגר משרד התחבורה.</Text>
-              <LicensePlateInput value={plate} onChangeText={onPlate} editable={!searching} />
+              <LicensePlateInput value={plate} onChangeText={onPlate} editable={!searching} scanning={reveal === 'searching'} />
 
-              {phase === 'found' && found ? (
+              {reveal === 'searching' ? (
+                <VehicleCardSkeleton />
+              ) : phase === 'found' && found ? (
                 <Animated.View style={foundIn}>
                   <View style={styles.found} accessibilityLiveRegion="polite">
                   <View style={styles.badge}>

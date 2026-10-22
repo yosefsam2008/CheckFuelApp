@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   FadeIn,
-  FadeOut,
   Keyframe,
   LayoutAnimationConfig,
   useAnimatedStyle,
@@ -16,6 +15,7 @@ import { ease, haptic, revealDur, useLoop } from '../../constants/motion';
 import { LTR, NO_OUTLINE, NO_TOUCH } from '../../constants/rtl';
 import { Heebo, plate as P } from '../../constants/theme';
 import { plateDigits } from '../../lib/vehicles/plateLookup';
+import { PlateScanBeam } from './PlateScanBeam';
 
 const FONT = 42;
 const PLACEHOLDER = '00-000-00';
@@ -33,17 +33,18 @@ const lift = new Keyframe({
   100: { opacity: 0, transform: [{ translateY: FONT * 0.3 }] },
 }).duration(revealDur.digitExit);
 
-const fadeIn = FadeIn.duration(revealDur.reducedFade);
-const fadeOut = FadeOut.duration(revealDur.reducedFade);
+const dashIn = FadeIn.duration(revealDur.digitExit);
 
 interface Props {
   /** the screen's plate state, drawn exactly as stored (dashes included) */
   value: string;
   onChangeText: (t: string) => void;
   editable?: boolean;
+  /** the lookup just started: one sweep of the scan beam */
+  scanning?: boolean;
 }
 
-export function LicensePlateInput({ value, onChangeText, editable = true }: Props) {
+export function LicensePlateInput({ value, onChangeText, editable = true, scanning = false }: Props) {
   const reduced = useReducedMotion();
   const [focused, setFocused] = useState(false);
   const digits = plateDigits(value);
@@ -70,10 +71,10 @@ export function LicensePlateInput({ value, onChangeText, editable = true }: Prop
   const glyphs = [...value].map((ch) => {
     const isDigit = /\d/.test(ch);
     const key = isDigit ? `n${n}` : `s${n}`;
-    const entering = reduced ? fadeIn : isDigit ? drop(Math.max(0, n - firstNew) * revealDur.digitStep) : fadeIn;
+    const entering = reduced ? undefined : isDigit ? drop(Math.max(0, n - firstNew) * revealDur.digitStep) : dashIn;
     if (isDigit) n++;
     return (
-      <Animated.Text key={key} entering={entering} exiting={reduced ? fadeOut : lift} style={styles.glyph} maxFontSizeMultiplier={1}>
+      <Animated.Text key={key} entering={entering} exiting={reduced ? undefined : lift} style={styles.glyph} maxFontSizeMultiplier={1}>
         {ch}
       </Animated.Text>
     );
@@ -95,6 +96,7 @@ export function LicensePlateInput({ value, onChangeText, editable = true }: Prop
             </Text>
           )}
         </View>
+        <PlateScanBeam active={scanning} />
         {/* on top of everything so a tap anywhere on the plate focuses it, and long-press paste works */}
         <TextInput
           value={value}

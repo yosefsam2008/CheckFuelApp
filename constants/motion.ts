@@ -17,11 +17,41 @@ export const spring = {
   snappy: { damping: 18, stiffness: 220, mass: 1 },
   bouncy: { damping: 12, stiffness: 180, mass: 1 },
   digit: { damping: 18, stiffness: 280, mass: 0.3 }, // Motion Primitives "Sliding Number"
+  // critical damping is 2*sqrt(260*0.6) = 24.98, so 25 never overshoots; clamping guards a moving start
+  calm: { damping: 25, stiffness: 260, mass: 0.6, overshootClamping: true },
 };
 
 export const dur = { micro: 150, std: 300, emph: 550 };
 
-export const ease = { out: Easing.out(Easing.cubic), inOut: Easing.inOut(Easing.cubic), sine: Easing.inOut(Easing.sin) };
+export const ease = {
+  out: Easing.out(Easing.cubic),
+  inOut: Easing.inOut(Easing.cubic),
+  sine: Easing.inOut(Easing.sin),
+  outQuint: Easing.bezier(0.16, 1, 0.3, 1),
+  inOutQuint: Easing.bezier(0.65, 0, 0.35, 1),
+};
+
+/** Add-vehicle reveal (signature moment 2). Every value is at most 700ms; reduced motion swaps them for 150ms fades. */
+export const revealDur = {
+  digitDrop: 300,
+  digitExit: 120,
+  digitStep: 105, // paste stagger
+  platePress: 150,
+  scan: 600,
+  skeletonAfter: 300, // show the skeleton only if the lookup is still pending by then
+  card: 600,
+  carIn: 500,
+  chipStagger: 70,
+  gauge: 700,
+  odoBase: 500,
+  odoStagger: 100,
+  handoff: 120,
+  ctaFill: 700,
+  ctaDrain: 300,
+  follow: 150, // gauge debounce while typing
+  shake: 240,
+  reducedFade: 150,
+};
 
 /**
  * Staggered entrance: a 400ms fade + 10px rise. A shared-value style, not a Reanimated `entering` layout animation:
@@ -41,6 +71,7 @@ export const haptic = {
   press: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}),
   warn: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}),
   success: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}),
+  error: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {}),
 };
 
 /**

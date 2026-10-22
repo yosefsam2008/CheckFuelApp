@@ -28,3 +28,12 @@ export const fuelTint = {
   dieselFill: '#E6EDF6',
   dieselIcon: '#34557D',
 } as const;
+
+// Israeli license plate: a real-world object, so fixed colors in light and dark mode
+export const plate = {
+  fill: '#F7CB16',
+  ink: '#141414',
+  strip: '#1D4FA6',
+  stripText: '#FFFFFF',
+  focusRing: 'rgba(17,185,140,0.35)',
+} as const;

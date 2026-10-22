@@ -11,6 +11,7 @@ import { SlidingSegment } from '../components/calculator/SlidingSegment';
 import { LtrText } from '../components/history/LtrText';
 import { Enter, Field, Message } from '../components/vehicles/AddFields';
 import { ConsumptionField } from '../components/vehicles/ConsumptionField';
+import { FuelFillButton } from '../components/vehicles/FuelFillButton';
 import { LicensePlateInput } from '../components/vehicles/LicensePlateInput';
 import { VehicleCardSkeleton } from '../components/vehicles/VehicleCardSkeleton';
 import { VehicleFoundCard } from '../components/vehicles/VehicleFoundCard';
@@ -195,7 +196,7 @@ export default function AddVehicleScreen() {
 
               <View style={styles.cta}>
                 {phase === 'found' ? (
-                  <GradientButton label="שמור רכב" onPress={saveFound} disabled={!isValidConsumption(foundCons)} />
+                  <FuelFillButton label="שמור רכב" onPress={saveFound} disabled={!isValidConsumption(foundCons)} />
                 ) : (
                   <GradientButton label={searching ? 'מחפש…' : 'חפש'} onPress={search} loading={searching} disabled={plateDigits(plate).length < 7} />
                 )}

@@ -9,10 +9,12 @@ import { gaugeFraction } from '../../lib/vehicles/reveal';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedLine = Animated.createAnimatedComponent(Line);
-const CX = 28;
-const CY = 30;
-const R = 22;
-const NEEDLE = 17;
+const W = 64;
+const H = 38;
+const CX = W / 2;
+const CY = 34;
+const R = 26;
+const NEEDLE = 21; // starts at the hub, ends short of the arc so it reads against the track
 const ARC = Math.PI * R;
 
 export function ConsumptionGauge({ value, play, delay }: { value: number | null; play: boolean; delay: number }) {
@@ -45,9 +47,9 @@ export function ConsumptionGauge({ value, play, delay }: { value: number | null;
   const arc = `M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`;
   return (
     <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Svg width={56} height={34}>
+      <Svg width={W} height={H}>
         <Path d={arc} stroke={colors.divider} strokeWidth={5} strokeLinecap="round" fill="none" />
-        <AnimatedPath d={arc} stroke={colors.guideText} strokeWidth={5} strokeLinecap="butt" fill="none" strokeDasharray={ARC} animatedProps={arcProps} />
+        <AnimatedPath d={arc} stroke={colors.brandGreen} strokeWidth={5} strokeLinecap="butt" fill="none" strokeDasharray={ARC} animatedProps={arcProps} />
         <AnimatedLine x1={CX} y1={CY} stroke={colors.text} strokeWidth={2} strokeLinecap="round" animatedProps={needleProps} />
         <Circle cx={CX} cy={CY} r={3} fill={colors.text} />
       </Svg>

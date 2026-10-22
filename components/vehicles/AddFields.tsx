@@ -58,7 +58,7 @@ export function Field({ label, value, onChange, suffix, keyboardType, ltr, place
         ) : (
           input
         )}
-        {!!suffix && <Text style={styles.suffix}>{suffix}</Text>}
+        {!!suffix && <Text style={styles.suffix} numberOfLines={1}>{suffix}</Text>}
         {accessory}
       </View>
     </View>

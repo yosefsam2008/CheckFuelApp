@@ -40,6 +40,6 @@ const styles = StyleSheet.create({
   tile: { width: 48, height: 48, borderRadius: radius.tile, backgroundColor: colors.bg },
   lines: { flex: 1, minWidth: 0 },
   nameRow: { height: 25, justifyContent: 'center' },
-  subRow: { height: 21, marginTop: 2, justifyContent: 'center' },
+  subRow: { height: 22, marginTop: 4, justifyContent: 'center' },
   bar: { height: 12, borderRadius: 6, backgroundColor: colors.bg },
 });

@@ -23,7 +23,7 @@ import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
 import type { Vehicle } from '../lib/data/vehiclesData';
 import { isValidConsumption, parseDecimal, toDisplay, toStored } from '../lib/vehicles/consumption';
 import { lookupPlate, plateDigits } from '../lib/vehicles/plateLookup';
-import { derivePhase, formatPlate } from '../lib/vehicles/reveal';
+import { derivePhase, formatPlate, titleCase } from '../lib/vehicles/reveal';
 
 const ADDED_FLAG = 'vehicleJustAdded'; // read by the vehicles screen on focus
 const MAKERS = [
@@ -34,9 +34,6 @@ const FUELS = ['Gasoline', 'Diesel', 'Electric'] as const;
 
 type Tab = 'plate' | 'manual';
 type Phase = 'idle' | 'searching' | 'found' | 'notfound' | 'offline' | 'duplicate';
-
-/** Registry models arrive in caps ("COROLLA"): Title-case words, leave codes with digits ("CX-5", "i30") alone */
-const titleCase = (s: string) => s.replace(/[^\s]+/g, (w) => (/\d/.test(w) ? w : w[0].toUpperCase() + w.slice(1).toLowerCase()));
 
 const readList = async (): Promise<Vehicle[]> => JSON.parse((await AsyncStorage.getItem('vehicles')) ?? '[]');
 
@@ -170,7 +167,7 @@ export default function AddVehicleScreen() {
                 <VehicleCardSkeleton />
               ) : phase === 'found' && found ? (
                 <View>
-                  <VehicleFoundCard vehicle={found} title={`${found.name} ${titleCase(found.model)}`.trim()} first={firstReveal} />
+                  <VehicleFoundCard vehicle={found} title={titleCase(`${found.name} ${found.model}`.trim())} first={firstReveal} />
                   <Enter delay={300} play={firstReveal}>
                     <Text style={styles.editTitle}>אפשר לשנות לפני השמירה</Text>
                     <Field label="שם הרכב" value={name} onChange={setName} placeholder="למשל: הרכב של אמא" />

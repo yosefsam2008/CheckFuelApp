@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { ease, revealDur, spring } from '../../constants/motion';
-import { colors, Heebo, radius } from '../../constants/theme';
+import { color, colors, Heebo, radius } from '../../constants/theme';
 import type { Vehicle } from '../../lib/data/vehiclesData';
 import { isRtlText } from '../../lib/vehicles/reveal';
 import { LtrText } from '../history/LtrText';
@@ -85,11 +85,11 @@ export function VehicleFoundCard({ vehicle, title, first }: Props) {
             <LtrText style={styles.foundName} numberOfLines={1}>{title}</LtrText>
             {play && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.mask, maskStyle]} />}
           </View>
-          <Animated.Text style={[styles.foundSub, metaStyle]} numberOfLines={1}>
-            <LtrText>{vehicle.year}</LtrText>
-            {` · ${FUEL_LABEL[vehicle.fueltype ?? ''] ?? 'לא ידוע'}${engine ? ' · ' : ''}`}
-            {engine && <LtrText>{vehicle.engine}</LtrText>}
-          </Animated.Text>
+          <Animated.View style={[styles.chips, metaStyle]}>
+            <LtrText style={styles.chip} numberOfLines={1}>{vehicle.year}</LtrText>
+            <Text style={styles.chip} numberOfLines={1}>{FUEL_LABEL[vehicle.fueltype ?? ''] ?? 'לא ידוע'}</Text>
+            {engine && <LtrText style={[styles.chip, styles.chipShrink]} numberOfLines={1}>{vehicle.engine}</LtrText>}
+          </Animated.View>
         </View>
       </View>
     </Animated.View>
@@ -106,5 +106,8 @@ const styles = StyleSheet.create({
   titleClip: { overflow: 'hidden' },
   mask: { backgroundColor: colors.surface },
   foundName: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
-  foundSub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 2 },
+  chips: { flexDirection: 'row', gap: 6, marginTop: 4 },
+  // textSecondary, not textMuted: 4.54:1 on the grey pill (textMuted is ~3:1 there)
+  chip: { overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: colors.bg, fontFamily: Heebo.semi, fontSize: 12, color: color.textSecondary },
+  chipShrink: { flexShrink: 1 },
 });

@@ -10,6 +10,15 @@ export const formatPlate = (text: string) => {
   return d;
 };
 
+/**
+ * Registry names arrive in caps ("GLC 43 AMG", "COROLLA"). Title-case each word (each part of a hyphenated one),
+ * except all-caps words of up to 3 letters (GLC, AMG, BMW) and words with a digit (EV6, X5), which stay uppercase.
+ */
+export const titleCase = (s: string) =>
+  s.replace(/[^\s-]+/g, (w) =>
+    /\d/.test(w) ? w.toUpperCase() : w.length <= 3 && w === w.toUpperCase() ? w : w[0].toUpperCase() + w.slice(1).toLowerCase(),
+  );
+
 export type LookupStatus = 'idle' | 'searching' | 'found' | 'notfound' | 'offline' | 'duplicate';
 export type RevealPhase = 'idle' | 'typing' | 'searching' | 'found' | 'notFound' | 'error' | 'duplicate';
 

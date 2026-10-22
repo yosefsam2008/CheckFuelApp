@@ -1,6 +1,6 @@
 // Motion system: springs, durations, entrance, looping clock and haptics in one place
 import * as Haptics from 'expo-haptics';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   cancelAnimation,
   useAnimatedStyle,
@@ -56,12 +56,13 @@ export const revealDur = {
  * Staggered entrance: a 400ms fade + 10px rise. A shared-value style, not a Reanimated `entering` layout animation:
  * on web those leave a fixed inline height on the element, which clips content that grows later.
  */
-export function useEnter(delay: number) {
+export function useEnter(delay: number, play = true) {
   const reduced = useReducedMotion();
-  const t = useSharedValue(reduced ? 1 : 0);
+  const on = useRef(play).current; // read at mount: a later `false` must not cut a running entrance
+  const t = useSharedValue(reduced || !on ? 1 : 0);
   useEffect(() => {
-    t.value = reduced ? 1 : withDelay(delay, withTiming(1, { duration: 400, easing: ease.out }));
-  }, [delay, reduced, t]);
+    t.value = reduced || !on ? 1 : withDelay(delay, withTiming(1, { duration: 400, easing: ease.out }));
+  }, [delay, reduced, on, t]);
   return useAnimatedStyle(() => ({ opacity: t.value, transform: [{ translateY: (1 - t.value) * 10 }] }));
 }
 

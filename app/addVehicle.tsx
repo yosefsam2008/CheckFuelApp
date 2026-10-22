@@ -9,7 +9,8 @@ import { HeroHeader } from '../components/calculator/HeroHeader';
 import { PressableScale } from '../components/calculator/PressableScale';
 import { SlidingSegment } from '../components/calculator/SlidingSegment';
 import { LtrText } from '../components/history/LtrText';
-import { Field, Message } from '../components/vehicles/AddFields';
+import { Enter, Field, Message } from '../components/vehicles/AddFields';
+import { ConsumptionField } from '../components/vehicles/ConsumptionField';
 import { LicensePlateInput } from '../components/vehicles/LicensePlateInput';
 import { VehicleCardSkeleton } from '../components/vehicles/VehicleCardSkeleton';
 import { VehicleFoundCard } from '../components/vehicles/VehicleFoundCard';
@@ -169,10 +170,14 @@ export default function AddVehicleScreen() {
               ) : phase === 'found' && found ? (
                 <View>
                   <VehicleFoundCard vehicle={found} title={`${found.name} ${titleCase(found.model)}`.trim()} first={firstReveal} />
-                  <Text style={styles.editTitle}>אפשר לשנות לפני השמירה</Text>
-                  <Field label="שם הרכב" value={name} onChange={setName} placeholder="למשל: הרכב של אמא" />
-                  <Field label="צריכה ממוצעת" value={cons} onChange={setCons} suffix={consumptionUnit(found.fueltype)} keyboardType="decimal-pad" ltr />
-                  <Text style={styles.hint}>הערכה לפי משקל ומנוע. אם אתם יודעים את הצריכה האמיתית, עדיף לתקן.</Text>
+                  <Enter delay={300} play={firstReveal}>
+                    <Text style={styles.editTitle}>אפשר לשנות לפני השמירה</Text>
+                    <Field label="שם הרכב" value={name} onChange={setName} placeholder="למשל: הרכב של אמא" />
+                  </Enter>
+                  <Enter delay={370} play={firstReveal}>
+                    <ConsumptionField value={cons} onChange={setCons} fuel={found.fueltype} first={firstReveal} delay={450} />
+                    <Text style={styles.hint}>הערכה לפי משקל ומנוע. אם אתם יודעים את הצריכה האמיתית, עדיף לתקן.</Text>
+                  </Enter>
                 </View>
               ) : phase === 'notfound' ? (
                 <Message

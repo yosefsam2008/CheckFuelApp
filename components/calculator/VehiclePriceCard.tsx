@@ -74,15 +74,15 @@ export function VehiclePriceCard(p: Props) {
 
       {v ? (
         <>
-          {/* choose the fuel first, then see its price */}
+          <View style={{ marginTop: space.block }}>
+            <FuelPriceDisplay price={p.price} onPriceChange={p.onPriceChange} unit={isElectric ? 'לקוט״ש' : 'לליטר'} label={priceLabel(priceField(v), p.octane)} status={p.priceStatus} />
+          </View>
+          {/* the fuel comes from the vehicle; only petrol cars pick an octane, which the registry doesn't record */}
           {isPetrol && (
             <View style={{ marginTop: space.block }}>
               <SlidingSegment accessibilityLabel="סוג דלק" options={OCTANE_OPTIONS} value={p.octane} onChange={p.onOctane} />
             </View>
           )}
-          <View style={{ marginTop: space.block }}>
-            <FuelPriceDisplay price={p.price} onPriceChange={p.onPriceChange} unit={isElectric ? 'לקוט״ש' : 'לליטר'} label={priceLabel(priceField(v), p.octane)} status={p.priceStatus} />
-          </View>
         </>
       ) : (
         <PressableScale style={styles.cta} onPress={p.onGoToVehicles} accessibilityRole="button">

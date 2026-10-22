@@ -20,8 +20,11 @@ export const color = {
 
 // Vehicle icon tile tints by fuel type (icon on fill needs 3:1, checked by scripts/contrast-check.ts)
 export const fuelTint = {
-  gasolineFill: '#FFF1DB',
-  gasolineIcon: '#B86A00',
+  // brand palette only: gasoline green, EV teal, diesel blue
+  gasolineFill: '#E3F6EA',
+  gasolineIcon: '#0E7A3C',
+  evFill: '#DDF5F3',
+  evIcon: '#00706A',
   dieselFill: '#E6EDF6',
   dieselIcon: '#34557D',
 } as const;

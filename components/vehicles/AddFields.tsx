@@ -62,7 +62,7 @@ export function Message({ icon, title, body, link, onLink }: { icon: React.React
 const styles = StyleSheet.create({
   field: { marginTop: 14 },
   label: { fontFamily: Heebo.semi, fontSize: 14, color: colors.textMuted, marginBottom: 6 },
-  box: { height: 52, flexDirection: 'row', alignItems: 'center', borderRadius: radius.tile, backgroundColor: colors.bg, paddingHorizontal: 14, gap: 8 },
+  box: { height: 52, flexDirection: 'row', alignItems: 'center', borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, paddingHorizontal: 14, gap: 8 },
   input: { flex: 1, height: '100%', fontFamily: Heebo.bold, fontSize: 17, color: colors.text },
   suffix: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted },
   message: { marginTop: 16, padding: 16, borderRadius: radius.tile, backgroundColor: colors.bg, alignItems: 'flex-start', gap: 4 },

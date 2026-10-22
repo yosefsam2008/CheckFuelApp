@@ -27,7 +27,7 @@ const pairs: [string, string, number, string][] = [
   [color.brandTeal, color.surface, 3, 'brand teal icon on white'],
   [fuelTint.gasolineIcon, fuelTint.gasolineFill, 3, 'gasoline icon on tint'],
   [fuelTint.dieselIcon, fuelTint.dieselFill, 3, 'diesel icon on tint'],
-  ['#0E7A3C', '#E3F6EA', 3, 'electric icon on tint'],
+  [fuelTint.evIcon, fuelTint.evFill, 3, 'electric icon on tint'],
   [color.brandGreen, color.surface, 3, 'brand green icon on white (expected to FAIL: do not use as text)'],
 ];
 

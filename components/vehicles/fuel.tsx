@@ -15,7 +15,7 @@ const tintFor = (fuel?: string) =>
   fuel === 'Diesel'
     ? { fill: fuelTint.dieselFill, icon: fuelTint.dieselIcon }
     : isEv(fuel)
-      ? { fill: colors.guideFill, icon: colors.guideText }
+      ? { fill: fuelTint.evFill, icon: fuelTint.evIcon }
       : { fill: fuelTint.gasolineFill, icon: fuelTint.gasolineIcon };
 
 export function VehicleTile({ type, fuel, size = 48 }: { type?: Vehicle['type']; fuel?: string; size?: number }) {

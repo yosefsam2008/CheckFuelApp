@@ -1,7 +1,7 @@
 // app/addVehicle.tsx: plate lookup and manual entry behind one segmented control
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { ChevronDown, Info, Search, WifiOff } from 'lucide-react-native';
+import { CircleCheck, ChevronDown, Info, Search, WifiOff } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
@@ -37,6 +37,9 @@ const formatPlate = (text: string) => {
   if (d.length === 8) return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
   return d;
 };
+
+/** Registry models arrive in caps ("COROLLA"): Title-case words, leave codes with digits ("CX-5", "i30") alone */
+const titleCase = (s: string) => s.replace(/[^\s]+/g, (w) => (/\d/.test(w) ? w : w[0].toUpperCase() + w.slice(1).toLowerCase()));
 
 const readList = async (): Promise<Vehicle[]> => JSON.parse((await AsyncStorage.getItem('vehicles')) ?? '[]');
 
@@ -95,8 +98,10 @@ export default function AddVehicleScreen() {
     }
     const r = await lookupPlate(plate);
     if (r.status === 'found') {
+      const { model, year } = r.vehicle;
       setFound(r.vehicle);
-      setName(r.vehicle.name);
+      setName(model && model !== 'לא ידוע' ? `${titleCase(model)} ${year}` : '');
+      haptic.success();
       setCons(r.vehicle.avgConsumption ? String(toDisplay(r.vehicle.avgConsumption, r.vehicle.fueltype)) : '');
     }
     setPhase(r.status);
@@ -170,11 +175,16 @@ export default function AddVehicleScreen() {
               />
 
               {phase === 'found' && found ? (
-                <Animated.View style={[styles.found, foundIn]}>
+                <Animated.View style={foundIn}>
+                  <View style={styles.found} accessibilityLiveRegion="polite">
+                  <View style={styles.badge}>
+                    <CircleCheck size={16} color={colors.guideText} strokeWidth={2.5} />
+                    <Text style={styles.badgeText}>נמצא במאגר משרד התחבורה</Text>
+                  </View>
                   <View style={styles.foundHead}>
                     <VehicleTile type={found.type} fuel={found.fueltype} />
                     <View style={styles.foundText}>
-                      <LtrText style={styles.foundName} numberOfLines={1}>{`${found.name} ${found.model}`.trim()}</LtrText>
+                      <LtrText style={styles.foundName} numberOfLines={1}>{`${found.name} ${titleCase(found.model)}`.trim()}</LtrText>
                       <Text style={styles.foundSub} numberOfLines={1}>
                         <LtrText>{found.year}</LtrText>
                         {` · ${FUEL_LABEL[found.fueltype ?? ''] ?? 'לא ידוע'}${found.engine && found.engine !== 'לא ידוע' ? ' · ' : ''}`}
@@ -182,7 +192,9 @@ export default function AddVehicleScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Field label="שם הרכב" value={name} onChange={setName} ltr />
+                  </View>
+                  <Text style={styles.editTitle}>אפשר לשנות לפני השמירה</Text>
+                  <Field label="שם הרכב" value={name} onChange={setName} placeholder="למשל: הרכב של אמא" />
                   <Field label="צריכה ממוצעת" value={cons} onChange={setCons} suffix={consumptionUnit(found.fueltype)} keyboardType="decimal-pad" ltr />
                   <Text style={styles.hint}>הערכה לפי משקל ומנוע. אם אתם יודעים את הצריכה האמיתית, עדיף לתקן.</Text>
                 </Animated.View>
@@ -268,12 +280,15 @@ export default function AddVehicleScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: 48 },
-  card: { zIndex: 2, backgroundColor: colors.surface, borderRadius: radius.card, marginTop: -44, marginHorizontal: space.gutter, paddingVertical: 16, paddingHorizontal: 20, ...shadow.card },
+  card: { zIndex: 2, backgroundColor: colors.surface, borderRadius: radius.card, marginTop: -44, marginHorizontal: space.gutter + 4, paddingVertical: 16, paddingHorizontal: 20, ...shadow.card },
   title: { fontFamily: Heebo.extra, fontSize: 20, color: colors.text, marginTop: 20 },
   sub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 4 },
   plate: { height: 64, marginTop: 16, borderRadius: radius.tile, backgroundColor: colors.bg, textAlign: 'center', fontFamily: Heebo.extra, fontSize: 28, color: colors.text },
   cta: { marginTop: 20 },
-  found: { marginTop: 16, padding: 16, borderRadius: radius.tile, backgroundColor: colors.bg },
+  found: { marginTop: 16, padding: 16, borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.guideFill },
+  badgeText: { fontFamily: Heebo.semi, fontSize: 13, color: colors.guideText },
+  editTitle: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted, marginTop: 20 },
   foundHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   foundText: { flex: 1, minWidth: 0 },
   foundName: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },

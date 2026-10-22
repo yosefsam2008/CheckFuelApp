@@ -33,6 +33,12 @@ export const ease = {
 };
 
 /**
+ * The add-vehicle reveal plays even when the OS asks for reduced motion (owner's decision, 2026-10-22; HANDOFF).
+ * shortcut: ignores the accessibility setting on this one screen; to respect it again, return useReducedMotion().
+ */
+export const useRevealReduced = () => false;
+
+/**
  * Add-vehicle reveal (signature moment 2), timings from the approved reference demo. This screen is exempt from the
  * no-overshoot and <=700ms rules (HANDOFF). Delays inside the found sequence count from the reveal start.
  * Under reduced motion everything shows at once.
@@ -87,8 +93,9 @@ export const revealDur = {
  * Staggered entrance: a 400ms fade + 10px rise. A shared-value style, not a Reanimated `entering` layout animation:
  * on web those leave a fixed inline height on the element, which clips content that grows later.
  */
-export function useEnter(delay: number, play = true) {
-  const reduced = useReducedMotion();
+export function useEnter(delay: number, play = true, respectReduced = true) {
+  const os = useReducedMotion();
+  const reduced = respectReduced && os;
   const on = useRef(play).current; // read at mount: a later `false` must not cut a running entrance
   const t = useSharedValue(reduced || !on ? 1 : 0);
   useEffect(() => {

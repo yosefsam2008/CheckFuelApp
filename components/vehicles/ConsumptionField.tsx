@@ -1,7 +1,7 @@
 // The found-vehicle consumption field: odometer overlay on first reveal, then the real input; gauge for km/l only.
 import React, { useEffect, useRef } from 'react';
-import { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { revealDur } from '../../constants/motion';
+import { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { revealDur, useRevealReduced } from '../../constants/motion';
 import { parseDecimal } from '../../lib/vehicles/consumption';
 import { Field } from './AddFields';
 import { ConsumptionGauge } from './ConsumptionGauge';
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function ConsumptionField({ value, onChange, fuel, first, delay }: Props) {
-  const reduced = useReducedMotion();
+  const reduced = useRevealReduced();
   const play = useRef(first && !reduced && /\d/.test(value)).current;
 
   // 0: overlay shows the roll and the input is invisible; 1: the real input. The input is focusable either way.

@@ -1,8 +1,8 @@
 // Placeholder in the found card's shape. Appears only if the lookup is still pending after 300ms.
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { Keyframe, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { ease, revealDur, useLoop } from '../../constants/motion';
+import Animated, { Keyframe, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { ease, revealDur, useLoop, useRevealReduced } from '../../constants/motion';
 import { colors, Heebo, radius } from '../../constants/theme';
 
 const skeletonOut = new Keyframe({
@@ -11,7 +11,7 @@ const skeletonOut = new Keyframe({
 }).duration(revealDur.skeletonOut);
 
 export function VehicleCardSkeleton() {
-  const reduced = useReducedMotion();
+  const reduced = useRevealReduced();
   const show = useSharedValue(0);
   useEffect(() => {
     show.value = withDelay(revealDur.skeletonAfter, withTiming(1, { duration: reduced ? 0 : revealDur.skeletonIn, easing: ease.outQuint }));

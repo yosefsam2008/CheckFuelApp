@@ -7,14 +7,13 @@ import Animated, {
   type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
-import { ease, revealDur as D } from '../../constants/motion';
+import { ease, revealDur as D, useRevealReduced } from '../../constants/motion';
 import { color, colors, Heebo, radius } from '../../constants/theme';
 import type { Vehicle } from '../../lib/data/vehiclesData';
 import { isRtlText } from '../../lib/vehicles/reveal';
@@ -50,7 +49,7 @@ interface Props {
 }
 
 export function VehicleFoundCard({ vehicle, title, first }: Props) {
-  const reduced = useReducedMotion();
+  const reduced = useRevealReduced();
   const play = useRef(first && !reduced).current;
   const from = play ? 0 : 1;
   const dir = I18nManager.isRTL ? 1 : -1; // +1: drives in from the right, facing left

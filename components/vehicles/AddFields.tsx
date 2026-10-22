@@ -67,7 +67,7 @@ export function Field({ label, value, onChange, suffix, keyboardType, ltr, place
 
 /** Fade + rise on mount, only when `play` is true at mount */
 export function Enter({ delay, play, children }: { delay: number; play: boolean; children: React.ReactNode }) {
-  return <Animated.View style={useEnter(delay, play)}>{children}</Animated.View>;
+  return <Animated.View style={useEnter(delay, play, false)}>{children}</Animated.View>;
 }
 
 /** Icon, title, body and an optional link: not found, offline and duplicate all use it */

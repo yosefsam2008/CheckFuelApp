@@ -7,13 +7,12 @@ import Animated, {
   Keyframe,
   LayoutAnimationConfig,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { ease, haptic, revealDur, useLoop } from '../../constants/motion';
+import { ease, haptic, revealDur, useLoop, useRevealReduced } from '../../constants/motion';
 import { LTR, NO_OUTLINE, NO_TOUCH } from '../../constants/rtl';
 import { Heebo, plate as P } from '../../constants/theme';
 import { plateDigits } from '../../lib/vehicles/plateLookup';
@@ -49,7 +48,7 @@ interface Props {
 }
 
 export function LicensePlateInput({ value, onChangeText, editable = true, scanning = false, shake = false }: Props) {
-  const reduced = useReducedMotion();
+  const reduced = useRevealReduced();
   const [focused, setFocused] = useState(false);
   // plate digits only; Heebo stands in until the font file is loaded
   const [barlow] = useFonts({ BarlowCondensed_700Bold });

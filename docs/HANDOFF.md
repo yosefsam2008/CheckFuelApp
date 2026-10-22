@@ -19,6 +19,7 @@
 - **תנועה:** רגעי חתימה מוגדרים בלבד, וכל השאר משוב קצר.
   - Signature moments: (1) calculator pump counter — repeated use; (2) add-vehicle reveal — one-time flow per vehicle. No other screen gets a signature moment.
   - The add-vehicle reveal is exempt from the no-overshoot and ≤700ms rules. The rest of the app is not.
+  - The add-vehicle reveal also plays when the OS asks for reduced motion (owner's decision, 2026-10-22). Switch: `useRevealReduced` in `constants/motion.ts`.
   - בלי קונפטי, בלי אנימציית טעינה ובלי קפיצות.
   - אנימציה לא ארוכה מ־700ms.
   - כשהמשתמש מפעיל Reduce Motion, הכל מוצג מיד בלי תנועה.

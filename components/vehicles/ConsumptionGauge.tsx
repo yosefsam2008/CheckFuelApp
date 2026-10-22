@@ -1,9 +1,9 @@
 // Small km/l dial bound to the field's current text. Decorative: the number in the field is the real value.
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
-import Animated, { useAnimatedProps, useReducedMotion, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
-import { ease, revealDur, spring } from '../../constants/motion';
+import { ease, revealDur, spring, useRevealReduced } from '../../constants/motion';
 import { colors } from '../../constants/theme';
 import { gaugeFraction } from '../../lib/vehicles/reveal';
 
@@ -19,7 +19,7 @@ const ARC = Math.PI * R;
 const OVERSHOOT = 8 / 180; // 8 degrees, as a fraction of the half circle
 
 export function ConsumptionGauge({ value, play, delay }: { value: number | null; play: boolean; delay: number }) {
-  const reduced = useReducedMotion();
+  const reduced = useRevealReduced();
   const target = gaugeFraction(value);
   const intro = useRef(play && !reduced);
   const arcP = useSharedValue(intro.current ? 0 : target);

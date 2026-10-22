@@ -3,9 +3,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { ease, revealDur as D } from '../../constants/motion';
+import { ease, revealDur as D, useRevealReduced } from '../../constants/motion';
 import { NO_TOUCH } from '../../constants/rtl';
 import { colors, Heebo, radius, shadow } from '../../constants/theme';
 import { PressableScale } from '../calculator/PressableScale';
@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function FuelFillButton({ label, onPress, disabled, first = false }: Props) {
-  const reduced = useReducedMotion();
+  const reduced = useRevealReduced();
   const intro = useRef(first && !reduced && !disabled);
   const full = disabled || intro.current ? 0 : 1;
   const f = useSharedValue(full); // liquid level

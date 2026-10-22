@@ -1,22 +1,27 @@
 // Placeholder in the found card's shape. Appears only if the lookup is still pending after 300ms.
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { dur, revealDur, useLoop } from '../../constants/motion';
+import Animated, { Keyframe, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { ease, revealDur, useLoop } from '../../constants/motion';
 import { colors, Heebo, radius } from '../../constants/theme';
+
+const skeletonOut = new Keyframe({
+  0: { opacity: 1, transform: [{ scale: 1 }] },
+  100: { opacity: 0, transform: [{ scale: 0.98 }] },
+}).duration(revealDur.skeletonOut);
 
 export function VehicleCardSkeleton() {
   const reduced = useReducedMotion();
   const show = useSharedValue(0);
   useEffect(() => {
-    show.value = withDelay(revealDur.skeletonAfter, withTiming(1, { duration: reduced ? 0 : dur.micro }));
+    show.value = withDelay(revealDur.skeletonAfter, withTiming(1, { duration: reduced ? 0 : revealDur.skeletonIn, easing: ease.outQuint }));
   }, [reduced, show]);
   const pulse = useLoop(900, { reverse: true, rest: 1 }); // one value shared by every bone
-  const wrap = useAnimatedStyle(() => ({ opacity: show.value }));
+  const wrap = useAnimatedStyle(() => ({ opacity: show.value, transform: [{ translateY: (1 - show.value) * 10 }, { scale: 0.98 + 0.02 * show.value }] }));
   const bone = useAnimatedStyle(() => ({ opacity: 0.5 + 0.5 * pulse.value }));
 
   return (
-    <Animated.View style={[styles.card, wrap]} accessibilityLiveRegion="polite">
+    <Animated.View style={[styles.card, wrap]} exiting={reduced ? undefined : skeletonOut} accessibilityLiveRegion="polite">
       <View style={styles.status}>
         <Text style={styles.statusText}>מחפש במאגר משרד התחבורה…</Text>
       </View>

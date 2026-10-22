@@ -29,26 +29,57 @@ export const ease = {
   sine: Easing.inOut(Easing.sin),
   outQuint: Easing.bezier(0.16, 1, 0.3, 1),
   inOutQuint: Easing.bezier(0.65, 0, 0.35, 1),
+  pop: Easing.bezier(0.34, 1.56, 0.64, 1), // overshoots ~10%: add-vehicle reveal only
 };
 
-/** Add-vehicle reveal (signature moment 2). Every value is at most 700ms; under reduced motion everything shows at once. */
+/**
+ * Add-vehicle reveal (signature moment 2), timings from the approved reference demo. This screen is exempt from the
+ * no-overshoot and <=700ms rules (HANDOFF). Delays inside the found sequence count from the reveal start.
+ * Under reduced motion everything shows at once.
+ */
 export const revealDur = {
-  digitDrop: 300,
+  digitDrop: 340,
   digitExit: 120,
   digitStep: 105, // paste stagger
   platePress: 150,
-  scan: 600,
+  focusRing: 260,
+  scan: 760,
+  ringOutDelay: 500, // focus ring fades out during the scan
+  ringOut: 500,
   skeletonAfter: 300, // show the skeleton only if the lookup is still pending by then
-  card: 600,
-  carIn: 500,
+  skeletonIn: 360,
+  skeletonOut: 240,
+  card: 380,
+  carDelay: 40,
+  car: 660,
+  settleDelay: 560,
+  settle: 260,
+  dustDelay: 560,
+  dustStep: 50,
+  dust: 520,
+  titleDelay: 160,
+  title: 520,
+  chipDelay: 320,
   chipStagger: 70,
-  gauge: 700,
-  odoBase: 500,
-  odoStagger: 100,
+  chip: 320,
+  badgeDelay: 540,
+  badge: 420,
+  checkDelay: 680,
+  check: 300,
+  consumptionDelay: 760,
+  gauge: 1000,
+  needle: 1100,
+  odoBase: 900,
+  odoStagger: 180,
   handoff: 120,
-  ctaFill: 700,
-  ctaDrain: 300,
   follow: 150, // gauge debounce while typing
+  ctaDelay: 1760, // consumption step + 1000
+  ctaFill: 720,
+  ctaDrain: 300,
+  ctaLabelDelay: 440,
+  ctaLabel: 280,
+  pulseDelay: 720,
+  pulse: 700,
   shake: 240,
 };
 

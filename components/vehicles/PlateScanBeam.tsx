@@ -2,7 +2,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ease, revealDur } from '../../constants/motion';
 import { NO_TOUCH } from '../../constants/rtl';
 
@@ -23,7 +23,7 @@ export function PlateScanBeam({ active }: { active: boolean }) {
   useEffect(() => () => cancelAnimation(p), [p]);
 
   const style = useAnimatedStyle(() => ({
-    opacity: Math.sin(Math.PI * p.value),
+    opacity: interpolate(p.value, [0, 0.15, 0.85, 1], [0, 1, 1, 0]),
     transform: [{ translateX: -BEAM + p.value * (w.value + BEAM) }, { skewX: '-20deg' }],
   }));
 

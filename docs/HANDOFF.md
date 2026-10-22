@@ -18,6 +18,7 @@
 - במחשבון יש כפתור "חשב", והתוצאה מתגלגלת כמו מונה של משאבת דלק.
 - **תנועה:** רגעי חתימה מוגדרים בלבד, וכל השאר משוב קצר.
   - Signature moments: (1) calculator pump counter — repeated use; (2) add-vehicle reveal — one-time flow per vehicle. No other screen gets a signature moment.
+  - The add-vehicle reveal is exempt from the no-overshoot and ≤700ms rules. The rest of the app is not.
   - בלי קונפטי, בלי אנימציית טעינה ובלי קפיצות.
   - אנימציה לא ארוכה מ־700ms.
   - כשהמשתמש מפעיל Reduce Motion, הכל מוצג מיד בלי תנועה.

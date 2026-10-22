@@ -16,7 +16,7 @@ import { LicensePlateInput } from '../components/vehicles/LicensePlateInput';
 import { VehicleCardSkeleton } from '../components/vehicles/VehicleCardSkeleton';
 import { VehicleFoundCard } from '../components/vehicles/VehicleFoundCard';
 import { consumptionUnit, FUEL_LABEL, GradientButton } from '../components/vehicles/fuel';
-import { dur, haptic } from '../constants/motion';
+import { dur, haptic, revealDur } from '../constants/motion';
 import { colors, Heebo, radius, shadow, space } from '../constants/theme';
 import { useOpenInfoMenu } from '../hooks/use-info-menu';
 import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
@@ -173,7 +173,7 @@ export default function AddVehicleScreen() {
                     <Field label="שם הרכב" value={name} onChange={setName} placeholder="למשל: הרכב של אמא" />
                   </Enter>
                   <Enter delay={370} play={firstReveal}>
-                    <ConsumptionField value={cons} onChange={setCons} fuel={found.fueltype} first={firstReveal} delay={450} />
+                    <ConsumptionField value={cons} onChange={setCons} fuel={found.fueltype} first={firstReveal} delay={revealDur.consumptionDelay} />
                     <Text style={styles.hint}>הערכה לפי משקל ומנוע. אם אתם יודעים את הצריכה האמיתית, עדיף לתקן.</Text>
                   </Enter>
                 </View>
@@ -193,7 +193,7 @@ export default function AddVehicleScreen() {
 
               <View style={styles.cta}>
                 {phase === 'found' ? (
-                  <FuelFillButton label="שמור רכב" onPress={saveFound} disabled={!isValidConsumption(foundCons)} />
+                  <FuelFillButton label="שמור רכב" onPress={saveFound} disabled={!isValidConsumption(foundCons)} first={firstReveal} />
                 ) : (
                   <GradientButton label={searching ? 'מחפש…' : 'חפש'} onPress={search} loading={searching} disabled={plateDigits(plate).length < 7} />
                 )}

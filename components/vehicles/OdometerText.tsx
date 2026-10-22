@@ -11,7 +11,7 @@ const STRIP = Array.from({ length: 20 }, (_, i) => i % 10); // 0-9 twice, so eve
 /** Longest roll for a value, so the caller knows when to hand off to the real input */
 export const odometerDuration = (value: string) => {
   const n = value.replace(/\D/g, '').length;
-  return n ? Math.min(revealDur.odoBase + (n - 1) * revealDur.odoStagger, 700) : 0;
+  return n ? revealDur.odoBase + (n - 1) * revealDur.odoStagger : 0;
 };
 
 export function OdometerText({ value, delay, style }: { value: string; delay: number; style?: StyleProp<AnimatedStyle<StyleProp<ViewStyle>>> }) {
@@ -21,7 +21,7 @@ export function OdometerText({ value, delay, style }: { value: string; delay: nu
     <Animated.View style={[styles.row, style]}>
       {[...text].map((ch, k) =>
         /\d/.test(ch) ? (
-          <Digit key={k} d={Number(ch)} delay={delay} duration={Math.min(revealDur.odoBase + i++ * revealDur.odoStagger, 700)} />
+          <Digit key={k} d={Number(ch)} delay={delay} duration={revealDur.odoBase + i++ * revealDur.odoStagger} />
         ) : (
           <Text key={k} style={styles.text}>{ch}</Text>
         ),

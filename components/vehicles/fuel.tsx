@@ -11,7 +11,7 @@ export const FUEL_LABEL: Record<string, string> = { Gasoline: 'בנזין', Dies
 export const isEv = (fuel?: string) => fuel === 'Electric' || fuel === 'PHEV';
 export const consumptionUnit = (fuel?: string) => (isEv(fuel) ? 'קוט״ש ל־100 ק״מ' : 'ק״מ לליטר');
 
-const tintFor = (fuel?: string) =>
+export const tintFor = (fuel?: string) =>
   fuel === 'Diesel'
     ? { fill: fuelTint.dieselFill, icon: fuelTint.dieselIcon }
     : isEv(fuel)

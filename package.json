@@ -12,6 +12,7 @@
     "check:contrast": "ts-node --compiler-options {\\\"module\\\":\\\"commonjs\\\"} scripts/contrast-check.ts"
   },
   "dependencies": {
+    "@expo-google-fonts/barlow-condensed": "^0.4.1",
     "@expo-google-fonts/heebo": "^0.4.2",
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo/config-plugins": "^54.0.4",

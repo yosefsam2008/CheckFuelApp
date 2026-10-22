@@ -1,4 +1,5 @@
 // Yellow Israeli plate over one transparent TextInput: the input owns the value, the glyph row only draws it
+import { BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-condensed';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
@@ -8,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
@@ -23,7 +25,7 @@ const PLACEHOLDER = '00-000-00';
 const drop = (delay: number) =>
   new Keyframe({
     0: { opacity: 0, transform: [{ translateY: -FONT * 0.75 }, { scale: 1.5 }] },
-    100: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }], easing: ease.outQuint },
+    100: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }], easing: ease.pop },
   })
     .duration(revealDur.digitDrop)
     .delay(delay);
@@ -49,6 +51,9 @@ interface Props {
 export function LicensePlateInput({ value, onChangeText, editable = true, scanning = false, shake = false }: Props) {
   const reduced = useReducedMotion();
   const [focused, setFocused] = useState(false);
+  // plate digits only; Heebo stands in until the font file is loaded
+  const [barlow] = useFonts({ BarlowCondensed_700Bold });
+  const glyphFont = { fontFamily: barlow ? 'BarlowCondensed_700Bold' : Heebo.extra };
   const digits = plateDigits(value);
   // digits at or past this index arrived in the latest change; a paste staggers them
   const prevCount = useRef(digits.length);
@@ -74,6 +79,15 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
   }, [shake, reduced, x]);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }, { scale: press.value }] }));
 
+  // focus ring fades in; once a search starts it lingers, then fades out under the beam
+  const ring = useSharedValue(0);
+  useEffect(() => {
+    if (reduced) ring.value = focused && !scanning ? 1 : 0;
+    else if (scanning) ring.value = withDelay(revealDur.ringOutDelay, withTiming(0, { duration: revealDur.ringOut }));
+    else ring.value = withTiming(focused ? 1 : 0, { duration: revealDur.focusRing });
+  }, [focused, scanning, reduced, ring]);
+  const ringStyle = useAnimatedStyle(() => ({ opacity: ring.value }));
+
   // keyed by digit position so a dash appearing at 7 digits does not remount the digits around it
   let n = 0;
   const glyphs = [...value].map((ch) => {
@@ -82,14 +96,15 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
     const entering = reduced ? undefined : isDigit ? drop(Math.max(0, n - firstNew) * revealDur.digitStep) : dashIn;
     if (isDigit) n++;
     return (
-      <Animated.Text key={key} entering={entering} exiting={reduced ? undefined : lift} style={styles.glyph} maxFontSizeMultiplier={1}>
+      <Animated.Text key={key} entering={entering} exiting={reduced ? undefined : lift} style={[styles.glyph, glyphFont]} maxFontSizeMultiplier={1}>
         {ch}
       </Animated.Text>
     );
   });
 
   return (
-    <View style={[styles.ring, focused && { backgroundColor: P.focusRing }]}>
+    <View style={styles.ring}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.ringFill, ringStyle]} />
       <Animated.View {...LTR.props} style={[styles.plate, LTR.style, pressStyle]}>
         <View style={styles.strip} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Text style={styles.il} maxFontSizeMultiplier={1}>IL</Text>
@@ -99,7 +114,7 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
           <LayoutAnimationConfig skipEntering>{glyphs}</LayoutAnimationConfig>
           {focused && <Caret />}
           {!value && (
-            <Text style={[styles.glyph, styles.placeholder]} maxFontSizeMultiplier={1}>
+            <Text style={[styles.glyph, glyphFont, styles.placeholder]} maxFontSizeMultiplier={1}>
               {PLACEHOLDER}
             </Text>
           )}
@@ -133,13 +148,14 @@ function Caret() {
 }
 
 const styles = StyleSheet.create({
-  ring: { marginTop: 12, padding: 4, borderRadius: 14 },
+  ring: { marginTop: 12, padding: 4 },
+  ringFill: { borderRadius: 14, backgroundColor: P.focusRing },
   plate: { height: 66, flexDirection: 'row', borderRadius: 10, borderWidth: 3, borderColor: P.ink, backgroundColor: P.fill, overflow: 'hidden' },
   strip: { width: 40, backgroundColor: P.strip, alignItems: 'center', justifyContent: 'center' },
   il: { fontFamily: Heebo.black, fontSize: 15, color: P.stripText },
   country: { fontFamily: Heebo.semi, fontSize: 9, color: P.stripText },
   row: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  glyph: { fontFamily: Heebo.extra, fontSize: FONT, lineHeight: 52, color: P.ink, fontVariant: ['tabular-nums'], includeFontPadding: false },
+  glyph: { fontSize: FONT, lineHeight: 52, color: P.ink, fontVariant: ['tabular-nums'], includeFontPadding: false },
   placeholder: { opacity: 0.25 },
   caret: { width: 1.5, height: 34, marginStart: 2, backgroundColor: P.ink },
   input: { color: 'transparent', fontSize: 20, textAlign: 'center' },

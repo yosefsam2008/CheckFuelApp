@@ -1,8 +1,8 @@
 // app/addVehicle.tsx: plate lookup and manual entry behind one segmented control
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { CircleCheck, ChevronDown, Info, Search, WifiOff } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { ChevronDown, Info, Search, WifiOff } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { HeroHeader } from '../components/calculator/HeroHeader';
@@ -12,8 +12,9 @@ import { LtrText } from '../components/history/LtrText';
 import { Field, Message } from '../components/vehicles/AddFields';
 import { LicensePlateInput } from '../components/vehicles/LicensePlateInput';
 import { VehicleCardSkeleton } from '../components/vehicles/VehicleCardSkeleton';
-import { consumptionUnit, FUEL_LABEL, GradientButton, VehicleTile } from '../components/vehicles/fuel';
-import { dur, haptic, useEnter } from '../constants/motion';
+import { VehicleFoundCard } from '../components/vehicles/VehicleFoundCard';
+import { consumptionUnit, FUEL_LABEL, GradientButton } from '../components/vehicles/fuel';
+import { dur, haptic } from '../constants/motion';
 import { colors, Heebo, radius, shadow, space } from '../constants/theme';
 import { useOpenInfoMenu } from '../hooks/use-info-menu';
 import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
@@ -41,7 +42,6 @@ export default function AddVehicleScreen() {
   const router = useRouter();
   const openInfo = useOpenInfoMenu();
   const reduced = useReducedMotion();
-  const foundIn = useEnter(0);
 
   const [tab, setTab] = useState<Tab>('plate');
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +131,13 @@ export default function AddVehicleScreen() {
   const searching = phase === 'searching';
   const reveal = derivePhase({ plate, status: phase, hasResult: !!found });
 
+  // presentation only: the reveal plays once per lookup result, not again after a tab switch
+  const revealed = useRef<Vehicle | null>(null);
+  const firstReveal = reveal === 'found' && revealed.current !== found;
+  useEffect(() => {
+    if (reveal === 'found') revealed.current = found;
+  }, [reveal, found]);
+
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -160,29 +167,13 @@ export default function AddVehicleScreen() {
               {reveal === 'searching' ? (
                 <VehicleCardSkeleton />
               ) : phase === 'found' && found ? (
-                <Animated.View style={foundIn}>
-                  <View style={styles.found} accessibilityLiveRegion="polite">
-                  <View style={styles.badge}>
-                    <CircleCheck size={16} color={colors.guideText} strokeWidth={2.5} />
-                    <Text style={styles.badgeText}>נמצא במאגר משרד התחבורה</Text>
-                  </View>
-                  <View style={styles.foundHead}>
-                    <VehicleTile type={found.type} fuel={found.fueltype} />
-                    <View style={styles.foundText}>
-                      <LtrText style={styles.foundName} numberOfLines={1}>{`${found.name} ${titleCase(found.model)}`.trim()}</LtrText>
-                      <Text style={styles.foundSub} numberOfLines={1}>
-                        <LtrText>{found.year}</LtrText>
-                        {` · ${FUEL_LABEL[found.fueltype ?? ''] ?? 'לא ידוע'}${found.engine && found.engine !== 'לא ידוע' ? ' · ' : ''}`}
-                        {found.engine && found.engine !== 'לא ידוע' && <LtrText>{found.engine}</LtrText>}
-                      </Text>
-                    </View>
-                  </View>
-                  </View>
+                <View>
+                  <VehicleFoundCard vehicle={found} title={`${found.name} ${titleCase(found.model)}`.trim()} first={firstReveal} />
                   <Text style={styles.editTitle}>אפשר לשנות לפני השמירה</Text>
                   <Field label="שם הרכב" value={name} onChange={setName} placeholder="למשל: הרכב של אמא" />
                   <Field label="צריכה ממוצעת" value={cons} onChange={setCons} suffix={consumptionUnit(found.fueltype)} keyboardType="decimal-pad" ltr />
                   <Text style={styles.hint}>הערכה לפי משקל ומנוע. אם אתם יודעים את הצריכה האמיתית, עדיף לתקן.</Text>
-                </Animated.View>
+                </View>
               ) : phase === 'notfound' ? (
                 <Message
                   icon={<Search size={22} color={colors.textMuted} strokeWidth={2} />}
@@ -269,14 +260,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: Heebo.extra, fontSize: 20, color: colors.text, marginTop: 20 },
   sub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 4 },
   cta: { marginTop: 20 },
-  found: { marginTop: 16, padding: 16, borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.guideFill },
-  badgeText: { fontFamily: Heebo.semi, fontSize: 13, color: colors.guideText },
   editTitle: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted, marginTop: 20 },
-  foundHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  foundText: { flex: 1, minWidth: 0 },
-  foundName: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
-  foundSub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 2 },
   hint: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted, marginTop: 12 },
   suggest: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   suggestText: { fontFamily: Heebo.semi, fontSize: 15, color: colors.text },

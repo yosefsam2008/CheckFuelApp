@@ -16,7 +16,8 @@
 - גופן: Heebo בלבד (`Heebo.regular` עד `Heebo.black`), גם למספרים וגם לטקסט.
 - סרגל טאבים תחתון עם 3 טאבים: מחשבון, היסטוריה, הרכבים שלי. כפתור מידע (i) בכותרת.
 - במחשבון יש כפתור "חשב", והתוצאה מתגלגלת כמו מונה של משאבת דלק.
-- **תנועה:** רגע חתימה אחד, וכל השאר משוב קצר.
+- **תנועה:** רגעי חתימה מוגדרים בלבד, וכל השאר משוב קצר.
+  - Signature moments: (1) calculator pump counter — repeated use; (2) add-vehicle reveal — one-time flow per vehicle. No other screen gets a signature moment.
   - בלי קונפטי, בלי אנימציית טעינה ובלי קפיצות.
   - אנימציה לא ארוכה מ־700ms.
   - כשהמשתמש מפעיל Reduce Motion, הכל מוצג מיד בלי תנועה.

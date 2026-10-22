@@ -3,16 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { CircleCheck, ChevronDown, Info, Search, WifiOff } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { HeroHeader } from '../components/calculator/HeroHeader';
 import { PressableScale } from '../components/calculator/PressableScale';
 import { SlidingSegment } from '../components/calculator/SlidingSegment';
 import { LtrText } from '../components/history/LtrText';
 import { Field, Message } from '../components/vehicles/AddFields';
+import { LicensePlateInput } from '../components/vehicles/LicensePlateInput';
 import { consumptionUnit, FUEL_LABEL, GradientButton, VehicleTile } from '../components/vehicles/fuel';
 import { dur, haptic, useEnter } from '../constants/motion';
-import { LTR, NO_OUTLINE } from '../constants/rtl';
 import { colors, Heebo, radius, shadow, space } from '../constants/theme';
 import { useOpenInfoMenu } from '../hooks/use-info-menu';
 import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
@@ -160,19 +160,7 @@ export default function AddVehicleScreen() {
             <Animated.View key="plate" entering={fade}>
               <Text style={styles.title}>מה מספר הרישוי?</Text>
               <Text style={styles.sub}>נביא את הדגם, סוג הדלק והצריכה ממאגר משרד התחבורה.</Text>
-              <TextInput
-                {...LTR.props}
-                value={plate}
-                onChangeText={onPlate}
-                keyboardType="number-pad"
-                maxLength={10}
-                placeholder="12-345-67"
-                placeholderTextColor={colors.textMuted}
-                editable={!searching}
-                style={[styles.plate, NO_OUTLINE, LTR.style]}
-                maxFontSizeMultiplier={1.3}
-                accessibilityLabel="מספר רישוי"
-              />
+              <LicensePlateInput value={plate} onChangeText={onPlate} editable={!searching} />
 
               {phase === 'found' && found ? (
                 <Animated.View style={foundIn}>
@@ -283,7 +271,6 @@ const styles = StyleSheet.create({
   card: { zIndex: 2, backgroundColor: colors.surface, borderRadius: radius.card, marginTop: -44, marginHorizontal: space.gutter + 4, paddingVertical: 16, paddingHorizontal: 20, ...shadow.card },
   title: { fontFamily: Heebo.extra, fontSize: 20, color: colors.text, marginTop: 20 },
   sub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 4 },
-  plate: { height: 64, marginTop: 16, borderRadius: radius.tile, backgroundColor: colors.bg, textAlign: 'center', fontFamily: Heebo.extra, fontSize: 28, color: colors.text },
   cta: { marginTop: 20 },
   found: { marginTop: 16, padding: 16, borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.guideFill },

@@ -1,18 +1,16 @@
-// The found-vehicle consumption field: odometer overlay on first reveal, then the real input; gauge for km/l only.
+// The found-vehicle consumption field: odometer overlay on first reveal, then the real input.
 import React, { useEffect, useRef } from 'react';
 import { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { revealDur, useRevealReduced } from '../../constants/motion';
-import { parseDecimal } from '../../lib/vehicles/consumption';
 import { Field } from './AddFields';
-import { ConsumptionGauge } from './ConsumptionGauge';
-import { consumptionUnit, isEv } from './fuel';
+import { consumptionUnit } from './fuel';
 import { OdometerText, odometerDuration } from './OdometerText';
 
 interface Props {
   value: string;
   onChange: (t: string) => void;
   fuel?: string;
-  /** first reveal of this lookup result: play the odometer and the gauge sweep */
+  /** first reveal of this lookup result: play the odometer */
   first: boolean;
   /** when the rolls start, so they follow the card */
   delay: number;
@@ -49,7 +47,6 @@ export function ConsumptionField({ value, onChange, fuel, first, delay }: Props)
       ltr
       inputStyle={inputStyle}
       overlay={play ? <OdometerText value={value} delay={delay} style={overlayStyle} /> : undefined}
-      accessory={isEv(fuel) ? undefined : <ConsumptionGauge value={parseDecimal(value)} play={first} delay={delay} />}
     />
   );
 }

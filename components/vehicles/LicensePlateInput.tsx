@@ -23,7 +23,8 @@ const PLACEHOLDER = '00-000-00';
 
 const drop = (delay: number) =>
   new Keyframe({
-    0: { opacity: 0, transform: [{ translateY: -FONT * 0.75 }, { scale: 1.5 }] },
+    // starts smaller, not larger: a 1.5x glyph spilled over its neighbours while typing
+    0: { opacity: 0, transform: [{ translateY: -FONT * 0.5 }, { scale: 0.8 }] },
     100: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }], easing: ease.pop },
   })
     .duration(revealDur.digitDrop)

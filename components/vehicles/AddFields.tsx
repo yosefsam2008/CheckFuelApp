@@ -23,13 +23,11 @@ interface FieldProps {
   inputStyle?: StyleProp<AnimatedStyle<StyleProp<TextStyle>>>;
   /** drawn exactly over the input text, never touchable */
   overlay?: React.ReactNode;
-  /** after the suffix, at the inline end of the box */
-  accessory?: React.ReactNode;
 }
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-export function Field({ label, value, onChange, suffix, keyboardType, ltr, placeholder, maxLength, onFocus, inputStyle, overlay, accessory }: FieldProps) {
+export function Field({ label, value, onChange, suffix, keyboardType, ltr, placeholder, maxLength, onFocus, inputStyle, overlay }: FieldProps) {
   const input = (
     <AnimatedTextInput
       {...(ltr ? LTR.props : {})}
@@ -59,7 +57,6 @@ export function Field({ label, value, onChange, suffix, keyboardType, ltr, place
           input
         )}
         {!!suffix && <Text style={styles.suffix} numberOfLines={1}>{suffix}</Text>}
-        {accessory}
       </View>
     </View>
   );

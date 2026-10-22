@@ -73,12 +73,9 @@ export const revealDur = {
   checkDelay: 680,
   check: 300,
   consumptionDelay: 760,
-  gauge: 1000,
-  needle: 1100,
   odoBase: 900,
   odoStagger: 180,
   handoff: 120,
-  follow: 150, // gauge debounce while typing
   ctaDelay: 1760, // consumption step + 1000
   ctaFill: 720,
   ctaDrain: 300,

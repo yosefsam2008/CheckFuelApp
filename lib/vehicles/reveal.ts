@@ -31,11 +31,6 @@ export function derivePhase({ plate, status, hasResult }: { plate: string; statu
   return digitsOf(plate) ? 'typing' : 'idle';
 }
 
-/** Gauge top end: at least 20 km/l, and 25% headroom so a hybrid at 16.1 never pins the needle */
-export const gaugeScaleMax = (value: number) => Math.max(20, Math.ceil((value * 1.25) / 5) * 5);
-
-/** 0..1 needle position; empty, invalid or non-positive values rest at 0 */
-export const gaugeFraction = (value: number | null) => (value && value > 0 && isFinite(value) ? Math.min(value / gaugeScaleMax(value), 1) : 0);
 
 /** Text direction from the first strong character: Hebrew reveals right to left, Latin left to right */
 export const isRtlText = (s: string) => {

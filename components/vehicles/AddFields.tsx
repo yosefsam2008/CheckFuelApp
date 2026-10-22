@@ -91,10 +91,10 @@ const styles = StyleSheet.create({
   field: { marginTop: 14 },
   label: { fontFamily: Heebo.semi, fontSize: 14, color: colors.textMuted, marginBottom: 6 },
   box: { height: 52, flexDirection: 'row', alignItems: 'center', borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, paddingHorizontal: 14, gap: 8 },
-  input: { flex: 1, height: '100%', fontFamily: Heebo.bold, fontSize: 17, color: colors.text },
-  inputWrap: { flex: 1, height: '100%' },
+  input: { flex: 1, minWidth: 0, height: '100%', fontFamily: Heebo.bold, fontSize: 17, color: colors.text },
+  inputWrap: { flex: 1, minWidth: 0, height: '100%' },
   overlay: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', alignItems: 'center' },
-  suffix: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted },
+  suffix: { flexShrink: 0, fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted }, // the input gives way, not the unit
   message: { marginTop: 16, padding: 16, borderRadius: radius.tile, backgroundColor: colors.bg, alignItems: 'flex-start', gap: 4 },
   msgTitle: { fontFamily: Heebo.bold, fontSize: 16, color: colors.text, marginTop: 4 },
   msgBody: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted },

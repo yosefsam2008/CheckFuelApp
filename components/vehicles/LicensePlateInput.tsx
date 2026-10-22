@@ -74,9 +74,6 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
   }, [shake, reduced, x]);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }, { scale: press.value }] }));
 
-  const blink = useLoop(1000, { rest: 0 });
-  const caretStyle = useAnimatedStyle(() => ({ opacity: blink.value < 0.5 ? 1 : 0 }));
-
   // keyed by digit position so a dash appearing at 7 digits does not remount the digits around it
   let n = 0;
   const glyphs = [...value].map((ch) => {
@@ -100,7 +97,7 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
         </View>
         <View style={[styles.row, NO_TOUCH]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <LayoutAnimationConfig skipEntering>{glyphs}</LayoutAnimationConfig>
-          {focused && <Animated.View style={[styles.caret, caretStyle]} />}
+          {focused && <Caret />}
           {!value && (
             <Text style={[styles.glyph, styles.placeholder]} maxFontSizeMultiplier={1}>
               {PLACEHOLDER}
@@ -126,6 +123,13 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
       </Animated.View>
     </View>
   );
+}
+
+/** Mounted only while focused, so the blink loop does not run in the background */
+function Caret() {
+  const blink = useLoop(1000, { rest: 0 }); // reduced motion: a steady caret
+  const style = useAnimatedStyle(() => ({ opacity: blink.value < 0.5 ? 1 : 0 }));
+  return <Animated.View style={[styles.caret, style]} />;
 }
 
 const styles = StyleSheet.create({

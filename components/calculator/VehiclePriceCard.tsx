@@ -5,6 +5,9 @@ import Animated from 'react-native-reanimated';
 import { useEnter } from '../../constants/motion';
 import { colors, Heebo, radius, shadow, space } from '../../constants/theme';
 import { priceField, type Octane, type Vehicle } from '../../lib/tripCost';
+import { priceLabel } from '../../lib/priceDisplay';
+import { toDisplay, type Fuel } from '../../lib/vehicles/consumption';
+import { consumptionUnit } from '../vehicles/fuel';
 import { FuelPriceDisplay, PriceStatus } from './FuelPriceDisplay';
 import { PressableScale } from './PressableScale';
 import { SlidingSegment } from './SlidingSegment';
@@ -25,9 +28,8 @@ interface Props {
 
 export function consumptionLabel(v: Vehicle) {
   if (!v.avgConsumption) return 'אין נתון צריכה';
-  return v.fueltype === 'Electric'
-    ? `${(v.avgConsumption * 100).toFixed(1)} קוט״ש ל-100 ק״מ`
-    : `${(100 / v.avgConsumption).toFixed(1)} ל׳ ל-100 ק״מ`;
+  // same number + unit the user typed on the add-vehicle screen
+  return `${toDisplay(v.avgConsumption, v.fueltype as Fuel).toFixed(1)} ${consumptionUnit(v.fueltype)}`;
 }
 
 /** make + model ("Hyundai Tucson"), falling back to make + year when the model is missing */
@@ -72,14 +74,15 @@ export function VehiclePriceCard(p: Props) {
 
       {v ? (
         <>
-          <View style={{ marginTop: space.block }}>
-            <FuelPriceDisplay price={p.price} onPriceChange={p.onPriceChange} unit={isElectric ? 'לקוט״ש' : 'לליטר'} status={p.priceStatus} effectiveFrom={p.priceDate} estimate={priceField(v) === 'Diesel'} />
-          </View>
+          {/* choose the fuel first, then see its price */}
           {isPetrol && (
             <View style={{ marginTop: space.block }}>
               <SlidingSegment accessibilityLabel="סוג דלק" options={OCTANE_OPTIONS} value={p.octane} onChange={p.onOctane} />
             </View>
           )}
+          <View style={{ marginTop: space.block }}>
+            <FuelPriceDisplay price={p.price} onPriceChange={p.onPriceChange} unit={isElectric ? 'לקוט״ש' : 'לליטר'} label={priceLabel(priceField(v), p.octane)} status={p.priceStatus} />
+          </View>
         </>
       ) : (
         <PressableScale style={styles.cta} onPress={p.onGoToVehicles} accessibilityRole="button">

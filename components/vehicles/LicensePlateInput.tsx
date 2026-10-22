@@ -42,9 +42,11 @@ interface Props {
   editable?: boolean;
   /** the lookup just started: one sweep of the scan beam */
   scanning?: boolean;
+  /** the registry has no such plate: a small shake and an error haptic */
+  shake?: boolean;
 }
 
-export function LicensePlateInput({ value, onChangeText, editable = true, scanning = false }: Props) {
+export function LicensePlateInput({ value, onChangeText, editable = true, scanning = false, shake = false }: Props) {
   const reduced = useReducedMotion();
   const [focused, setFocused] = useState(false);
   const digits = plateDigits(value);
@@ -61,7 +63,16 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
     }
     prevCount.current = digits.length;
   }, [digits.length, reduced, press]);
-  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
+
+  const x = useSharedValue(0);
+  useEffect(() => {
+    if (!shake) return;
+    haptic.error();
+    if (reduced) return;
+    const step = (to: number) => withTiming(to, { duration: revealDur.shake / 6 });
+    x.value = withSequence(step(4), step(-4), step(4), step(-4), step(0));
+  }, [shake, reduced, x]);
+  const pressStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }, { scale: press.value }] }));
 
   const blink = useLoop(1000, { rest: 0 });
   const caretStyle = useAnimatedStyle(() => ({ opacity: blink.value < 0.5 ? 1 : 0 }));

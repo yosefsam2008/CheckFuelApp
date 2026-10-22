@@ -164,7 +164,7 @@ export default function AddVehicleScreen() {
             <Animated.View key="plate" entering={fade}>
               <Text style={styles.title}>מה מספר הרישוי?</Text>
               <Text style={styles.sub}>נביא את הדגם, סוג הדלק והצריכה ממאגר משרד התחבורה.</Text>
-              <LicensePlateInput value={plate} onChangeText={onPlate} editable={!searching} scanning={reveal === 'searching'} />
+              <LicensePlateInput value={plate} onChangeText={onPlate} editable={!searching} scanning={reveal === 'searching'} shake={reveal === 'notFound'} />
 
               {reveal === 'searching' ? (
                 <VehicleCardSkeleton />

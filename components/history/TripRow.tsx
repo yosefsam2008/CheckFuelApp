@@ -1,6 +1,6 @@
 // One trip: collapsed line that opens in place to the details and a single inline delete confirmation
 import { ChevronDown, Trash2 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   runOnJS,
@@ -72,6 +72,8 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
   const detailH = useSharedValue(0);
   const fullH = useSharedValue(0);
   const exit = useSharedValue(0);
+  const everOpen = useRef(open);
+  if (open) everOpen.current = true;
 
   useEffect(() => {
     if (!open) setConfirming(false);
@@ -131,6 +133,8 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
       </PressableScale>
 
       <Animated.View style={[styles.clip, detail, !open && NO_TOUCH]} accessibilityElementsHidden={!open} importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}>
+        {/* mounted on the first open only: a closed row skipped ~10 animated hooks, which made the tab's first open heavy */}
+        {everOpen.current && (
         <View style={styles.measure} onLayout={(e) => (detailH.value = e.nativeEvent.layout.height)}>
           <View style={styles.dl}>
             <Reveal p={p} i={0}>
@@ -174,6 +178,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
             </View>
           </Reveal>
         </View>
+        )}
       </Animated.View>
     </Animated.View>
   );

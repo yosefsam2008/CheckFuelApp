@@ -1,5 +1,5 @@
 // components/BannerAd.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { useAdsAllowed } from '../lib/ads/initAds';
@@ -19,6 +19,14 @@ interface AdBannerProps {
 export default function AdBanner({ style, size = BannerAdSize.ANCHORED_ADAPTIVE_BANNER }: AdBannerProps) {
   const [adLoaded, setAdLoaded] = useState(false);
   const allowed = useAdsAllowed();
+  // the native AdView is heavy to create: mounting it with the screen made each tab's first open stutter.
+  // The slot below already reserves its height, so the late mount does not move anything.
+  // shortcut: a fixed delay, not tied to the transition; switch to requestIdleCallback if it proves unreliable
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   // FIXED: Skip elegantly on web and add explicit check for BannerAd component availability
   if (Platform.OS === 'web' || !allowed) {
@@ -55,7 +63,7 @@ export default function AdBanner({ style, size = BannerAdSize.ANCHORED_ADAPTIVE_
     >
       <Text style={styles.adLabel}>ממומן</Text>    
       
-      <BannerAd
+      {ready && <BannerAd
         unitId={AD_UNIT_ID}
         size={resolvedSize}
         requestOptions={{
@@ -65,7 +73,7 @@ export default function AdBanner({ style, size = BannerAdSize.ANCHORED_ADAPTIVE_
         onAdFailedToLoad={(error) => {
           console.log('❌ Banner Ad failed to load: ', error);
         }}
-      />
+      />}
     </View>
   );
 }

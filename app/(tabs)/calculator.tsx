@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { Heart } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { CalculateButton } from '../../components/calculator/CalculateButton';
 import { DriveModeCard } from '../../components/calculator/DriveModeCard';
@@ -366,6 +366,9 @@ export default function CalculatorScreen() {
 
   return (
     <View style={styles.screen}>
+      {/* SDK 54 Android is edge-to-edge: the window no longer shrinks for the keyboard, so the scroll area does.
+          The sticky CTA stays outside it and goes under the keyboard instead of covering the field. */}
+      <KeyboardAvoidingView behavior="padding" style={styles.screen}>
       <ScrollView ref={scrollRef} contentContainerStyle={{ paddingBottom: ctaHeight + 24 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <HeroHeader onInfo={openInfo} />
         <RouteCard
@@ -419,6 +422,7 @@ export default function CalculatorScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <View style={styles.ctaWrap} onLayout={onCtaLayout}>
         <LinearGradient colors={[colors.fadeBg, colors.bg]} style={[styles.ctaFade, NO_TOUCH]} />

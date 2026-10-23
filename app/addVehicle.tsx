@@ -137,8 +137,9 @@ export default function AddVehicleScreen() {
     if (reveal === 'found') revealed.current = found;
   }, [reveal, found]);
 
+  // padding on Android too: since SDK 54 it is edge-to-edge and the window no longer resizes for the keyboard
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <HeroHeader onInfo={openInfo} onBack={router.back} title="הוספת רכב" subtitle="מספר רישוי ממלא הכל לבד. אין? מוסיפים ידנית." />
 

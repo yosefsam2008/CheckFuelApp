@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, useReducedMotion } from 'react-native-reanimated';
 import { HeroHeader } from '../../components/calculator/HeroHeader';
 import { PressableScale } from '../../components/calculator/PressableScale';
@@ -151,7 +151,9 @@ export default function VehiclesScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* keeps the inline name / consumption fields above the keyboard (Android is edge-to-edge since SDK 54) */}
+      <KeyboardAvoidingView behavior="padding" style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <HeroHeader onInfo={openInfo} title="הרכבים שלי" subtitle="הרכב במסגרת הירוקה נפתח במחשבון" />
 
         {loaded && count === 0 ? (
@@ -201,6 +203,7 @@ export default function VehiclesScreen() {
           <BannerAd />
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {toast && (
         <Animated.View

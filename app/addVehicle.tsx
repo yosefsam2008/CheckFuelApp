@@ -41,6 +41,8 @@ export default function AddVehicleScreen() {
   const router = useRouter();
   const openInfo = useOpenInfoMenu();
   const reduced = useReducedMotion();
+  // no history after a web refresh / deep link: back() would do nothing, so land on the vehicles tab
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/vehicles'));
 
   const [tab, setTab] = useState<Tab>('plate');
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export default function AddVehicleScreen() {
       const list = await readList();
       await AsyncStorage.multiSet([['vehicles', JSON.stringify([...list, v])], ['lastVehicleId', v.id], [ADDED_FLAG, '1']]);
       haptic.success();
-      router.back();
+      goBack();
     } catch (e) {
       console.error('Failed to save vehicle:', e);
       setError(LEGAL_UI_STRINGS.errors.apiError);
@@ -141,7 +143,7 @@ export default function AddVehicleScreen() {
   return (
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <HeroHeader onInfo={openInfo} onBack={router.back} title="הוספת רכב" subtitle="מספר רישוי ממלא הכל לבד. אין? מוסיפים ידנית." />
+        <HeroHeader onInfo={openInfo} onBack={goBack} title="הוספת רכב" subtitle="מספר רישוי ממלא הכל לבד. אין? מוסיפים ידנית." />
 
         <View style={styles.card}>
           <SlidingSegment

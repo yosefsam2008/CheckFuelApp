@@ -1,6 +1,7 @@
 // Motion system: springs, durations, entrance, looping clock and haptics in one place
+import { NavigationContext } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   cancelAnimation,
   useAnimatedStyle,
@@ -117,9 +118,11 @@ export const haptic = {
 export function useLoop(duration: number, opts: { reverse?: boolean; easing?: EasingFunction; rest?: number } = {}) {
   const { reverse = false, easing = Easing.linear, rest = 1 } = opts;
   const reduced = useReducedMotion();
-  const p = useSharedValue(reduced ? rest : 0);
+  const focused = useScreenFocused();
+  const run = !reduced && focused;
+  const p = useSharedValue(run ? 0 : rest);
   useEffect(() => {
-    if (reduced) {
+    if (!run) {
       p.value = rest;
       return;
     }
@@ -127,6 +130,26 @@ export function useLoop(duration: number, opts: { reverse?: boolean; easing?: Ea
     p.value = withRepeat(withTiming(1, { duration, easing }), -1, reverse);
     return () => cancelAnimation(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced, duration]);
+  }, [run, duration]);
   return p;
+}
+
+/**
+ * Whether the enclosing tab/screen is on screen. Tabs stay mounted, so without this the calculator's loops kept
+ * running behind the other tabs. Outside a navigator (bottom-sheet portals) there is no context: treated as focused.
+ */
+function useScreenFocused() {
+  const nav = useContext(NavigationContext);
+  const [focused, setFocused] = useState(() => nav?.isFocused() ?? true);
+  useEffect(() => {
+    if (!nav) return;
+    setFocused(nav.isFocused());
+    const offFocus = nav.addListener('focus', () => setFocused(true));
+    const offBlur = nav.addListener('blur', () => setFocused(false));
+    return () => {
+      offFocus();
+      offBlur();
+    };
+  }, [nav]);
+  return focused;
 }

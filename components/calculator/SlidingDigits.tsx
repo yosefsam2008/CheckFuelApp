@@ -61,7 +61,8 @@ export function SlidingDigits({ value, fontSize, color, fontFamily, staggerMs = 
   return (
     // numbers always read left-to-right, even inside the RTL layout
     <View {...LTR.props} style={[{ flexDirection: 'row', alignItems: 'center' }, LTR.style]} accessible accessibilityLabel={accessibilityLabel ?? value}>
-      {!!prefix && <Text style={[textStyle, { fontSize: fontSize * 0.7, fontFamily: Heebo.semi, height, lineHeight: height, marginEnd: 2 }]}>{prefix}</Text>}
+      {/* negative margin eats the empty side of the first digit's fixed-width column, so ₪ sits next to the ink */}
+      {!!prefix && <Text style={[textStyle, { fontSize: fontSize * 0.7, fontFamily: Heebo.bold, height, lineHeight: height, marginEnd: -fontSize * 0.04 }]}>{prefix}</Text>}
       {chars.map((c, i) => {
         const fromRight = chars.length - 1 - i;
         return /\d/.test(c) ? (

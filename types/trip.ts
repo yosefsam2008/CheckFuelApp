@@ -14,4 +14,7 @@ export interface TripRecord {
   // - For Gasoline/Diesel: km/L (kilometers per liter)
   consumption: number;
   energyType: "fuel" | "electricity";
+  // place labels of a routed trip; missing on manual-distance and older trips
+  from?: string;
+  to?: string;
 }

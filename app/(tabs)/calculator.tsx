@@ -340,6 +340,9 @@ export default function CalculatorScreen() {
         costPerKm: result.costPerKm,
         consumption: result.consumption,
         energyType: result.energyType,
+        // empty in manual-distance mode; undefined is dropped from the stored JSON
+        from: resultData.from || undefined,
+        to: resultData.to || undefined,
       };
       const status = await saveTrip(tripRecord);
       resultSheet.current?.dismiss();

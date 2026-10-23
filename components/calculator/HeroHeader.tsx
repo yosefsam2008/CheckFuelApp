@@ -112,7 +112,8 @@ export function HeroHeader({
 const styles = StyleSheet.create({
   hero: { paddingHorizontal: 20, paddingBottom: 70, overflow: 'hidden' },
   topRow: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
-  logoRow: { flexDirection: 'row', alignItems: 'baseline' },
+  // small inset so the wordmark doesn't hug the rounded screen corner
+  logoRow: { flexDirection: 'row', alignItems: 'baseline', marginLeft: 6 },
   // bottom of the ring sits on the baseline, nozzle rises above the letters like in the brand artwork
   logo: { width: 19, height: 21, marginEnd: 1 },
   wordmark: { fontFamily: 'Nunito_800ExtraBold', fontSize: 22, letterSpacing: 0.2, includeFontPadding: false, color: colors.white, textShadowColor: 'rgba(0,0,0,0.12)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },

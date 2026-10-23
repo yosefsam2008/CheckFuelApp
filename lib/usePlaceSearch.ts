@@ -1,9 +1,15 @@
 // Place search for the origin/destination sheet: local matches on every keystroke (no API), Google suggestions
 // after a 300ms pause from 2 characters, one session token per sheet opening, rotated after every pick.
-import { randomUUID } from 'expo-crypto';
 import { useEffect, useRef, useState } from 'react';
 import { autocomplete, filterLocal, isLocal, log, Place, placeDetails, placeLabel, samePlace } from './places';
 import type { LatLng } from './route';
+
+// Places session token: only needs to be unique, not secure, so no native crypto module.
+const randomUUID = () =>
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 3) | 8).toString(16);
+  });
 
 export type SearchStatus = 'idle' | 'loading' | 'ok' | 'empty' | 'offline' | 'error';
 

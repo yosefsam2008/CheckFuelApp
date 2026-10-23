@@ -375,9 +375,9 @@ export default function CalculatorScreen() {
           mode={inputMode}
           onMode={setInputMode}
           originStatus={originStatus}
-          originText={originPlace ? placeLabel(originPlace) : ''}
+          originText={originPlace?.main ?? ''}
           onOpenOrigin={() => originSheet.current?.present()}
-          destination={destPlace ? placeLabel(destPlace) : ''}
+          destination={destPlace?.main ?? ''}
           onOpenDestination={() => destinationSheet.current?.present()}
           onSwap={destPlace ? swap : undefined}
           recent={recents.filter((r) => r.placeId).slice(0, 5)}

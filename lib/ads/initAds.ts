@@ -18,8 +18,9 @@ export function initAds(): Promise<boolean> {
   if (Platform.OS === 'web') return Promise.resolve(false);
   initPromise ??= (async () => {
     try {
-      const info = await AdsConsent.gatherConsent();
-      if (!info.canRequestAds) return false;
+      // App isn't distributed in the EEA, so no UMP form is configured; a consent error must not block ads.
+      const info = await AdsConsent.gatherConsent().catch(() => null);
+      if (info && !info.canRequestAds) return false;
       await mobileAds().setRequestConfiguration({ testDeviceIdentifiers: ['EMULATOR'] });
       await mobileAds().initialize();
       allowed = true;

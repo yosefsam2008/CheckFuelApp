@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SlidingDigits } from '../calculator/SlidingDigits';
 import { colors, Heebo, radius, shadow, space } from '../../constants/theme';
-import { formatAmount } from '../../lib/format';
+import { formatAmount, formatMoney } from '../../lib/format';
 import { monthName, monthYear, type MonthSummary as Summary } from '../../lib/calc/monthly';
 import { LtrText } from './LtrText';
 import { MonthChart } from './MonthChart';
@@ -35,16 +35,19 @@ export function MonthSummary({ summary, months, selectedKey, onSelectMonth, isCu
     <View style={styles.card}>
       <Text style={styles.eyebrow}>{eyebrow}</Text>
       <View style={styles.amountRow}>
+        {/* keyed by month: every month switch remounts the ticker and rolls it up from 0 like the intro (tabs stay
+            mounted, so switching tabs never replays it); a delete within the month just rolls the changed digits */}
         <SlidingDigits
+          key={selectedKey}
           value={amount}
-          from={intro ? amount.replace(/\d/g, '0') : undefined}
-          startDelay={300}
+          from={amount.replace(/\d/g, '0')}
+          startDelay={intro ? 300 : 0}
           staggerMs={25}
           prefix="₪"
           fontSize={40}
           fontFamily={Heebo.black}
           color={colors.text}
-          accessibilityLabel={`₪${amount}`}
+          accessibilityLabel={formatMoney(Math.round(summary.total), { decimals: 0 })}
         />
         {delta !== null && (
           <View style={styles.chip} accessible accessibilityLabel={`שינוי מ${prevName}: ${delta >= 0 ? 'עלייה' : 'ירידה'} של ${Math.abs(delta)} אחוז`}>
@@ -59,7 +62,7 @@ export function MonthSummary({ summary, months, selectedKey, onSelectMonth, isCu
       {isCurrent && summary.projection != null && (
         <View style={styles.projRow}>
           <Text style={styles.proj}>צפי לסוף החודש: </Text>
-          <LtrText style={styles.proj}>{`₪${formatAmount(summary.projection, 0)}`}</LtrText>
+          <Text style={styles.proj}>{formatMoney(summary.projection, { decimals: 0 })}</Text>
         </View>
       )}
       <View style={styles.divider} />

@@ -22,10 +22,14 @@ async function readHistory(): Promise<TripRecord[]> {
   return stored ? JSON.parse(stored) : [];
 }
 
+// ids stay Date.now()-style strings, but never repeat: two saves in the same millisecond get now and now + 1
+export const nextId = (history: TripRecord[], now: number) =>
+  String(Math.max(now, ...history.map((t) => Number(t.id) + 1).filter(Number.isFinite)));
+
 export async function saveTrip(rec: TripRecord): Promise<'saved' | 'duplicate'> {
   const history = await readHistory();
   if (isDuplicateTrip(latest(history), rec)) return 'duplicate';
-  await AsyncStorage.setItem('tripHistory', JSON.stringify([...history, rec]));
+  await AsyncStorage.setItem('tripHistory', JSON.stringify([...history, { ...rec, id: nextId(history, rec.timestamp) }]));
   return 'saved';
 }
 

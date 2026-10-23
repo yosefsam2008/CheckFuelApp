@@ -27,6 +27,8 @@ import { endpointKey, getRoute, LatLng, RouteResult, routeProviderConfigured } f
 import { computeTrip, DEFAULT_PREFS, FuelPrices, Octane, priceField, priceFor, TripPrefs, Vehicle } from '../../lib/tripCost';
 import { NO_TOUCH } from '../../constants/rtl';
 import { DEFAULT_PRICES, defaultIO, getPrices, PriceInfo, PriceResult } from '../../lib/prices';
+import { saveTrip } from '../../lib/calc/history';
+import type { TripRecord } from '../../types/trip';
 
 // Conditional imports for ads - only load on native platforms
 const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
@@ -316,14 +318,19 @@ export default function CalculatorScreen() {
     }
   };
 
+  // the result this sheet already saved (or is saving): a double tap or a tap during dismiss must not insert twice
+  const savedFor = useRef<ResultData | null>(null);
   const saveToHistory = async () => {
     if (!resultData) return;
+    if (savedFor.current === resultData) return setToast({ text: 'כבר נשמר', type: 'success' });
+    savedFor.current = resultData;
     const { result, vehicle: v } = resultData;
+    const now = Date.now();
     try {
-      const tripRecord = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleDateString('he-IL'),
-        timestamp: Date.now(),
+      const tripRecord: TripRecord = {
+        id: String(now), // saveTrip makes it unique
+        date: new Date(now).toLocaleDateString('he-IL'),
+        timestamp: now,
         distance: result.distance,
         vehicleName: v.name,
         vehicleModel: v.model,
@@ -334,13 +341,11 @@ export default function CalculatorScreen() {
         consumption: result.consumption,
         energyType: result.energyType,
       };
-      const stored = await AsyncStorage.getItem('tripHistory');
-      const history = stored ? JSON.parse(stored) : [];
-      history.push(tripRecord);
-      await AsyncStorage.setItem('tripHistory', JSON.stringify(history));
+      const status = await saveTrip(tripRecord);
       resultSheet.current?.dismiss();
-      setToast({ text: LEGAL_UI_STRINGS.toasts.dataSaved, type: 'success' });
+      setToast({ text: status === 'duplicate' ? 'כבר נשמר' : LEGAL_UI_STRINGS.toasts.dataSaved, type: 'success' });
     } catch (error) {
+      savedFor.current = null; // nothing was written, so a retry must be allowed
       console.error('Failed to save calculation:', error);
       setToast({ text: LEGAL_UI_STRINGS.errors.apiError, type: 'error' });
     }

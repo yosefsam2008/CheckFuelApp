@@ -8,7 +8,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { captureRef } from 'react-native-view-shot';
 import { haptic, spring, useEnter } from '../../constants/motion';
 import { colors, Heebo, radius, shadow } from '../../constants/theme';
-import { formatAmount, formatShare } from '../../lib/format';
+import { formatAmount, formatMoney, formatShareMoney } from '../../lib/format';
 import type { CalculationResult, DriveMode, Vehicle } from '../../lib/tripCost';
 import { CornerArcs } from './Halo';
 import { chooseNavApp, NavApp, NavSheet } from './navApps';
@@ -41,7 +41,6 @@ interface Props {
 }
 
 const MODE_LABEL: Record<DriveMode, string> = { eco: 'חסכוני', normal: 'רגיל', sport: 'ספורט' };
-const shekel = (n: number) => `₪${formatAmount(n)}`;
 
 function Metric({ label, value, delay }: { label: string; value: string; delay: number }) {
   const ent = useEnter(delay);
@@ -110,14 +109,14 @@ function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: 
       </View>
 
       <Animated.Text style={[ecoIn, styles.eco, mode === 'eco' && { color: colors.ecoText }]}>
-        {mode === 'eco' ? 'מצוין, זו הנסיעה החסכונית ביותר' : `במצב Eco היית משלם ${shekel(ecoCost)} · חיסכון של ${shekel(result.totalCost - ecoCost)}`}
+        {mode === 'eco' ? 'מצוין, זו הנסיעה החסכונית ביותר' : `במצב Eco היית משלם ${formatMoney(ecoCost)} · חיסכון של ${formatMoney(result.totalCost - ecoCost)}`}
       </Animated.Text>
 
       <Animated.View entering={ZoomIn.delay(1000).springify().damping(spring.bouncy.damping).stiffness(spring.bouncy.stiffness)}>
         <PressableScale style={styles.split} onPress={() => splitSheet.current?.present()} accessibilityRole="button">
           <Users size={20} color={colors.selectedText} strokeWidth={2} />
           <Text style={styles.splitLabel}>חלק עם הנוסעים</Text>
-          {passengers > 1 && <Text style={styles.splitHint}>₪{formatShare(result.totalCost, passengers)} × {passengers}</Text>}
+          {passengers > 1 && <Text style={styles.splitHint}>{formatShareMoney(result.totalCost, passengers)} × {passengers}</Text>}
           <ChevronLeft size={18} color={colors.selectedText} strokeWidth={2} />
         </PressableScale>
       </Animated.View>

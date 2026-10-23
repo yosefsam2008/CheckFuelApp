@@ -12,7 +12,7 @@ import Animated, {
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { dur, ease, haptic } from '../../constants/motion';
 import { colors, Heebo } from '../../constants/theme';
-import { formatAmount } from '../../lib/format';
+import { formatMoney } from '../../lib/format';
 import { monthName } from '../../lib/calc/monthly';
 
 const COL_W = 48; // viewBox width: wide enough for the bar (26) and "₪1,240"; a column is never narrower than 44pt
@@ -62,7 +62,7 @@ function Bar({ index, monthKey, total, max, on, onPress }: { index: number; mont
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${monthName(monthKey)}: ₪${formatAmount(total, 0)}`}
+      accessibilityLabel={`${monthName(monthKey)}: ${formatMoney(total, { decimals: 0 })}`}
       accessibilityState={{ selected: on }}
       style={styles.col}
     >
@@ -76,7 +76,7 @@ function Bar({ index, monthKey, total, max, on, onPress }: { index: number; mont
           fontFamily={Heebo.bold}
           fill={colors.text}
         >
-          {`₪${formatAmount(total, 0)}`}
+          {formatMoney(total, { decimals: 0, isolate: false })}
         </AnimatedSvgText>
         <SvgText
           x={COL_W / 2}

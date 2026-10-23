@@ -14,7 +14,7 @@ import { dur, ease, haptic } from '../../constants/motion';
 import { NO_TOUCH } from '../../constants/rtl';
 import { colors, Heebo, radius } from '../../constants/theme';
 import { dayLabel, tripTime } from '../../lib/calc/monthly';
-import { formatAmount } from '../../lib/format';
+import { formatAmount, formatMoney } from '../../lib/format';
 import type { Vehicle } from '../../lib/tripCost';
 import type { TripRecord } from '../../types/trip';
 import { PressableScale } from '../calculator/PressableScale';
@@ -84,7 +84,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
   const used = trip.fuelConsumed;
   const consumption = trip.distance > 0 && used > 0 ? (ev ? (used / trip.distance) * 100 : trip.distance / used) : 0;
   const when = dayLabel(tripTime(trip), Date.now());
-  const cost = `₪${formatAmount(trip.totalCost, 2)}`;
+  const cost = formatMoney(trip.totalCost);
 
   const wrap = useAnimatedStyle(() =>
     exit.value > 0
@@ -126,7 +126,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
             {formatAmount(trip.distance, 0)} ק״מ
           </Text>
         </View>
-        <LtrText style={styles.cost}>{cost}</LtrText>
+        <Text style={styles.cost}>{cost}</Text>
         <Animated.View style={chevron}>
           <ChevronDown size={18} color={colors.textMuted} strokeWidth={2} />
         </Animated.View>
@@ -147,7 +147,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
               <Line label="צריכה" value={consumption.toFixed(1)} unit={ev ? 'קוט״ש ל־100 ק״מ' : 'ק״מ לליטר'} />
             </Reveal>
             <Reveal p={p} i={3}>
-              <Line label="עלות לק״מ" value={`₪${formatAmount(trip.costPerKm, 2)}`} ltr />
+              <Line label="עלות לק״מ" value={formatMoney(trip.costPerKm)} />
             </Reveal>
             <Reveal p={p} i={4}>
               <Line label="סוג אנרגיה" value={energyName(trip)} />

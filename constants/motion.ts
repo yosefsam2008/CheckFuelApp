@@ -45,7 +45,7 @@ export const useRevealReduced = () => false;
  * Under reduced motion everything shows at once.
  */
 export const revealDur = {
-  digitDrop: 340,
+  digitDrop: 240, // was 340 (demo); felt slow while typing on a phone
   digitExit: 120,
   digitStep: 105, // paste stagger
   platePress: 150,

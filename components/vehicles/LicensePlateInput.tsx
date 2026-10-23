@@ -104,8 +104,10 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
         </View>
         <PlateScanBeam active={scanning} />
         {/* on top of everything so a tap anywhere on the plate focuses it, and long-press paste works */}
+        {/* digits only: the dashes exist only in the glyph row, so the native text always equals what was typed and
+            Android never has to replace it mid-typing (that round trip made typing lag when a dash appeared) */}
         <TextInput
-          value={value}
+          value={digits}
           onChangeText={onChangeText}
           keyboardType="number-pad"
           maxLength={10}

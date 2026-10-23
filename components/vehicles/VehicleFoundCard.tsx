@@ -1,7 +1,7 @@
 // The registry result card. On the first reveal of a result it plays the add-vehicle signature moment:
 // a car drives into its tile, the title uncovers, chips rise, the badge pops. Timings: revealDur (reference demo).
 import React, { useEffect, useRef } from 'react';
-import { AccessibilityInfo, I18nManager, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   type SharedValue,
@@ -52,7 +52,9 @@ export function VehicleFoundCard({ vehicle, title, first }: Props) {
   const reduced = useRevealReduced();
   const play = useRef(first && !reduced).current;
   const from = play ? 0 : 1;
-  const dir = I18nManager.isRTL ? 1 : -1; // +1: drives in from the right, facing left
+  // -1: drives in from the left, facing right (the approved web look). Not I18nManager.isRTL: that is false on web
+  // and true on native, so the car came from opposite sides on the two platforms of the same RTL app.
+  const dir: number = -1;
   const maskSign = isRtlText(title) ? -1 : 1; // Hebrew uncovers right to left, Latin left to right
 
   const card = useSharedValue(from);

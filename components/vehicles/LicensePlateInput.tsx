@@ -1,7 +1,7 @@
 // Yellow Israeli plate over one transparent TextInput: the input owns the value, the glyph row only draws it
 import { BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-condensed';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -116,7 +116,7 @@ export function LicensePlateInput({ value, onChangeText, editable = true, scanni
           onBlur={() => setFocused(false)}
           accessibilityLabel="מספר רישוי"
           accessibilityValue={{ text: digits.split('').join(' ') }}
-          style={[StyleSheet.absoluteFill, styles.input, NO_OUTLINE]}
+          style={[StyleSheet.absoluteFill, styles.input, NO_OUTLINE, Platform.OS !== 'ios' && styles.inputHidden]}
         />
       </Animated.View>
     </View>
@@ -166,4 +166,7 @@ const styles = StyleSheet.create({
   placeholder: { opacity: 0.25 },
   caret: { width: 1.5, height: 34, marginStart: 2, backgroundColor: P.ink },
   input: { color: 'transparent', fontSize: 20, textAlign: 'center' },
+  // Android drew the typed text over the plate despite the transparent color; opacity 0 still takes taps there and on web.
+  // Not on iOS: a view under 1% alpha stops receiving touches, and iOS honours the transparent color anyway.
+  inputHidden: { opacity: 0 },
 });

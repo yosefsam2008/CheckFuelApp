@@ -85,6 +85,8 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
   const consumption = trip.distance > 0 && used > 0 ? (ev ? (used / trip.distance) * 100 : trip.distance / used) : 0;
   const when = dayLabel(tripTime(trip), Date.now());
   const cost = formatMoney(trip.totalCost);
+  const route = trip.from && trip.to ? `${trip.from} ← ${trip.to}` : '';
+  const km = `${formatAmount(trip.distance, 0)} ק״מ`;
 
   const wrap = useAnimatedStyle(() =>
     exit.value > 0
@@ -116,14 +118,15 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
         style={styles.row}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${when}, ${trip.distance} ק״מ, ${cost}`}
+        accessibilityLabel={`${route ? `מ${trip.from} אל ${trip.to}, ` : ''}${when}, ${trip.distance} ק״מ, ${cost}`}
       >
         <View style={styles.main}>
+          {/* a routed trip leads with its route; manual-distance and older trips keep the date */}
           <Text style={styles.when} numberOfLines={1}>
-            {when}
+            {route || when}
           </Text>
           <Text style={styles.km} numberOfLines={1}>
-            {formatAmount(trip.distance, 0)} ק״מ
+            {route ? `${when} · ${km}` : km}
           </Text>
         </View>
         <Text style={styles.cost}>{cost}</Text>
@@ -140,6 +143,12 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
             <Reveal p={p} i={0}>
               <Line first label="רכב" value={vehicleTitle({ name: trip.vehicleName, model: trip.vehicleModel } as Vehicle)} ltr />
             </Reveal>
+            {!!route && (
+              <Reveal p={p} i={1}>
+                <Line label="מוצא" value={trip.from!} />
+                <Line label="יעד" value={trip.to!} />
+              </Reveal>
+            )}
             <Reveal p={p} i={1}>
               <Line label={ev ? 'חשמל שנצרך' : 'דלק שנצרך'} value={used.toFixed(1)} unit={ev ? 'קוט״ש' : 'ליטר'} />
             </Reveal>

@@ -4,6 +4,7 @@ import { calculateAdjustedConsumption, calculateVehicleAge } from './data/fuelCo
 export interface Vehicle {
   id: string;
   name: string;
+  brand?: string; // maker, English
   model: string;
   engine: string;
   fueltype: string;

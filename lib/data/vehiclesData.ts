@@ -3,6 +3,8 @@ export interface Vehicle {
   id: string;
   plate: string;
   name: string;
+  /** maker, English (e.g. "Mercedes-Benz"); kept apart since the user can rename `name` */
+  brand?: string;
   model: string;
   engine: string;
   type: "car" | "motorcycle" | "truck";

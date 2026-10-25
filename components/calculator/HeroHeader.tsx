@@ -22,7 +22,7 @@ import { PressableScale } from './PressableScale';
 const HINT_SEEN_KEY = 'checkfuel.infoHintSeen';
 
 /** 32px glass circle; pulses 3x (1.6s each) until the first tap, then never again. */
-function InfoButton({ onPress }: { onPress: () => void }) {
+function InfoButton({ onPress, plain }: { onPress: () => void; plain?: boolean }) {
   const reduced = useReducedMotion();
   const t = useSharedValue(0);
 
@@ -59,8 +59,8 @@ function InfoButton({ onPress }: { onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel="מידע ומסמכים משפטיים"
     >
-      <Animated.View style={[styles.info, anim]}>
-        <Info size={16} color={colors.white} strokeWidth={2.2} />
+      <Animated.View style={[styles.info, plain && { backgroundColor: colors.surface }, anim]}>
+        <Info size={16} color={plain ? colors.text : colors.white} strokeWidth={2.2} />
       </Animated.View>
     </Pressable>
   );
@@ -69,18 +69,30 @@ function InfoButton({ onPress }: { onPress: () => void }) {
 export function HeroHeader({
   onInfo,
   onBack,
-  title = 'כמה זה יעלה לי?',
-  subtitle = 'המחיר המדויק לנסיעה, לפני שיוצאים',
+  title,
+  subtitle,
 }: {
   onInfo: () => void;
   /** sub-screens: a back button takes the info button's slot */
   onBack?: () => void;
+  /** no title = plain logo bar on the screen background (calculator) */
   title?: string;
   subtitle?: string;
 }) {
   const insets = useSafeAreaInsets();
   const titleIn = useEnter(0);
   const subIn = useEnter(60);
+  if (!title) {
+    return (
+      <View {...LTR.props} style={[styles.topRow, styles.plain, LTR.style, { marginTop: Math.max(insets.top, 8) + 4 }]}>
+        <View {...LTR.props} style={[styles.logoRow, LTR.style]} accessible accessibilityRole="image" accessibilityLabel="CheckFuel">
+          <Image source={require('../../assets/images/logo-mark.png')} style={styles.logo} tintColor={colors.brandGreen} />
+          <Text style={[styles.wordmark, styles.wordmarkPlain]}>heckfuel</Text>
+        </View>
+        <InfoButton onPress={onInfo} plain />
+      </View>
+    );
+  }
   return (
     <LinearGradient colors={colors.heroGradient} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={[styles.hero, { paddingTop: Math.max(insets.top, 8) + 12 }]}>
       {/* LTR so the global RTL never reorders the logo (left) and the button (right) */}
@@ -117,6 +129,8 @@ const styles = StyleSheet.create({
   // bottom of the ring sits on the baseline, nozzle rises above the letters like in the brand artwork
   logo: { width: 19, height: 21, marginEnd: 1 },
   wordmark: { fontFamily: 'Nunito_800ExtraBold', fontSize: 22, letterSpacing: 0.2, includeFontPadding: false, color: colors.white, textShadowColor: 'rgba(0,0,0,0.12)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  plain: { paddingHorizontal: 20, marginBottom: 8 },
+  wordmarkPlain: { color: colors.text, textShadowRadius: 0 },
   info: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   back: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.white18, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: Heebo.extra, fontSize: 30, lineHeight: 38, color: colors.white },

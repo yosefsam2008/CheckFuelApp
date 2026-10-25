@@ -131,15 +131,12 @@ export function VehicleCard({ vehicle: v, isDefault, open, intro, onToggle, onSe
   return (
     <Animated.View style={wrap} onLayout={(e: LayoutChangeEvent) => { if (exit.value === 0) fullH.value = e.nativeEvent.layout.height; }}>
       <Animated.View style={[styles.card, border]}>
-        <PressableScale onPress={onToggle} scaleTo={0.985} style={styles.row} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${v.name} ${v.model}`}>
+        <PressableScale onPress={onToggle} scaleTo={0.985} style={styles.row} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${v.brand ? v.brand + ' ' : ''}${v.name} ${v.model}`}>
           <VehicleTile type={v.type} fuel={v.fueltype} />
           <View style={styles.main}>
+            {!!v.brand && <LtrText style={styles.brand} numberOfLines={1}>{v.brand.toUpperCase()}</LtrText>}
             <LtrText style={styles.name} numberOfLines={1}>{v.name}</LtrText>
-            <Text style={styles.sub} numberOfLines={1}>
-              {fuel}
-              {!!v.year && ' · '}
-              {!!v.year && <LtrText>{v.year}</LtrText>}
-            </Text>
+            <Text style={styles.sub} numberOfLines={1}>{fuel}</Text>
           </View>
           <View style={styles.cons}>
             <LtrText style={styles.consNum}>{shown ? counted.toFixed(1) : '—'}</LtrText>
@@ -154,6 +151,7 @@ export function VehicleCard({ vehicle: v, isDefault, open, intro, onToggle, onSe
           <View style={styles.measure} onLayout={(e) => (detailH.value = e.nativeEvent.layout.height)}>
             <View style={styles.dl}>
               <Reveal p={p} i={0}><Line first label="מספר רישוי" value={v.plate || '—'} ltr /></Reveal>
+              {!!v.brand && <Reveal p={p} i={1}><Line label="יצרן" value={v.brand} ltr /></Reveal>}
               <Reveal p={p} i={1}><Line label="דגם" value={v.model || '—'} ltr /></Reveal>
               <Reveal p={p} i={2}><Line label="מנוע" value={v.engine || '—'} ltr /></Reveal>
               <Reveal p={p} i={3}><Line label="שנת ייצור" value={v.year ? String(v.year) : '—'} ltr /></Reveal>
@@ -214,6 +212,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1.5, overflow: 'hidden', ...shadow.card },
   row: { minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 18, paddingHorizontal: PAD_X },
   main: { flex: 1, minWidth: 0 },
+  brand: { fontFamily: Heebo.bold, fontSize: 11, letterSpacing: 1.2, color: colors.textMuted, marginBottom: 1 },
   name: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
   sub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 2 },
   cons: { alignItems: 'center' },

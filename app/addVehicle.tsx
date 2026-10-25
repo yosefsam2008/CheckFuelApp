@@ -120,6 +120,7 @@ export default function AddVehicleScreen() {
       id: Date.now().toString(),
       plate: mPlate.trim().toUpperCase(),
       name: maker.trim(),
+      brand: maker.trim(),
       model: model.trim(),
       engine: engine.trim(),
       type: 'car',

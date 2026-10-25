@@ -462,6 +462,7 @@ export async function lookupPlate(
         id: String(found.record._id ?? Date.now()),
         plate: String(found.record.mispar_rechev ?? plateTrimmed).toUpperCase(),
         name: vehicleName,
+        brand: parsed.brand ? vehicleName : undefined,
         model: parsed.model || "לא ידוע",
         engine: String(found.record.degem_manoa ?? found.record.engine_type ?? "לא ידוע"),
         type: found.type,

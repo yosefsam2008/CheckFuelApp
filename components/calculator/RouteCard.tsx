@@ -11,7 +11,6 @@ import { PressableScale } from './PressableScale';
 import { RouteMiniMap } from './RouteMiniMap';
 import { Shimmer } from './Shimmer';
 import { SlidingDigits } from './SlidingDigits';
-import { SlidingSegment } from './SlidingSegment';
 import { useHighlight } from './useHighlight';
 
 export type OriginStatus = 'locating' | 'ok' | 'denied';
@@ -19,8 +18,8 @@ export type RouteStatus = 'idle' | 'loading' | 'error' | 'ok';
 export type InputMode = 'route' | 'manual';
 
 interface Props {
+  /** derived: a typed distance overrides the destination */
   mode: InputMode;
-  onMode: (m: InputMode) => void;
   originStatus: OriginStatus;
   originText: string; // '' = current GPS location
   onOpenOrigin: () => void;
@@ -41,13 +40,10 @@ interface Props {
   roundTrip: boolean;
   onRoundTrip: (on: boolean) => void;
   highlightKey: number;
+  /** the vehicle row, above the route inputs */
+  top?: React.ReactNode;
 }
 
-const MODES = [
-  { value: 'route' as InputMode, label: 'לפי יעד' },
-  { value: 'manual' as InputMode, label: 'מרחק ידני' },
-];
-const CHIPS = [5, 10, 25, 50, 100];
 const ORIGIN_TEXT: Record<OriginStatus, string> = { locating: 'מאתר מיקום…', ok: 'המיקום שלי', denied: 'אין גישה למיקום' };
 const formatKm = (km: number) => (km < 100 ? km.toFixed(1) : String(Math.round(km)));
 const SLOT = 20;
@@ -194,7 +190,7 @@ function DestinationBlock({ p }: { p: Props }) {
           ))}
         </ScrollView>
       )}
-      {p.routeStatus === 'error' && !!p.routeError && <Text style={styles.error}>{p.routeError}</Text>}
+      {p.mode === 'route' && p.routeStatus === 'error' && !!p.routeError && <Text style={styles.error}>{p.routeError}</Text>}
     </>
   );
 }
@@ -203,47 +199,26 @@ function ManualField({ p }: { p: Props }) {
   const [focused, setFocused] = useState(false);
   return (
     <>
-      <View style={[styles.manualField, focused && { borderColor: colors.brandGreen }]}>
-        <TextInput
-          value={p.manualText}
-          onChangeText={p.onManualText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder="0"
-          placeholderTextColor={colors.textMuted}
-          keyboardType="decimal-pad"
-          returnKeyType="done"
-          style={styles.manualInput}
-          accessibilityLabel="מרחק בקילומטרים"
-        />
-        <Text style={styles.manualSuffix}>ק״מ</Text>
+      <View style={styles.manualRow}>
+        <Text style={styles.manualLabel}>או הקלד מרחק</Text>
+        <View style={[styles.manualField, (focused || p.mode === 'manual') && { borderColor: colors.brandGreen }]}>
+          <TextInput
+            value={p.manualText}
+            onChangeText={p.onManualText}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="0"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            style={styles.manualInput}
+            accessibilityLabel="מרחק ידני בקילומטרים"
+          />
+          <Text style={styles.manualSuffix}>ק״מ</Text>
+        </View>
       </View>
       {!!p.manualError && <Text style={styles.error}>{p.manualError}</Text>}
     </>
-  );
-}
-
-function QuickChips({ p }: { p: Props }) {
-  return (
-    <View style={styles.quick}>
-      {CHIPS.map((c) => {
-        const on = p.manualText === String(c);
-        return (
-          <Pressable
-            key={c}
-            onPress={() => {
-              haptic.select();
-              p.onManualText(String(c));
-            }}
-            style={[styles.quickChip, on && styles.quickChipOn]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-          >
-            <Text style={[styles.quickText, on && { color: colors.selectedText }]}>{c}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
@@ -255,16 +230,20 @@ export function RouteCard(p: Props) {
   return (
     <Animated.View style={[styles.card, shadow.card, hl, ent]}>
       <View style={styles.body}>
-        <SlidingSegment accessibilityLabel="אופן הזנת מרחק" height={36} options={MODES} value={p.mode} onChange={p.onMode} />
-
-        {/* shortcut: mode change cross-fades in; Reanimated's layout transition clipped the card on web, so height jumps */}
-        <Animated.View key={p.mode} entering={FadeIn.duration(250)} style={{ gap: space.block }}>
-          <View style={styles.main}>
-            <View style={{ flex: 1 }}>{manual ? <ManualField p={p} /> : <DestinationBlock p={p} />}</View>
-            <Distance p={p} />
+        {p.top && (
+          <>
+            {p.top}
+            <View style={styles.divider} />
+          </>
+        )}
+        <View style={styles.main}>
+          {/* dimmed while a typed distance is in charge; picking a destination clears it */}
+          <View style={{ flex: 1, opacity: manual ? 0.5 : 1 }}>
+            <DestinationBlock p={p} />
           </View>
-          {manual && <QuickChips p={p} />}
-        </Animated.View>
+          <Distance p={p} />
+        </View>
+        <ManualField p={p} />
       </View>
 
       <View style={styles.footer}>
@@ -284,9 +263,10 @@ export function RouteCard(p: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: radius.card, marginTop: -44, marginHorizontal: space.gutter, zIndex: 2, overflow: 'hidden', borderWidth: 1.5, borderColor: 'transparent' },
+  card: { backgroundColor: colors.surface, borderRadius: radius.card, marginTop: 4, marginHorizontal: space.gutter, zIndex: 2, overflow: 'hidden', borderWidth: 1.5, borderColor: 'transparent' },
   body: { padding: space.cardPad - 1.5, gap: space.block },
   main: { flexDirection: 'row', gap: 12 },
+  divider: { height: 1, backgroundColor: colors.divider },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   slot: { width: SLOT, alignItems: 'center', justifyContent: 'center' },
   ring: { width: 12, height: 12, borderRadius: 6, borderWidth: 3, borderColor: colors.brandGreen, backgroundColor: colors.surface },
@@ -308,13 +288,11 @@ const styles = StyleSheet.create({
   kmUnit: { fontFamily: Heebo.regular, fontSize: 12, color: colors.textMuted },
   retry: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 },
   retryText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.infoText },
-  manualField: { flexDirection: 'row', alignItems: 'center', height: 56, paddingHorizontal: 14, borderRadius: radius.tile, backgroundColor: colors.bg, borderWidth: 1.5, borderColor: 'transparent' },
-  manualInput: { flex: 1, minWidth: 0, textAlign: 'right', fontFamily: Heebo.extra, fontSize: 24, color: colors.text, padding: 0, fontVariant: ['tabular-nums'], ...NO_OUTLINE },
+  manualRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: space.block, borderTopWidth: 1, borderTopColor: colors.divider },
+  manualLabel: { fontFamily: Heebo.medium, fontSize: 14, color: colors.textMuted },
+  manualField: { flexDirection: 'row', alignItems: 'center', width: 130, height: 44, paddingHorizontal: 12, borderRadius: radius.tile, backgroundColor: colors.bg, borderWidth: 1.5, borderColor: 'transparent' },
+  manualInput: { flex: 1, minWidth: 0, textAlign: 'right', fontFamily: Heebo.extra, fontSize: 18, color: colors.text, padding: 0, fontVariant: ['tabular-nums'], ...NO_OUTLINE },
   manualSuffix: { fontFamily: Heebo.medium, fontSize: 15, color: colors.textMuted, marginStart: 8 },
-  quick: { flexDirection: 'row', gap: 8 },
-  quickChip: { flex: 1, height: 32, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.divider },
-  quickChipOn: { backgroundColor: colors.selectedFill, borderColor: colors.selectedBorder },
-  quickText: { fontFamily: Heebo.bold, fontSize: 13, color: colors.textMuted, fontVariant: ['tabular-nums'] },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: colors.subtle, paddingHorizontal: space.cardPad, paddingVertical: 8 },
   footerText: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted, flexShrink: 1 },
   pill: { height: 36, justifyContent: 'center', paddingHorizontal: 14, borderRadius: radius.pill },

@@ -8,7 +8,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { captureRef } from 'react-native-view-shot';
 import { haptic, spring, useEnter } from '../../constants/motion';
 import { colors, Heebo, radius, shadow } from '../../constants/theme';
-import { formatAmount, formatMoney, formatShareMoney } from '../../lib/format';
+import { formatAmount, formatMoney } from '../../lib/format';
 import type { CalculationResult, DriveMode, Vehicle } from '../../lib/tripCost';
 import { CornerArcs } from './Halo';
 import { chooseNavApp, NavApp, NavSheet } from './navApps';
@@ -27,7 +27,6 @@ export interface ResultData {
   unitPrice: number;
   vehicle: Vehicle;
   roundTrip: boolean;
-  passengers: number;
   destination: string; // navigation query; empty in manual-distance mode
   from: string; // place names for the split message
   to: string;
@@ -55,7 +54,7 @@ function Metric({ label, value, delay }: { label: string; value: string; delay: 
 }
 
 function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: () => void; onClose: () => void; banner?: React.ReactNode }) {
-  const { result, ecoCost, mode, unitPrice, vehicle, roundTrip, passengers, destination, from, to } = data;
+  const { result, ecoCost, mode, unitPrice, vehicle, roundTrip, destination, from, to } = data;
   const heroRef = useRef<View>(null);
   const isElectric = result.energyType === 'electricity';
   const total = formatAmount(result.totalCost);
@@ -116,7 +115,6 @@ function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: 
         <PressableScale style={styles.split} onPress={() => splitSheet.current?.present()} accessibilityRole="button">
           <Users size={20} color={colors.selectedText} strokeWidth={2} />
           <Text style={styles.splitLabel}>חלק עם הנוסעים</Text>
-          {passengers > 1 && <Text style={styles.splitHint}>{formatShareMoney(result.totalCost, passengers)} × {passengers}</Text>}
           <ChevronLeft size={18} color={colors.selectedText} strokeWidth={2} />
         </PressableScale>
       </Animated.View>
@@ -151,7 +149,7 @@ function Content({ data, onSave, onClose, banner }: { data: ResultData; onSave: 
         roundTrip={roundTrip}
         from={from}
         to={to}
-        initialCount={passengers > 1 ? passengers : 2}
+        initialCount={2}
         capture={capture}
       />
       {banner}
@@ -197,7 +195,6 @@ const styles = StyleSheet.create({
   eco: { fontFamily: Heebo.bold, fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 4 },
   split: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, backgroundColor: colors.selectedFill, borderRadius: 18, paddingHorizontal: 16 },
   splitLabel: { flex: 1, fontFamily: Heebo.bold, fontSize: 15, color: colors.selectedText },
-  splitHint: { fontFamily: Heebo.medium, fontSize: 13, color: colors.selectedText, fontVariant: ['tabular-nums'] },
   actions: { gap: 12, marginTop: 4 },
   navigate: { height: 48, borderRadius: radius.pill, backgroundColor: colors.selectedFill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   navigateText: { fontFamily: Heebo.bold, fontSize: 15, color: colors.selectedText },

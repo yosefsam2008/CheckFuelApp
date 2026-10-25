@@ -5,7 +5,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { setStatusBarStyle } from 'expo-status-bar';
 import { Heart } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -13,11 +12,10 @@ import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { CalculateButton } from '../../components/calculator/CalculateButton';
 import { DriveModeCard } from '../../components/calculator/DriveModeCard';
 import { HeroHeader } from '../../components/calculator/HeroHeader';
-import { PassengerStepper } from '../../components/calculator/PassengerStepper';
 import { ResultData, ResultSheet } from '../../components/calculator/ResultSheet';
 import { PlaceSheet } from '../../components/calculator/PlaceSheet';
 import { InputMode, OriginStatus, RouteCard, RouteStatus } from '../../components/calculator/RouteCard';
-import { VehiclePriceCard } from '../../components/calculator/VehiclePriceCard';
+import { FuelPriceFields, VehiclePriceCard } from '../../components/calculator/VehiclePriceCard';
 import { VehicleSheet } from '../../components/calculator/VehicleSheet';
 import { colors, Heebo, radius, space } from '../../constants/theme';
 import { useOpenInfoMenu } from '../../hooks/use-info-menu';
@@ -36,6 +34,7 @@ const InterstitialAd = Platform.OS === 'web' ? () => null : require('../../compo
 
 const MAX_KM = 5000;
 const ROUND_TRIP_KEY = 'roundTrip';
+const PRICE_HINT = 'הזן מחיר דלק תקין';
 
 type ToastMsg = { text: string; type: 'success' | 'error' };
 
@@ -66,8 +65,6 @@ export default function CalculatorScreen() {
   useFocusEffect(
     useCallback(() => {
       loadVehicles();
-      setStatusBarStyle('light'); // the green hero sits under the status bar
-      return () => setStatusBarStyle('dark');
     }, [loadVehicles]),
   );
 
@@ -161,6 +158,7 @@ export default function CalculatorScreen() {
   const searchRoute = async (from: Place | null, to: Place) => {
     Keyboard.dismiss();
     setInputMode('route');
+    setManualText('');
     const id = ++routeRequest.current;
     setRouteError(null);
     try {
@@ -257,7 +255,6 @@ export default function CalculatorScreen() {
 
   // ---------- trip factors ----------
   const [prefs, setPrefs] = useState<TripPrefs>(DEFAULT_PREFS);
-  const [passengers, setPassengers] = useState(1);
 
   // ---------- calculate ----------
   const price = parseFloat(fuelPrice);
@@ -269,19 +266,20 @@ export default function CalculatorScreen() {
       : !((vehicle.avgConsumption ?? 0) > 0)
         ? { hint: LEGAL_UI_STRINGS.errors.invalidConsumption, target: 'vehicle' }
         : !(price > 0 && price <= 100)
-          ? { hint: 'הזן מחיר דלק תקין', target: 'vehicle' }
+          ? { hint: PRICE_HINT, target: 'vehicle' }
           : null;
   const disabledReason = missing?.hint ?? null;
 
   // tapping the disabled CTA scrolls to the missing card and pulses its border
   const [cardsY, setCardsY] = useState(0);
-  const [vehicleY, setVehicleY] = useState(0);
   const [routeHl, setRouteHl] = useState(0);
-  const [vehicleHl, setVehicleHl] = useState(0);
+  const [priceHl, setPriceHl] = useState(0);
   const pointAtMissing = () => {
     if (!missing) return;
-    scrollRef.current?.scrollTo({ y: missing.target === 'vehicle' ? Math.max(cardsY + vehicleY - 80, 0) : 0, animated: true });
-    if (missing.target === 'vehicle') setVehicleHl((k) => k + 1);
+    // the vehicle shares the route card; the price sits in the advanced options below it
+    const price = missing.hint === PRICE_HINT;
+    scrollRef.current?.scrollTo({ y: price ? Math.max(cardsY - 80, 0) : 0, animated: true });
+    if (price) setPriceHl((k) => k + 1);
     else setRouteHl((k) => k + 1);
   };
 
@@ -300,7 +298,7 @@ export default function CalculatorScreen() {
     const ecoCost = computeTrip(vehicle, km, price, { ...prefs, mode: 'eco' }).totalCost;
     const routed = !manual && !!destPlace;
     setResultData({
-      result, ecoCost, mode: prefs.mode, unitPrice: price, vehicle, roundTrip, passengers,
+      result, ecoCost, mode: prefs.mode, unitPrice: price, vehicle, roundTrip,
       destination: routed ? destination : '',
       from: routed ? (originPlace?.main ?? MY_LOCATION) : '',
       to: routed ? destPlace.main : '',
@@ -373,7 +371,6 @@ export default function CalculatorScreen() {
         <HeroHeader onInfo={openInfo} />
         <RouteCard
           mode={inputMode}
-          onMode={setInputMode}
           originStatus={originStatus}
           originText={originPlace?.main ?? ''}
           onOpenOrigin={() => originSheet.current?.present()}
@@ -387,36 +384,37 @@ export default function CalculatorScreen() {
           onRetry={() => destPlace && searchRoute(originPlace, destPlace)}
           route={route}
           manualText={manualText}
-          onManualText={setManualText}
+          onManualText={(t) => {
+            setManualText(t);
+            setInputMode(t ? 'manual' : 'route'); // a typed distance wins; clearing it falls back to the destination
+          }}
           manualError={manualError}
           km={km}
           roundTrip={roundTrip}
           onRoundTrip={changeRoundTrip}
           highlightKey={routeHl}
+          top={<VehiclePriceCard vehicle={vehicle} onSwap={() => vehicleSheet.current?.present()} onGoToVehicles={() => router.navigate('/vehicles')} />}
         />
         <View style={styles.cards} onLayout={(e) => setCardsY(e.nativeEvent.layout.y)}>
-          <View onLayout={(e) => setVehicleY(e.nativeEvent.layout.y)}>
-            <VehiclePriceCard
-              vehicle={vehicle}
-              onSwap={() => vehicleSheet.current?.present()}
-              onGoToVehicles={() => router.navigate('/vehicles')}
-              price={fuelPrice}
-              onPriceChange={setFuelPrice}
-              priceStatus={
-                pricesLoading ? 'loading'
-                : !livePrices ? 'fallback'
-                : octane === '98' && vehicle?.fueltype !== 'Diesel' ? 'estimate'
-                : vehicle && priceInfo?.computed?.[priceField(vehicle)] === false ? 'estimate' // server sent its fixed fallback
-                : 'live'
-              }
-              priceDate={vehicle && priceField(vehicle) === 'Gasoline' ? priceInfo?.effectiveFrom : undefined} // the feed's date is the gasoline row's
-              octane={octane}
-              onOctane={setOctane}
-              highlightKey={vehicleHl}
-            />
-          </View>
-          <DriveModeCard prefs={prefs} onChange={setPrefs} />
-          <PassengerStepper count={passengers} onChange={setPassengers} />
+          <DriveModeCard prefs={prefs} onChange={setPrefs} summary={vehicle && fuelPrice ? `₪${fuelPrice}` : undefined} openKey={priceHl}>
+            {vehicle && (
+              <FuelPriceFields
+                vehicle={vehicle}
+                price={fuelPrice}
+                onPriceChange={setFuelPrice}
+                priceStatus={
+                  pricesLoading ? 'loading'
+                  : !livePrices ? 'fallback'
+                  : octane === '98' && vehicle?.fueltype !== 'Diesel' ? 'estimate'
+                  : vehicle && priceInfo?.computed?.[priceField(vehicle)] === false ? 'estimate' // server sent its fixed fallback
+                  : 'live'
+                }
+                priceDate={vehicle && priceField(vehicle) === 'Gasoline' ? priceInfo?.effectiveFrom : undefined} // the feed's date is the gasoline row's
+                octane={octane}
+                onOctane={setOctane}
+              />
+            )}
+          </DriveModeCard>
           <View style={styles.banner}>
             <BannerAd />
           </View>
@@ -463,7 +461,7 @@ export default function CalculatorScreen() {
         onPick={pickOrigin}
         onSaveFavorite={saveFavorite}
       />
-      <VehicleSheet sheetRef={vehicleSheet} vehicles={vehicles} selectedId={vehicle?.id} onSelect={selectVehicle} onManage={() => router.navigate('/vehicles')} />
+      <VehicleSheet sheetRef={vehicleSheet} vehicles={vehicles} selectedId={vehicle?.id} onSelect={selectVehicle} onManage={() => router.navigate('/vehicles')} onAdd={() => router.push('/addVehicle')} />
       <ResultSheet sheetRef={resultSheet} data={resultData} onSave={saveToHistory} banner={<BannerAd style={{ marginTop: 8 }} />} />
 
       {showInterstitialAd && (

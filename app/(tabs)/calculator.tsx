@@ -15,6 +15,8 @@ import { RouteCard } from '../../components/calculator/RouteCard';
 import { FuelPriceFields, VehiclePriceCard } from '../../components/calculator/VehiclePriceCard';
 import { VehicleSheet } from '../../components/calculator/VehicleSheet';
 import { colors, Heebo, radius, space } from '../../constants/theme';
+import { USE_NEW_UI } from '../../constants/themeV2';
+import CalculatorV2 from '../../components/calculatorV2/CalculatorV2';
 import { useOpenInfoMenu } from '../../hooks/use-info-menu';
 import { useFuelCalculator } from '../../hooks/useFuelCalculator';
 import { PRICE_HINT } from '../../lib/tripCost';
@@ -24,7 +26,7 @@ import { NO_TOUCH } from '../../constants/rtl';
 const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 const InterstitialAd = Platform.OS === 'web' ? () => null : require('../../components/InterstitialAd').default;
 
-export default function CalculatorScreen() {
+function CalculatorScreen() {
   const router = useRouter();
   const openInfo = useOpenInfoMenu();
   const resultSheet = useRef<BottomSheetModal>(null);
@@ -176,6 +178,8 @@ export default function CalculatorScreen() {
     </View>
   );
 }
+
+export default USE_NEW_UI ? CalculatorV2 : CalculatorScreen;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },

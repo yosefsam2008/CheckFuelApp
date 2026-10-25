@@ -8,6 +8,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/heebo';
 import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
+import { Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold } from '@expo-google-fonts/rubik';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -20,7 +21,8 @@ import { runAutoMigration } from '../lib/utils/evDataMigration';
 import * as Updates from 'expo-updates';
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold, Heebo_900Black, Nunito_800ExtraBold });
+  const [fontsLoaded] = useFonts({ Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold, Heebo_900Black, Nunito_800ExtraBold,
+    Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold }); // Rubik: CalculatorV2
 
   useEffect(() => {
     const initializeApp = async () => {

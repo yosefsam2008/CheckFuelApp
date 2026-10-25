@@ -46,8 +46,8 @@ assert.equal(priceFor({ ...car, type: 'Truck' }, prices), 10);
 assert.equal(priceFor(ev, prices), 0.6);
 
 // calculator inputs: km, round trip, and the one blocking hint (vehicle first)
-const base = { vehicle: car, manual: true, manualText: '50', routeKm: null, routeLoading: false, roundTrip: false, fuelPrice: '7.5' };
-const ti = (p: Partial<typeof base> & { vehicle?: typeof car | null; routeKm?: number | null }) => tripInputs({ ...base, ...p });
+const base: import('./tripCost').TripInputs = { vehicle: car, manual: true, manualText: '50', routeKm: null, routeLoading: false, roundTrip: false, fuelPrice: '7.5' };
+const ti = (p: Partial<typeof base>) => tripInputs({ ...base, ...p });
 assert.equal(ti({}).km, 50);
 assert.equal(ti({}).price, 7.5);
 assert.equal(ti({}).missing, null);

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 require.cache[require.resolve('@react-native-async-storage/async-storage')] = { exports: { default: {} } } as NodeModule;
 
 const { calculateAdjustedConsumption, calculateVehicleAge } = require('./data/fuelConsumptionAdjustments');
-const { computeTrip, DEFAULT_PREFS, priceFor } = require('./tripCost') as typeof import('./tripCost');
+const { computeTrip, DEFAULT_PREFS, priceFor, tripInputs, PRICE_HINT } = require('./tripCost') as typeof import('./tripCost');
 const { decodePolyline } = require('./route') as typeof import('./route');
 
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
@@ -44,6 +44,29 @@ assert.equal(priceFor(car, prices), 8);
 assert.equal(priceFor({ ...car, fueltype: 'Diesel' }, prices), 10);
 assert.equal(priceFor({ ...car, type: 'Truck' }, prices), 10);
 assert.equal(priceFor(ev, prices), 0.6);
+
+// calculator inputs: km, round trip, and the one blocking hint (vehicle first)
+const base = { vehicle: car, manual: true, manualText: '50', routeKm: null, routeLoading: false, roundTrip: false, fuelPrice: '7.5' };
+const ti = (p: Partial<typeof base> & { vehicle?: typeof car | null; routeKm?: number | null }) => tripInputs({ ...base, ...p });
+assert.equal(ti({}).km, 50);
+assert.equal(ti({}).price, 7.5);
+assert.equal(ti({}).missing, null);
+assert.equal(ti({ roundTrip: true }).km, 100);
+assert.equal(ti({ manual: false, routeKm: 12.5 }).km, 12.5); // destination mode ignores the typed km
+assert.equal(ti({ manualText: '5000' }).km, 5000);
+assert.equal(ti({ manualText: '5001' }).km, 0);
+assert.equal(ti({ manualText: '5001' }).manualError, 'המרחק חייב להיות עד 5000 ק״מ');
+assert.equal(ti({ manualText: 'x' }).manualError, 'המרחק חייב להיות מספר');
+assert.equal(ti({ manualText: '0' }).manualError, 'המרחק חייב להיות גדול מ-0');
+assert.equal(ti({ manualText: '' }).manualError, null);
+assert.deepEqual(ti({ vehicle: null, manualText: '' }).missing, { hint: 'בחר רכב כדי לחשב', target: 'vehicle' });
+assert.equal(ti({ manualText: '' }).missing?.hint, 'הקלד מרחק כדי לחשב');
+assert.equal(ti({ manual: false }).missing?.hint, 'בחר יעד כדי לחשב');
+assert.equal(ti({ manual: false, routeLoading: true }).missing?.hint, 'מחשב מרחק…');
+assert.equal(ti({ vehicle: { ...car, avgConsumption: 0 } }).missing?.target, 'vehicle');
+assert.deepEqual(ti({ fuelPrice: '0' }).missing, { hint: PRICE_HINT, target: 'vehicle' });
+assert.equal(ti({ fuelPrice: '101' }).missing?.hint, PRICE_HINT);
+assert.equal(ti({ fuelPrice: '100' }).missing, null);
 
 // Google's reference polyline
 assert.deepEqual(decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@'), [[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]]);

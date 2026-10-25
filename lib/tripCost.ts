@@ -1,5 +1,6 @@
 // Trip cost: the calculator's formula, extracted unchanged from the old wizard's handleCalculate
 import { calculateAdjustedConsumption, calculateVehicleAge } from './data/fuelConsumptionAdjustments';
+import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
 
 export interface Vehicle {
   id: string;
@@ -84,4 +85,37 @@ export function priceField(vehicle: Vehicle): keyof FuelPrices {
   if (vehicle.fueltype === 'Electric') return 'Electric';
   const isTruck = /truck|lorry/i.test(vehicle.type ?? '');
   return vehicle.fueltype === 'Diesel' || isTruck ? 'Diesel' : 'Gasoline';
+}
+
+export const MAX_KM = 5000;
+export const PRICE_HINT = 'הזן מחיר דלק תקין';
+
+export interface TripInputs {
+  vehicle: Vehicle | null;
+  manual: boolean;
+  manualText: string;
+  routeKm: number | null; // one way, from the route provider
+  routeLoading: boolean;
+  roundTrip: boolean;
+  fuelPrice: string;
+}
+
+/** The calculator's input checks: trip km, price, and the one hint that blocks "calculate" (vehicle first). */
+export function tripInputs({ vehicle, manual, manualText, routeKm, routeLoading, roundTrip, fuelPrice }: TripInputs) {
+  const manualValue = parseFloat(manualText);
+  const manualError = !manualText ? null : isNaN(manualValue) ? 'המרחק חייב להיות מספר' : manualValue <= 0 ? 'המרחק חייב להיות גדול מ-0' : manualValue > MAX_KM ? `המרחק חייב להיות עד ${MAX_KM} ק״מ` : null;
+  const oneWayKm = manual ? manualValue : (routeKm ?? 0);
+  const kmValid = oneWayKm > 0 && oneWayKm <= MAX_KM;
+  const km = kmValid ? oneWayKm * (roundTrip ? 2 : 1) : 0;
+  const price = parseFloat(fuelPrice);
+  const missing: { hint: string; target: 'vehicle' | 'route' } | null = !vehicle
+    ? { hint: 'בחר רכב כדי לחשב', target: 'vehicle' }
+    : !kmValid
+      ? { hint: routeLoading && !manual ? 'מחשב מרחק…' : manual ? 'הקלד מרחק כדי לחשב' : 'בחר יעד כדי לחשב', target: 'route' }
+      : !((vehicle.avgConsumption ?? 0) > 0)
+        ? { hint: LEGAL_UI_STRINGS.errors.invalidConsumption, target: 'vehicle' }
+        : !(price > 0 && price <= 100)
+          ? { hint: PRICE_HINT, target: 'vehicle' }
+          : null;
+  return { manualError, km, kmValid, price, missing };
 }

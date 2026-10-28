@@ -8,6 +8,7 @@ import {
   fetchFallbackVehicleData,
   fetchWLTPData,
   getSmartCCFallback,
+  motorcycleKmL,
   translateBrandToEnglish
 } from "../data/fuelData";
 import { Vehicle } from "../data/vehiclesData";
@@ -353,60 +354,48 @@ export async function lookupPlate(
 
       const parsed = await parseRelevantFields(found.record, found.degem_nm, found.type);
 
-      let effectiveMishkalKolel = parsed.mishkal_kolel;
-      let cc = parsed.fuelType !== "Electric" ? await extractEngineCC(found.record, found.type) : undefined;
+      const isElectric = parsed.fuelType === "Electric";
+      const isPhev = parsed.fuelType === "PHEV";
+      const isElectricOrPhev = isElectric || isPhev;
 
-      const needsFallbackWeight = !effectiveMishkalKolel;
-      const needsFallbackCC = parsed.fuelType !== "Electric" && !cc;
+      // the official lab record answers consumption, engine size and weight in one request, so it goes first
+      const wltpData = found.type === 'car' ? await fetchWLTPData(found.record, found.degem_nm) : null;
+      const officialSUV = wltpData?.isOfficialSUV ?? false;
+      const officialHybrid = wltpData?.isOfficialHybrid ?? false;
+      const officialHybridType = wltpData?.hybridType ?? null;
+      const officialKmL = isElectricOrPhev ? null : wltpData?.realWorldKmL ?? null;
 
-      if (needsFallbackWeight || needsFallbackCC) {
-        const fallbackData = await fetchFallbackVehicleData({
-          brand: parsed.brand, 
-          model: parsed.model,
-          year: parsed.year,
-          engineCode: found.record.degem_manoa,
-          plateNumber: plateTrimmed,
-          degem_nm: found.degem_nm,
-          isElectric: parsed.fuelType === "Electric",
-        });
+      let effectiveMishkalKolel = parsed.mishkal_kolel ?? wltpData?.officialGrossWeight ?? undefined;
+      let cc = isElectric ? undefined : wltpData?.officialCC ?? undefined;
 
-        if (fallbackData) {
-          if (needsFallbackWeight && fallbackData.mishkal_kolel) {
-            effectiveMishkalKolel = fallbackData.mishkal_kolel;
-          }
-          if (needsFallbackCC && fallbackData.nefach_manoa) {
-            cc = fallbackData.nefach_manoa;
-          }
+      // engine size and weight only feed the estimates, so their slow lookups run only without an official figure
+      if (!officialKmL) {
+        if (!isElectric && !cc) cc = await extractEngineCC(found.record, found.type);
+
+        const needsFallbackWeight = !effectiveMishkalKolel && found.type !== 'motorcycle';
+        const needsFallbackCC = !isElectric && !cc;
+
+        if (needsFallbackWeight || needsFallbackCC) {
+          const fallbackData = await fetchFallbackVehicleData({
+            brand: parsed.brand,
+            model: parsed.model,
+            year: parsed.year,
+            engineCode: found.record.degem_manoa,
+            plateNumber: plateTrimmed,
+            degem_nm: found.degem_nm,
+            isElectric,
+          });
+          if (needsFallbackWeight && fallbackData?.mishkal_kolel) effectiveMishkalKolel = fallbackData.mishkal_kolel;
+          if (needsFallbackCC && fallbackData?.nefach_manoa) cc = fallbackData.nefach_manoa;
         }
-      }
 
-      if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-        const estimatedWeight = estimateVehicleWeight(parsed.brand, parsed.model, parsed.year);
-        if (estimatedWeight) {
-          effectiveMishkalKolel = estimatedWeight.gross;
-        }
-      }
-
-      let officialSUV = false;
-      let officialHybrid = false;
-      let officialHybridType: 'MHEV' | 'PHEV' | 'HEV' | null = null;
-      let officialKmL: number | null = null;
-
-      if (found.type === 'car' && (!parsed.year || parsed.year >= 2018)) {
-        const wltpData = await fetchWLTPData(found.record, found.degem_nm);
-        if (wltpData) {
-          officialSUV = wltpData.isOfficialSUV;
-          officialHybrid = wltpData.isOfficialHybrid;
-          officialHybridType = wltpData.hybridType;
-          officialKmL = wltpData.realWorldKmL;
+        if (!effectiveMishkalKolel && found.type !== 'motorcycle' && parsed.brand && parsed.model) {
+          effectiveMishkalKolel = estimateVehicleWeight(parsed.brand, parsed.model, parsed.year)?.gross;
         }
       }
 
       let kwhPerKm: number | undefined;
       let avgConsumption: number | undefined;
-
-      const isElectricOrPhev = parsed.fuelType === "Electric" || parsed.fuelType === "PHEV";
-      const isPhev = parsed.fuelType === "PHEV";
 
       if (isElectricOrPhev) {
         const evData = await calculateEVConsumptionAdvanced({
@@ -415,13 +404,17 @@ export async function lookupPlate(
           year: parsed.year || new Date().getFullYear(),
           vehicleType: found.type,
           mishkal_kolel: effectiveMishkalKolel,
-          isPhev,                    
+          isPhev,
         });
         kwhPerKm = Number((evData.kwhPer100Km / 100).toFixed(4));
-        
+      } else if (officialKmL) {
+        avgConsumption = officialKmL;
+      } else if (found.type === 'motorcycle' && cc) {
+        avgConsumption = motorcycleKmL(cc);
       } else {
-        if (!effectiveMishkalKolel && parsed.brand && parsed.model) {
-          effectiveMishkalKolel = estimateWeightBySegment(parsed.model, parsed.brand, officialSUV);
+        // physics estimate: cars with no lab record (mostly pre-2008 or private imports), trucks
+        if (!effectiveMishkalKolel && found.type === 'car' && parsed.brand && parsed.model) {
+          effectiveMishkalKolel = estimateWeightBySegment(parsed.model, parsed.brand, officialSUV, cc);
         }
 
         if (!cc && parsed.brand && effectiveMishkalKolel) {
@@ -445,8 +438,7 @@ export async function lookupPlate(
           isActualSUV = suvKeywords.some(keyword => modelStr.includes(keyword)) || isSUVBrand;
         }
 
-        // the official lab figure beats the physics estimate; physics is the fallback for cars without one
-        const rawAvgConsumption = officialKmL ||calculateICEConsumptionEnhanced({
+        const rawAvgConsumption = calculateICEConsumptionEnhanced({
           mishkal_kolel: effectiveMishkalKolel,
           engineCC: cc,
           year: parsed.year,
@@ -459,9 +451,7 @@ export async function lookupPlate(
           model: parsed.model,
         });
 
-        if (rawAvgConsumption) {
-           avgConsumption = Number(rawAvgConsumption.toFixed(1)); 
-        }
+        if (rawAvgConsumption) avgConsumption = Number(rawAvgConsumption.toFixed(1));
       }
 
       const vehicleName = translateBrandToEnglish(parsed.brand || "לא ידוע");

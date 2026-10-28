@@ -330,27 +330,51 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
     officialGrossWeight: number | null;
   }
 
-  // Everyday driving uses more fuel than the lab cycle: ~15% over WLTP, ~35% over the older NEDC (ICCT gap studies).
+  // Everyday driving uses more fuel than the lab cycle (ICCT "From laboratory to road").
+  // WLTP: ~15%; full hybrids recover most of it in stop-go traffic, so ~8%.
+  // NEDC: the gap grew as makers tuned for the test, ~13% in 2006 to ~42% by 2016.
   const WLTP_REAL_GAP = 1.15;
-  const NEDC_REAL_GAP = 1.35;
+  const WLTP_HYBRID_REAL_GAP = 1.08;
+  export const nedcRealGap = (year?: number) => Math.min(1.42, Math.max(1.13, 1.13 + 0.029 * ((year ?? 2016) - 2006)));
 
   /** Lab CO2 (g/km) to real-world km/L; null when there is no usable figure. */
-  export function co2ToRealKmL(co2Wltp: number | undefined, co2Nedc: number | undefined, isDiesel: boolean): number | null {
+  export function co2ToRealKmL(
+    co2Wltp: number | undefined, co2Nedc: number | undefined, isDiesel: boolean,
+    opts: { year?: number; isHybrid?: boolean } = {},
+  ): number | null {
     const gramsPerLiter = isDiesel ? 2640 : 2380; // CO2 from burning one liter
-    const lPer100 = co2Wltp ? (co2Wltp * 100 / gramsPerLiter) * WLTP_REAL_GAP
-      : co2Nedc ? (co2Nedc * 100 / gramsPerLiter) * NEDC_REAL_GAP
+    const lPer100 = co2Wltp ? (co2Wltp * 100 / gramsPerLiter) * (opts.isHybrid ? WLTP_HYBRID_REAL_GAP : WLTP_REAL_GAP)
+      : co2Nedc ? (co2Nedc * 100 / gramsPerLiter) * nedcRealGap(opts.year)
       : 0;
     if (!lPer100) return null;
     const kmL = 100 / lPer100;
-    const { min, max } = CONSUMPTION_BOUNDS.car;
-    return kmL >= min && kmL <= max ? Number(kmL.toFixed(1)) : null;
+    // wider than the physics bounds: a small full hybrid really does ~25+ km/L
+    return kmL >= 6 && kmL <= 32 ? Number(kmL.toFixed(1)) : null;
   }
 
-  /** degem_cd is shared across models (RAV4 Hybrid and Prado are both Toyota 187), so prefer the row with the car's own degem_nm. */
-  export function pickWLTPRecords(records: any[], degem_nm?: string): any[] {
-    const want = degem_nm?.toString().trim().toUpperCase();
-    const same = want ? records.filter(r => (r.degem_nm || '').toString().trim().toUpperCase() === want) : [];
-    return same.length ? same : records;
+  /**
+   * Best lab row for this car. degem_cd is shared across models (RAV4 Hybrid and Prado are
+   * both Toyota 187) and repeats across years, so rank by own degem_nm, then year, then trim.
+   */
+  export function pickWLTPRecord(records: any[], car: { degem_nm?: string; year?: number; ramat_gimur?: string }): any | undefined {
+    const norm = (v: any) => (v ?? '').toString().trim().toUpperCase();
+    const score = (r: any) =>
+      (car.degem_nm && norm(r.degem_nm) === norm(car.degem_nm) ? 1000 : 0)
+      - (car.year && r.shnat_yitzur ? Math.abs(Number(r.shnat_yitzur) - car.year) * 10 : 50)
+      + (car.ramat_gimur && norm(r.ramat_gimur) === norm(car.ramat_gimur) ? 5 : 0)
+      + (r.CO2_WLTP || r.kamut_CO2 ? 20 : 0);
+    return [...records].sort((a, b) => score(b) - score(a))[0];
+  }
+
+  /** Typical real-world km/L by engine size: motorcycle use depends on displacement far more than on weight. */
+  const MOTO_KML: [number, number][] = [[50, 42], [125, 40], [150, 37], [250, 31], [300, 29], [400, 24], [550, 20], [750, 19], [1000, 16], [1300, 15], [1800, 13]];
+  export function motorcycleKmL(cc: number): number {
+    if (cc <= MOTO_KML[0][0]) return MOTO_KML[0][1];
+    for (let i = 1; i < MOTO_KML.length; i++) {
+      const [c1, k1] = MOTO_KML[i - 1], [c2, k2] = MOTO_KML[i];
+      if (cc <= c2) return Number((k1 + (k2 - k1) * (cc - c1) / (c2 - c1)).toFixed(1));
+    }
+    return MOTO_KML[MOTO_KML.length - 1][1];
   }
 
   export async function fetchWLTPData(record: any, fallbackDegemNm?: string): Promise<WLTPDataResult | null> {
@@ -363,22 +387,18 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
       if (!tozeret_cd && !degem_cd && !degem_nm) return null;
 
       const executeWLTPQuery = async (filters: any) => {
-        const url = `${DATA_GOV_IL_BASE}?resource_id=${WLTP_API_RESOURCE_ID}&filters=${encodeURIComponent(JSON.stringify(filters))}&limit=20`;
+        const url = `${DATA_GOV_IL_BASE}?resource_id=${WLTP_API_RESOURCE_ID}&filters=${encodeURIComponent(JSON.stringify(filters))}&limit=200`;
         const response = await fetchWithTimeout(url, undefined, 4000);
-        return response.ok ? pickWLTPRecords((await response.json()).result?.records || [], degem_nm) : [];
+        return response.ok ? (await response.json()).result?.records || [] : [];
       };
 
-      let records: any[] = [];
-      // the same model code repeats across years, so prefer the car's own year
-      const shnat_yitzur = parseIntSafe(record?.shnat_yitzur);
-      if (tozeret_cd && degem_cd && shnat_yitzur) records = await executeWLTPQuery({ tozeret_cd, degem_cd, shnat_yitzur });
-      if (!records.length && tozeret_cd && degem_cd && ramat_gimur) records = await executeWLTPQuery({ tozeret_cd, degem_cd, ramat_gimur });
-      if (!records.length && tozeret_cd && degem_cd) records = await executeWLTPQuery({ tozeret_cd, degem_cd });
+      // one request for every year and trim of the model code, ranked locally; the name-only query is the last resort
+      let records: any[] = tozeret_cd && degem_cd ? await executeWLTPQuery({ tozeret_cd, degem_cd }) : [];
       if (!records.length && degem_nm) records = await executeWLTPQuery({ degem_nm });
 
-      if (!records.length) return null;
-
-      const wltpRecord = records[0];
+      const year = parseIntSafe(record?.shnat_yitzur);
+      const wltpRecord = pickWLTPRecord(records, { degem_nm, year, ramat_gimur });
+      if (!wltpRecord) return null;
       const techField = (wltpRecord.technologiat_hanaa_nm || '').toString().toUpperCase();
       const isOfficialHybrid = ['היברידי', 'PLUG-IN', 'PLUG IN', 'PHEV', 'MHEV'].some(term => techField.includes(term));
 
@@ -400,7 +420,8 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
       // The dataset has no consumption field, only lab CO2 (g/km): WLTP, or NEDC (kamut_CO2) on older models.
       const isDiesel = (wltpRecord.delek_nm || '').toString().includes('דיזל');
       const realWorldKmL = hybridType === 'PHEV' ? null : co2ToRealKmL(
-        parseFloatSafe(wltpRecord.CO2_WLTP), parseFloatSafe(wltpRecord.kamut_CO2), isDiesel);
+        parseFloatSafe(wltpRecord.CO2_WLTP), parseFloatSafe(wltpRecord.kamut_CO2), isDiesel,
+        { year: parseIntSafe(wltpRecord.shnat_yitzur) ?? year, isHybrid: hybridType === 'HEV' });
 
       return { isOfficialSUV, isOfficialHybrid, hybridType, realWorldKmL, officialCC, officialGrossWeight };
     } catch (error) {
@@ -483,7 +504,7 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
     return weight;
   }
 
-  export function estimateWeightBySegment(model: string, brand: string, isSUV: boolean): number {
+  export function estimateWeightBySegment(model: string, brand: string, isSUV: boolean, engineCC?: number): number {
     const modelUpper = model.toUpperCase();
     const brandUpper = brand.toUpperCase();
 
@@ -514,7 +535,9 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
     const execSedans = ['5 SERIES', 'E-CLASS', 'A6', 'S-CLASS', '7 SERIES', 'A8'];
     if (execSedans.some(m => modelUpper.includes(m))) return 2300; // ~1725kg curb
 
-    return 1900; // Default standard car (~1425kg curb)
+    // engine size tracks car size: 1.0L ~1450kg gross (city car), 1.6L ~1780kg, 2.0L ~2000kg
+    if (engineCC && engineCC >= 600) return Math.round(Math.min(2400, Math.max(1350, 900 + 0.55 * engineCC)));
+    return 1700; // unknown: a small family car, the most common car on Israeli roads
   }
 
   export function getSmartCCFallback(brand: string = '', model: string = '', weight: number, vehicleType: VehicleType = 'car'): number {

@@ -1,10 +1,11 @@
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlatList, BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Plus } from 'lucide-react-native';
+import { Check, Plus } from 'lucide-react-native';
 import React, { RefObject, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '../../constants/motion';
-import { colors, Heebo, radius } from '../../constants/theme';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 import type { Vehicle } from '../../lib/tripCost';
 import { toDisplay, type Fuel } from '../../lib/vehicles/consumption';
 import { LtrText } from '../history/LtrText';
@@ -42,6 +43,7 @@ function Row({ v, selected, onPress }: { v: Vehicle; selected: boolean; onPress:
         <LtrText style={styles.consNum}>{shown ? shown.toFixed(1) : '—'}</LtrText>
         <Text style={styles.consUnit}>{consumptionUnit(v.fueltype)}</Text>
       </View>
+      <View style={[styles.radio, selected && styles.radioOn]}>{selected && <Check size={14} color={colors.text} strokeWidth={3} />}</View>
     </Pressable>
   );
 }
@@ -67,19 +69,20 @@ export function VehicleSheet({ sheetRef, vehicles, selectedId, onSelect, onManag
       backgroundStyle={styles.sheet}
       handleIndicatorStyle={styles.handle}
     >
-      <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">
-          בחר רכב
-        </Text>
-        <Pressable onPress={() => leave(onManage)} hitSlop={12} style={styles.manage} accessibilityRole="button">
-          <Text style={styles.manageText}>ניהול</Text>
-        </Pressable>
-      </View>
       <BottomSheetFlatList
         data={vehicles}
         keyExtractor={(v: Vehicle) => v.id}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.title} accessibilityRole="header">
+              בחר רכב
+            </Text>
+            <Pressable onPress={() => leave(onManage)} hitSlop={12} style={styles.manage} accessibilityRole="button">
+              <Text style={styles.manageText}>ניהול</Text>
+            </Pressable>
+          </View>
+        }
         contentContainerStyle={[styles.list, { paddingBottom: 32 + insets.bottom }]}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }: { item: Vehicle }) => (
           <Row
             v={item}
@@ -95,7 +98,7 @@ export function VehicleSheet({ sheetRef, vehicles, selectedId, onSelect, onManag
         ListFooterComponent={
           <PressableScale onPress={() => leave(onAdd)} style={styles.add} accessibilityRole="button" accessibilityLabel="הוספת רכב">
             <View style={styles.plus}>
-              <Plus size={22} color={colors.selectedText} strokeWidth={2.4} />
+              <Plus size={20} color={colors.text} strokeWidth={2.4} />
             </View>
             <View>
               <Text style={styles.addTitle}>הוספת רכב</Text>
@@ -109,25 +112,27 @@ export function VehicleSheet({ sheetRef, vehicles, selectedId, onSelect, onManag
 }
 
 const styles = StyleSheet.create({
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet },
-  handle: { backgroundColor: colors.divider, width: 40, height: 4 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 },
-  title: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
+  // matches AdvancedSheet
+  sheet: { backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+  handle: { backgroundColor: colors.disabled, width: 40, height: 5 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingTop: 4, paddingBottom: 12 },
+  title: { fontFamily: Rubik.extra, fontSize: 21, color: colors.text },
   manage: { minHeight: 44, justifyContent: 'center' },
-  manageText: { fontFamily: Heebo.bold, fontSize: 15, color: colors.infoText },
-  list: { paddingHorizontal: 8, paddingBottom: 32 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 16 },
-  rowSelected: { backgroundColor: colors.selectedFill },
-  separator: { height: 1, backgroundColor: colors.divider, marginStart: 68, marginEnd: 12 },
-  // type values below match the vehicles tab
-  brand: { fontFamily: Heebo.bold, fontSize: 11, letterSpacing: 1.2, color: colors.textMuted, marginBottom: 1 },
-  name: { fontFamily: Heebo.bold, fontSize: 16, color: colors.text },
-  sub: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted, marginTop: 1 },
-  cons: { alignItems: 'center', minWidth: 56 },
-  consNum: { fontFamily: Heebo.extra, fontSize: 20, color: colors.text },
-  consUnit: { fontFamily: Heebo.regular, fontSize: 11, color: colors.textMuted },
-  add: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, marginTop: 12, marginHorizontal: 4, borderRadius: radius.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#C7C7CC' },
-  plus: { width: 40, height: 40, borderRadius: radius.tile, backgroundColor: colors.selectedFill, alignItems: 'center', justifyContent: 'center' },
-  addTitle: { fontFamily: Heebo.bold, fontSize: 16, color: colors.selectedText },
-  addSub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted },
+  manageText: { fontFamily: Rubik.semi, fontSize: 15, color: colors.accentText },
+  list: { paddingHorizontal: 16, gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 20, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surfaceRaised },
+  rowSelected: { borderColor: colors.accent, backgroundColor: colors.accentTint },
+  // alignSelf keeps the LTR names on the RTL start edge, in line with the Hebrew fuel label
+  brand: { alignSelf: 'flex-start', fontFamily: Rubik.semi, fontSize: 11, letterSpacing: 0.9, color: colors.textMuted },
+  name: { alignSelf: 'flex-start', fontFamily: Rubik.bold, fontSize: 16, color: colors.text },
+  sub: { fontFamily: Rubik.regular, fontSize: 13, color: colors.textMuted, marginTop: 1 },
+  cons: { alignItems: 'center', minWidth: 48 },
+  consNum: { fontFamily: Rubik.extra, fontSize: 18, color: colors.text, fontVariant: ['tabular-nums'] },
+  consUnit: { fontFamily: Rubik.regular, fontSize: 11, color: colors.textMuted },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
+  radioOn: { borderColor: colors.accent, backgroundColor: colors.accent },
+  add: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginTop: 4, borderRadius: 20, backgroundColor: colors.surfaceSunken },
+  plus: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
+  addTitle: { fontFamily: Rubik.bold, fontSize: 16, color: colors.text },
+  addSub: { fontFamily: Rubik.regular, fontSize: 13, color: colors.textMuted },
 });

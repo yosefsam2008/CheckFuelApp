@@ -2,6 +2,7 @@ import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlatList, Bot
 import { Plus } from 'lucide-react-native';
 import React, { RefObject, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '../../constants/motion';
 import { colors, Heebo, radius } from '../../constants/theme';
 import type { Vehicle } from '../../lib/tripCost';
@@ -47,6 +48,7 @@ function Row({ v, selected, onPress }: { v: Vehicle; selected: boolean; onPress:
 
 export function VehicleSheet({ sheetRef, vehicles, selectedId, onSelect, onManage, onAdd }: Props) {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.45} pressBehavior="close" />,
     [],
@@ -59,7 +61,7 @@ export function VehicleSheet({ sheetRef, vehicles, selectedId, onSelect, onManag
     <BottomSheetModal
       ref={sheetRef}
       enableDynamicSizing
-      maxDynamicContentSize={height * 0.9}
+      maxDynamicContentSize={height * 0.9 - insets.top}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheet}
@@ -76,7 +78,7 @@ export function VehicleSheet({ sheetRef, vehicles, selectedId, onSelect, onManag
       <BottomSheetFlatList
         data={vehicles}
         keyExtractor={(v: Vehicle) => v.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 32 + insets.bottom }]}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }: { item: Vehicle }) => (
           <Row

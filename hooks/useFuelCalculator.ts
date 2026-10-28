@@ -8,6 +8,7 @@ import type { PriceStatus } from '../components/calculator/FuelPriceDisplay';
 import type { ResultData } from '../components/calculator/ResultSheet';
 import type { InputMode, OriginStatus, RouteStatus } from '../components/calculator/RouteCard';
 import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
+import { afterCalculation, afterShown, AdState, loadAdState, saveAdState, shouldShowInterstitial } from '../lib/ads/policy';
 import { saveTrip } from '../lib/calc/history';
 import { addRecent, Favorites, FavKey, isGpsPlace, loadFavorites, loadOrigin, loadRecents, MY_LOCATION, Place, placeEndpoint, placeLabel, saveFavorites, saveOrigin, saveRecents } from '../lib/places';
 import { DEFAULT_PRICES, defaultIO, getPrices, PriceInfo, PriceResult } from '../lib/prices';
@@ -25,6 +26,9 @@ interface Options {
   /** hide it after a successful save */
   dismissResult: () => void;
 }
+
+// one per app session: sessionShown must not reset when the screen remounts
+let adState: AdState | null = null;
 
 export function useFuelCalculator({ presentResult, dismissResult }: Options) {
   const [toast, setToast] = useState<ToastMsg | null>(null);
@@ -296,10 +300,13 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
 
     if (Platform.OS === 'web') return openResult();
     try {
-      // interstitial on every second calculation, as before
-      const count = parseInt((await AsyncStorage.getItem('calculationCount')) ?? '0', 10) + 1;
-      await AsyncStorage.setItem('calculationCount', count.toString());
-      if (count % 2 === 0) setShowInterstitialAd(true);
+      // frequency caps live in lib/ads/policy (never the first result, >=3 calcs and >=3 min apart, <=2 per session)
+      const s = (adState ??= await loadAdState());
+      const now = Date.now();
+      const show = shouldShowInterstitial(s, now);
+      adState = show ? afterShown(s, now) : afterCalculation(s);
+      saveAdState(adState);
+      if (show) setShowInterstitialAd(true);
       else openResult();
     } catch {
       openResult();

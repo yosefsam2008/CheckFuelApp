@@ -27,7 +27,6 @@ import { formatAmount, roundHalf, splitMessage } from '../../lib/format';
 import type { RouteOption } from '../../lib/route';
 import { formatDuration, RouteCards } from './RouteCards';
 import { ENTRANCE, useResultEntrance } from './ResultMotion';
-import { Segmented } from './Segmented';
 
 const BannerAd = Platform.OS === 'web' ? () => null : require('../BannerAd').default;
 
@@ -47,7 +46,6 @@ interface Props {
   octane: string;
   /** route choice; absent in manual-distance mode */
   routes?: ResultRoutes;
-  onRoundTrip: (on: boolean) => void;
   onSave: () => void;
   onClose: () => void;
 }
@@ -61,7 +59,7 @@ export function ResultV2(props: Props) {
   );
 }
 
-function ResultBody({ visible, data, octane, routes, onRoundTrip, onSave, onClose }: Props & { data: ResultData }) {
+function ResultBody({ visible, data, octane, routes, onSave, onClose }: Props & { data: ResultData }) {
   const insets = useSafeAreaInsets();
   const [pax, setPax] = useState(2);
   const [paxDir, setPaxDir] = useState<1 | -1>(1);
@@ -136,18 +134,6 @@ function ResultBody({ visible, data, octane, routes, onRoundTrip, onSave, onClos
         <View style={{ gap: 6 }}>
           <View style={styles.line}>
             <Text style={styles.heroLabel}>{ev ? 'עלות טעינה' : 'עלות דלק'}</Text>
-            <Segmented
-              variant="dark"
-              compact
-              height={36}
-              value={roundTrip ? 'round' : 'one'}
-              onChange={(v) => onRoundTrip(v === 'round')}
-              accessibilityLabel="סוג נסיעה"
-              options={[
-                { value: 'one', label: 'כיוון אחד' },
-                { value: 'round', label: 'הלוך-חזור' },
-              ]}
-            />
           </View>
           <View {...LTR.props} style={[styles.totalRow, LTR.style]} accessible accessibilityLabel={`${total} שקלים`}>
             <Text style={styles.heroShekel}>₪</Text>

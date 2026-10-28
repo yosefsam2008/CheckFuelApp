@@ -113,7 +113,8 @@ export default function CalculatorV2() {
                 {!!vehicle.brand && <Text style={styles.overline}>{vehicle.brand.toUpperCase()}</Text>}
                 <Text style={styles.vehicleName} numberOfLines={1}>
                   {vehicle.name}
-                </Text>              </View>
+                </Text>
+              </View>
               <Pressable style={styles.pill} onPress={() => vehicleSheet.current?.present()} accessibilityRole="button" accessibilityLabel="החלף רכב">
                 <Text style={styles.pillText}>החלף</Text>
               </Pressable>
@@ -351,7 +352,6 @@ export default function CalculatorV2() {
             ? undefined
             : { options: routeOptions, costs: routeTrips.map((t) => t?.totalCost ?? null), selected: selectedRouteIndex, cheapest: calc.cheapestRouteIndex, onSelect: calc.selectRoute }
         }
-        onRoundTrip={calc.changeRoundTrip}
         onSave={calc.saveToHistory}
         onClose={() => setResultOpen(false)}
       />

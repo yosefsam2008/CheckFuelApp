@@ -22,7 +22,8 @@ const empty = (async () => ({ ok: true, json: async () => ({ result: { records: 
 
   let n = 0;
   const mixed = ((u: string) => (n++ === 0 ? empty(u) : reject(u))) as unknown as typeof fetch;
-  assert.deepEqual(await lookupPlate('1234567', { fetchImpl: mixed }), { status: 'notfound' });
+  assert.deepEqual(await lookupPlate('1234567', { fetchImpl: mixed }), { status: 'offline' });
+  assert.deepEqual(await lookupPlate('1234567', { fetchImpl: empty }), { status: 'notfound' });
 
   const hang = (() => new Promise(() => {})) as unknown as typeof fetch;
   assert.deepEqual(await lookupPlate('1234567', { fetchImpl: hang, timeoutMs: 50 }), { status: 'offline' });

@@ -123,7 +123,8 @@ async function searchPlate(plate: string, fetchImpl: typeof fetch, timeoutMs: nu
   clearTimeout(timer);
   const found = results.find(r => r !== null);
   if (found) return { status: 'found', found };
-  return threw === VEHICLE_APIS.length ? { status: 'offline' } : { status: 'notfound' };
+  // a failed dataset might hold the plate, so "not found" is only claimed when every dataset answered
+  return threw > 0 ? { status: 'offline' } : { status: 'notfound' };
 }
 
 export async function fetchRecordByPlate(plate: string): Promise<DataGovResult> {
@@ -388,12 +389,16 @@ export async function lookupPlate(
 
       let officialSUV = false;
       let officialHybrid = false;
+      let officialHybridType: 'MHEV' | 'PHEV' | 'HEV' | null = null;
+      let officialKmL: number | null = null;
 
       if (found.type === 'car' && (!parsed.year || parsed.year >= 2018)) {
         const wltpData = await fetchWLTPData(found.record, found.degem_nm);
         if (wltpData) {
           officialSUV = wltpData.isOfficialSUV;
           officialHybrid = wltpData.isOfficialHybrid;
+          officialHybridType = wltpData.hybridType;
+          officialKmL = wltpData.realWorldKmL;
         }
       }
 
@@ -440,13 +445,15 @@ export async function lookupPlate(
           isActualSUV = suvKeywords.some(keyword => modelStr.includes(keyword)) || isSUVBrand;
         }
 
-        const rawAvgConsumption = calculateICEConsumptionEnhanced({
+        // the official lab figure beats the physics estimate; physics is the fallback for cars without one
+        const rawAvgConsumption = officialKmL ||calculateICEConsumptionEnhanced({
           mishkal_kolel: effectiveMishkalKolel,
           engineCC: cc,
           year: parsed.year,
           fuelType: parsed.fuelType === 'Diesel' ? 'Diesel' : 'Gasoline',
           vehicleType: found.type,
           isHybrid: isHybridCar,
+          hybridType: officialHybridType,
           isOfficialSUV: isActualSUV,
           brand: parsed.brand,
           model: parsed.model,

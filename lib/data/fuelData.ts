@@ -93,7 +93,7 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
     },
     diesel: {
       baseYear: 2026,
-      baseEfficiency: 0.38,      // ~36% combined
+      baseEfficiency: 0.28,      // ~28% combined; 0.38 put most diesels at the 25 km/L cap
       degradationPerYear: 0.0020,
       minEfficiency: 0.25,
     },
@@ -325,9 +325,32 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
     isOfficialSUV: boolean;
     isOfficialHybrid: boolean;
     hybridType: 'MHEV' | 'PHEV' | 'HEV' | null;
-    wltpConsumption: number | null; // L/100km
+    realWorldKmL: number | null; // official lab figure turned into an everyday-driving estimate
     officialCC: number | null;
     officialGrossWeight: number | null;
+  }
+
+  // Everyday driving uses more fuel than the lab cycle: ~15% over WLTP, ~35% over the older NEDC (ICCT gap studies).
+  const WLTP_REAL_GAP = 1.15;
+  const NEDC_REAL_GAP = 1.35;
+
+  /** Lab CO2 (g/km) to real-world km/L; null when there is no usable figure. */
+  export function co2ToRealKmL(co2Wltp: number | undefined, co2Nedc: number | undefined, isDiesel: boolean): number | null {
+    const gramsPerLiter = isDiesel ? 2640 : 2380; // CO2 from burning one liter
+    const lPer100 = co2Wltp ? (co2Wltp * 100 / gramsPerLiter) * WLTP_REAL_GAP
+      : co2Nedc ? (co2Nedc * 100 / gramsPerLiter) * NEDC_REAL_GAP
+      : 0;
+    if (!lPer100) return null;
+    const kmL = 100 / lPer100;
+    const { min, max } = CONSUMPTION_BOUNDS.car;
+    return kmL >= min && kmL <= max ? Number(kmL.toFixed(1)) : null;
+  }
+
+  /** degem_cd is shared across models (RAV4 Hybrid and Prado are both Toyota 187), so prefer the row with the car's own degem_nm. */
+  export function pickWLTPRecords(records: any[], degem_nm?: string): any[] {
+    const want = degem_nm?.toString().trim().toUpperCase();
+    const same = want ? records.filter(r => (r.degem_nm || '').toString().trim().toUpperCase() === want) : [];
+    return same.length ? same : records;
   }
 
   export async function fetchWLTPData(record: any, fallbackDegemNm?: string): Promise<WLTPDataResult | null> {
@@ -340,13 +363,16 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
       if (!tozeret_cd && !degem_cd && !degem_nm) return null;
 
       const executeWLTPQuery = async (filters: any) => {
-        const url = `${DATA_GOV_IL_BASE}?resource_id=${WLTP_API_RESOURCE_ID}&filters=${encodeURIComponent(JSON.stringify(filters))}&limit=1`;
+        const url = `${DATA_GOV_IL_BASE}?resource_id=${WLTP_API_RESOURCE_ID}&filters=${encodeURIComponent(JSON.stringify(filters))}&limit=20`;
         const response = await fetchWithTimeout(url, undefined, 4000);
-        return response.ok ? (await response.json()).result?.records || [] : [];
+        return response.ok ? pickWLTPRecords((await response.json()).result?.records || [], degem_nm) : [];
       };
 
       let records: any[] = [];
-      if (tozeret_cd && degem_cd && ramat_gimur) records = await executeWLTPQuery({ tozeret_cd, degem_cd, ramat_gimur });
+      // the same model code repeats across years, so prefer the car's own year
+      const shnat_yitzur = parseIntSafe(record?.shnat_yitzur);
+      if (tozeret_cd && degem_cd && shnat_yitzur) records = await executeWLTPQuery({ tozeret_cd, degem_cd, shnat_yitzur });
+      if (!records.length && tozeret_cd && degem_cd && ramat_gimur) records = await executeWLTPQuery({ tozeret_cd, degem_cd, ramat_gimur });
       if (!records.length && tozeret_cd && degem_cd) records = await executeWLTPQuery({ tozeret_cd, degem_cd });
       if (!records.length && degem_nm) records = await executeWLTPQuery({ degem_nm });
 
@@ -371,20 +397,12 @@ import { estimateVehicleWeight } from './fuelConsumptionAdjustments';
       const officialCC = parseIntSafe(wltpRecord.nefah_manoa) || null;
       const officialGrossWeight = parseIntSafe(wltpRecord.mishkal_kolel) || null;
 
-      // 1. Try to get direct consumption from the API
-      let wltpConsumption = parseFloatSafe(wltpRecord.tzrichat_delek_mishulav) || null;
+      // The dataset has no consumption field, only lab CO2 (g/km): WLTP, or NEDC (kamut_CO2) on older models.
+      const isDiesel = (wltpRecord.delek_nm || '').toString().includes('דיזל');
+      const realWorldKmL = hybridType === 'PHEV' ? null : co2ToRealKmL(
+        parseFloatSafe(wltpRecord.CO2_WLTP), parseFloatSafe(wltpRecord.kamut_CO2), isDiesel);
 
-      // 2. Pro-Trick: Reverse-engineer from CO2 emissions if fuel consumption is missing
-      if (!wltpConsumption) {
-        const co2Emmissions = parseFloatSafe(wltpRecord.CO2_WLTP) || parseFloatSafe(wltpRecord.kamut_CO2);
-        if (co2Emmissions && co2Emmissions > 0) {
-          const isDiesel = (wltpRecord.delek_nm || '').toString().includes('דיזל');
-          const co2Factor = isDiesel ? 26.4 : 23.8;
-          wltpConsumption = co2Emmissions / co2Factor;
-        }
-      }
-
-      return { isOfficialSUV, isOfficialHybrid, hybridType, wltpConsumption, officialCC, officialGrossWeight };
+      return { isOfficialSUV, isOfficialHybrid, hybridType, realWorldKmL, officialCC, officialGrossWeight };
     } catch (error) {
       //debugLog(`   ❌ WLTP fetch error:`, error);
       return null;

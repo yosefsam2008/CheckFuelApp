@@ -1,6 +1,9 @@
 // Pure helpers for RollingNumber's digit columns. A column is rows 0-29: the digits 0-9 three times over.
 
-const mod10 = (x: number) => ((x % 10) + 10) % 10;
+function mod10(x: number) {
+  'worklet';
+  return ((x % 10) + 10) % 10;
+}
 
 /** Row to roll to so `digit` shows, moving only in `dir` (+1 up, -1 down) from row `pos`; the shortest such path. */
 export function rollTarget(pos: number, digit: number, dir: 1 | -1) {

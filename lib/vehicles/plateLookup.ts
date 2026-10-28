@@ -264,8 +264,11 @@ async function searchCCByEngineCode(
   const filtersJson = JSON.stringify({ degem_manoa: engineCode });
   const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${apiId}&filters=${encodeURIComponent(filtersJson)}&limit=10`;
 
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: ctl.signal });
+    clearTimeout(timer);
     if (!response.ok) return undefined;
 
     const data = await response.json();

@@ -35,5 +35,5 @@ export const plate = {
   ink: '#141414',
   strip: '#1D4FA6',
   stripText: '#FFFFFF',
-  focusRing: 'rgba(17,185,140,0.35)',
+  focusRing: 'rgba(64,214,60,0.38)', // the V2 accent, glowing on the dark stage
 } as const;

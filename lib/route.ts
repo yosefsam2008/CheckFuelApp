@@ -3,10 +3,36 @@ export interface LatLng {
   latitude: number;
   longitude: number;
 }
-export interface RouteResult {
+interface ServerRoute {
   distanceMeters: number;
   durationSeconds: number;
   polyline?: string;
+  name?: string;
+  hasToll?: boolean;
+}
+/** Top level = Google's default route; `routes` = it plus up to 2 alternatives (absent from servers before rt2) */
+export interface RouteResult extends ServerRoute {
+  routes?: ServerRoute[];
+}
+
+export interface RouteOption {
+  polyline: string;
+  distanceKm: number;
+  durationMin: number;
+  hasToll: boolean;
+  name: string;
+}
+
+/** The routes to offer, at most 3; an older server's single route becomes a list of one. */
+export function routeOptions(r: RouteResult): RouteOption[] {
+  const list = r.routes?.length ? r.routes : [r];
+  return list.slice(0, 3).map((x) => ({
+    polyline: x.polyline ?? '',
+    distanceKm: x.distanceMeters / 1000,
+    durationMin: Math.round(x.durationSeconds / 60),
+    hasToll: !!x.hasToll,
+    name: x.name ?? '',
+  }));
 }
 
 const ROUTE_URL = process.env.EXPO_PUBLIC_ROUTE_URL;
@@ -20,18 +46,26 @@ export const endpointKey = (e: Endpoint) => ('placeId' in e ? e.placeId : `${e.l
 
 export async function getRoute(origin: Endpoint, destination: Endpoint): Promise<RouteResult> {
   if (!ROUTE_URL) throw new Error('Route provider not configured');
-  const res = await fetch(ROUTE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...('placeId' in origin ? { originPlaceId: origin.placeId } : { origin }),
-      ...('placeId' in destination ? { destPlaceId: destination.placeId } : { destination }),
-    }),
-  });
-  if (!res.ok) throw new Error(`Route request failed: ${res.status}`);
-  const data = (await res.json()) as RouteResult;
-  if (!(data.distanceMeters > 0)) throw new Error('No route');
-  return data;
+  // a weak network must end in the error message, not a minute-long spinner
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const res = await fetch(ROUTE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...('placeId' in origin ? { originPlaceId: origin.placeId } : { origin }),
+        ...('placeId' in destination ? { destPlaceId: destination.placeId } : { destination }),
+      }),
+      signal: ctl.signal,
+    });
+    if (!res.ok) throw new Error(`Route request failed: ${res.status}`);
+    const data = (await res.json()) as RouteResult;
+    if (!(data.distanceMeters > 0)) throw new Error('No route');
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Google encoded polyline -> [lat, lng][] */

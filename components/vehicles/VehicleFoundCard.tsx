@@ -14,7 +14,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { ease, revealDur as D, useRevealReduced } from '../../constants/motion';
-import { color, colors, Heebo, radius } from '../../constants/theme';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 import type { Vehicle } from '../../lib/data/vehiclesData';
 import { isRtlText } from '../../lib/vehicles/reveal';
 import { LtrText } from '../history/LtrText';
@@ -119,7 +120,7 @@ export function VehicleFoundCard({ vehicle, title, first }: Props) {
     <Animated.View style={[styles.found, cardStyle]}>
       <Animated.View style={[styles.badge, badgeStyle]}>
         {/* lucide CircleCheck geometry, with the tick drawn in */}
-        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.guideText} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.accentText} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
           <Circle cx={12} cy={12} r={10} />
           <AnimatedPath d="m9 12 2 2 4-4" strokeDasharray={CHECK_LEN} animatedProps={checkProps} />
         </Svg>
@@ -198,21 +199,21 @@ function Puff({ t, dir, left, top, size }: { t: SharedValue<number>; dir: number
 
 const styles = StyleSheet.create({
   // overflow hidden: the car enters from the card's edge, not from outside the card
-  found: { marginTop: 16, padding: 16, borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider, overflow: 'hidden' },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.guideFill },
-  badgeText: { fontFamily: Heebo.semi, fontSize: 13, color: colors.guideText },
+  found: { overflow: 'hidden' }, // sits inside the add screen's white panel, which draws the card
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: colors.accentTint },
+  badgeText: { fontFamily: Rubik.semi, fontSize: 13, color: colors.accentText },
   foundHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  tile: { width: TILE, height: TILE, borderRadius: radius.tile },
+  tile: { width: TILE, height: TILE, borderRadius: 14 },
   car: { position: 'absolute', left: CAR_LEFT, top: CAR_TOP, width: CAR_W, height: CAR_H },
   wheel: { position: 'absolute', width: WHEEL, height: WHEEL },
   puff: { position: 'absolute', backgroundColor: colors.textMuted },
   foundText: { flex: 1, minWidth: 0 },
   // hugs the text at the inline start (next to the car), like the badge and the chips
   titleClip: { alignSelf: 'flex-start', maxWidth: '100%', overflow: 'hidden' },
-  mask: { backgroundColor: colors.surface },
-  foundName: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
+  mask: { backgroundColor: colors.surfaceRaised },
+  foundName: { fontFamily: Rubik.extra, fontSize: 19, color: colors.text },
   chips: { flexDirection: 'row', gap: 6, marginTop: 4 },
   shrink: { flexShrink: 1 },
   // textSecondary, not textMuted: 4.54:1 on the grey pill (textMuted is ~3:1 there)
-  chip: { overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: colors.bg, fontFamily: Heebo.semi, fontSize: 12, color: color.textSecondary },
+  chip: { overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: colors.surface, fontFamily: Rubik.semi, fontSize: 12, color: colors.textMuted },
 });

@@ -11,8 +11,8 @@ import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
 import { saveTrip } from '../lib/calc/history';
 import { addRecent, Favorites, FavKey, isGpsPlace, loadFavorites, loadOrigin, loadRecents, MY_LOCATION, Place, placeEndpoint, placeLabel, saveFavorites, saveOrigin, saveRecents } from '../lib/places';
 import { DEFAULT_PRICES, defaultIO, getPrices, PriceInfo, PriceResult } from '../lib/prices';
-import { endpointKey, getRoute, LatLng, RouteResult, routeProviderConfigured } from '../lib/route';
-import { computeTrip, DEFAULT_PREFS, FuelPrices, Octane, priceField, priceFor, TripPrefs, tripInputs, Vehicle } from '../lib/tripCost';
+import { endpointKey, getRoute, LatLng, RouteResult, routeOptions as toOptions, routeProviderConfigured } from '../lib/route';
+import { cheapestIndex, computeTrip, DEFAULT_PREFS, FuelPrices, Octane, priceField, priceFor, routeCosts, TripPrefs, tripInputs, Vehicle } from '../lib/tripCost';
 import type { TripRecord } from '../types/trip';
 
 const ROUND_TRIP_KEY = 'roundTrip';
@@ -104,6 +104,7 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteStatus>('idle');
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [routePick, setRoutePick] = useState<number | null>(null); // null = the cheapest route
   const [inputMode, setInputMode] = useState<InputMode>('route');
   const [manualText, setManualText] = useState('');
   const [roundTrip, setRoundTrip] = useState(false);
@@ -149,6 +150,7 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
     setManualText('');
     const id = ++routeRequest.current;
     setRouteError(null);
+    setRoutePick(null);
     try {
       if (!routeProviderConfigured) throw new Error('not_configured');
       const a = from ? placeEndpoint(from) : here;
@@ -236,19 +238,25 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
 
   const destination = destPlace ? (isGpsPlace(destPlace) ? `${destPlace.lat},${destPlace.lng}` : placeLabel(destPlace)) : '';
 
+  // ---------- trip factors ----------
+  const [prefs, setPrefs] = useState<TripPrefs>(DEFAULT_PREFS);
+
+  // every route option is priced by the same checks + formula as the trip itself
+  const routeOptions = route ? toOptions(route) : [];
+  const routeTrips = routeCosts(routeOptions.map((o) => o.distanceKm), { vehicle, roundTrip, fuelPrice }, prefs);
+  const cheapestRouteIndex = cheapestIndex(routeTrips);
+  const selectedRouteIndex = routePick ?? Math.max(cheapestRouteIndex, 0);
+
   const manual = inputMode === 'manual';
   const { manualError, km, price, missing } = tripInputs({
     vehicle,
     manual,
     manualText,
-    routeKm: route ? route.distanceMeters / 1000 : null,
+    routeKm: routeOptions[selectedRouteIndex]?.distanceKm ?? null,
     routeLoading: routeStatus === 'loading',
     roundTrip,
     fuelPrice,
   });
-
-  // ---------- trip factors ----------
-  const [prefs, setPrefs] = useState<TripPrefs>(DEFAULT_PREFS);
 
   // ---------- calculate ----------
   const disabledReason = missing?.hint ?? null;
@@ -350,6 +358,7 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
     here, originStatus, originPlace, destPlace, route, routeStatus, routeError, inputMode, setInputMode,
     manual, manualText, setManualText, manualError, roundTrip, changeRoundTrip, recents, favorites,
     pickDestination, pickOrigin, swap, retryRoute, saveFavorite, km,
+    routeOptions, routeTrips, cheapestRouteIndex, selectedRouteIndex, selectRoute: setRoutePick,
     // trip factors
     prefs, setPrefs,
     // calculate

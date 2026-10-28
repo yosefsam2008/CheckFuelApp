@@ -2,16 +2,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { History as HistoryIcon } from 'lucide-react-native';
+import { History as HistoryIcon, Info } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
-import { HeroHeader } from '../../components/calculator/HeroHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale } from '../../components/calculator/PressableScale';
-import { MonthSummary } from '../../components/history/MonthSummary';
+import { ClearHistory } from '../../components/history/ClearHistory';
+import { HistoryHero } from '../../components/history/HistoryHero';
 import { TripRow } from '../../components/history/TripRow';
 import { dur, ease, haptic, useEnter } from '../../constants/motion';
-import { colors, Heebo, radius, shadow, space } from '../../constants/theme';
+import { LTR } from '../../constants/rtl';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
+import { formatMoney } from '../../lib/format';
 import { useOpenInfoMenu } from '../../hooks/use-info-menu';
 import { loadTrips } from '../../lib/calc/history';
 import { lastMonths, monthKey, monthName, monthSummary } from '../../lib/calc/monthly';
@@ -23,7 +27,6 @@ import type { TripRecord } from '../../types/trip';
 const BannerAd = Platform.OS === 'web' ? () => null : require('../../components/BannerAd').default;
 
 const KEY = 'tripHistory';
-const GAP = 24;
 const SLIDE = 24;
 
 type ToastMsg = { text: string; undo?: TripRecord[]; error?: boolean };
@@ -55,6 +58,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const openInfo = useOpenInfoMenu();
   const reduced = useReducedMotion();
+  const insets = useSafeAreaInsets();
 
   const [trips, setTripsState] = useState<TripRecord[]>([]);
   const tripsRef = useRef<TripRecord[]>([]);
@@ -161,66 +165,67 @@ export default function HistoryScreen() {
   };
 
   const empty = trips.length === 0;
+  const press = reduced ? 1 : 0.98;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <HeroHeader onInfo={openInfo} title="כמה הוצאתי על דלק?" subtitle="כל שקל על הכביש, במבט אחד" />
+        <View style={styles.header}>
+          <Pressable style={styles.infoBtn} onPress={openInfo} accessibilityRole="button" accessibilityLabel="מידע">
+            <Info size={20} color={colors.text} strokeWidth={2} />
+          </Pressable>
+          <View {...LTR.props} style={[styles.logo, LTR.style]} accessible accessibilityRole="image" accessibilityLabel="Checkfuel">
+            <Image source={require('../../assets/images/v2/mark-ink.png')} style={styles.mark} />
+            <Text style={styles.heck}>
+              heck<Text style={styles.fuel}>fuel</Text>
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.h1} accessibilityRole="header">
+          ההיסטוריה שלי
+        </Text>
 
         {empty ? (
-          <Enter delay={120} animate={intro} style={styles.top}>
-            <View style={styles.emptyCard}>
-              <View style={styles.tile}>
-                <HistoryIcon size={24} color={colors.textMuted} strokeWidth={2} />
-              </View>
-              <Text style={styles.emptyTitle}>עוד אין נסיעות שמורות</Text>
-              <Text style={styles.emptySub}>{'אחרי חישוב, לוחצים "שמור" והנסיעה מופיעה כאן עם סיכום חודשי.'}</Text>
-              <PressableScale onPress={() => router.navigate('/calculator')} style={styles.cta} accessibilityRole="button">
-                <Text style={styles.ctaText}>לחישוב ראשון</Text>
-              </PressableScale>
+          <Enter delay={120} animate={intro} style={styles.emptyCard}>
+            <View style={styles.tile}>
+              <HistoryIcon size={24} color={colors.textMuted} strokeWidth={2} />
             </View>
+            <Text style={styles.emptyTitle}>עוד אין נסיעות שמורות</Text>
+            <Text style={styles.emptySub}>{'אחרי חישוב, לוחצים "שמור" והנסיעה מופיעה כאן עם סיכום חודשי.'}</Text>
+            <PressableScale onPress={() => router.navigate('/calculator')} scaleTo={press} style={styles.cta} accessibilityRole="button">
+              <Text style={styles.ctaText}>לחישוב ראשון</Text>
+            </PressableScale>
           </Enter>
         ) : (
           <>
-            <Enter delay={120} animate={intro} style={styles.top}>
-              <MonthSummary summary={summary} months={months} selectedKey={selectedKey} onSelectMonth={selectMonth} isCurrent={selectedKey === currentKey} />
+            <Enter delay={120} animate={intro}>
+              <HistoryHero summary={summary} months={months} selectedKey={selectedKey} onSelectMonth={selectMonth} isCurrent={selectedKey === currentKey} />
             </Enter>
 
-            <Enter delay={240} animate={intro} style={styles.card}>
-              <View style={styles.head}>
-                <Text style={styles.headTitle}>נסיעות ב{monthName(selectedKey)}</Text>
-                <Text style={styles.headCount}>{summary.count} נסיעות</Text>
-              </View>
-              <Animated.View style={slideStyle}>
-                {summary.trips.length === 0 ? (
-                  <Text style={styles.none}>אין נסיעות בחודש הזה</Text>
-                ) : (
-                  summary.trips.map((t, i) => (
-                    <Enter key={t.id} delay={Math.min(280 + 40 * i, 520)} animate={intro}>
-                      <TripRow trip={t} first={i === 0} open={openId === t.id} onToggle={() => setOpenId(openId === t.id ? null : t.id)} onDelete={deleteTrip} />
-                    </Enter>
-                  ))
-                )}
-              </Animated.View>
-              <View style={styles.clear}>
-                {confirmAll ? (
-                  <View style={styles.confirm}>
-                    <Text style={styles.confirmQ}>למחוק את כל {trips.length} הנסיעות?</Text>
-                    <View style={styles.btns}>
-                      <PressableScale onPress={() => setConfirmAll(false)} style={[styles.btn, styles.ghost]} accessibilityRole="button">
-                        <Text style={styles.btnText}>ביטול</Text>
-                      </PressableScale>
-                      <PressableScale onPress={clearAll} style={[styles.btn, styles.danger]} accessibilityRole="button">
-                        <Text style={[styles.btnText, { color: colors.white }]}>מחק הכל</Text>
-                      </PressableScale>
+            <Enter delay={240} animate={intro} style={styles.stack}>
+              <View style={styles.card}>
+                <View style={styles.head}>
+                  <Text style={styles.headTitle}>נסיעות ב{monthName(selectedKey)}</Text>
+                  {summary.count > 0 && <Text style={styles.headSub}>ממוצע {formatMoney(summary.total / summary.count, { decimals: 0 })} לנסיעה</Text>}
+                </View>
+                <Animated.View style={slideStyle}>
+                  {summary.trips.length === 0 ? (
+                    <View style={styles.none}>
+                      <Text style={styles.noneTitle}>אין נסיעות בחודש הזה</Text>
+                      <Text style={styles.noneSub}>חישובים ששומרים מהמחשבון יופיעו כאן</Text>
                     </View>
-                  </View>
-                ) : (
-                  <PressableScale onPress={() => setConfirmAll(true)} style={styles.askBtn} accessibilityRole="button">
-                    <Text style={[styles.btnText, { color: colors.error }]}>מחק את כל ההיסטוריה</Text>
-                  </PressableScale>
-                )}
+                  ) : (
+                    summary.trips.map((t, i) => (
+                      <Enter key={t.id} delay={Math.min(280 + 40 * i, 520)} animate={intro}>
+                        <TripRow trip={t} first={i === 0} open={openId === t.id} onToggle={() => setOpenId(openId === t.id ? null : t.id)} onDelete={deleteTrip} />
+                      </Enter>
+                    ))
+                  )}
+                </Animated.View>
               </View>
+
+              <ClearHistory confirming={confirmAll} count={trips.length} onAsk={() => setConfirmAll(true)} onCancel={() => setConfirmAll(false)} onConfirm={clearAll} />
             </Enter>
           </>
         )}
@@ -234,7 +239,7 @@ export default function HistoryScreen() {
         <Animated.View
           entering={reduced ? undefined : FadeInDown.duration(dur.std)}
           exiting={reduced ? undefined : FadeOut.duration(200)}
-          style={[styles.toast, toast.error && { backgroundColor: colors.error }]}
+          style={[styles.toast, toast.error && { backgroundColor: colors.toastError }]}
           accessibilityLiveRegion="polite"
         >
           <Text style={styles.toastText}>{toast.text}</Text>
@@ -250,35 +255,37 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingBottom: 96 },
-  // the wrapper must sit above the hero because the card inside overlaps it
-  top: { zIndex: 2 },
-  card: { backgroundColor: colors.surface, borderRadius: radius.card, marginHorizontal: space.gutter, marginTop: GAP, overflow: 'hidden', ...shadow.card },
-  head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingTop: 22, paddingHorizontal: GAP, paddingBottom: 10 },
-  headTitle: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
-  headCount: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted },
-  none: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, paddingVertical: 20, paddingHorizontal: GAP },
-  clear: { minHeight: 68, justifyContent: 'center', paddingVertical: 12, paddingHorizontal: GAP },
-  confirm: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  confirmQ: { fontFamily: Heebo.bold, fontSize: 14, color: colors.text, flexShrink: 1 },
-  btns: { flexDirection: 'row', gap: 8 },
-  btn: { height: 44, minWidth: 44, paddingHorizontal: 18, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  ghost: { backgroundColor: colors.bg },
-  danger: { backgroundColor: colors.error },
-  askBtn: { height: 44, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  btnText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.text },
-  banner: { alignItems: 'center', marginTop: GAP },
+  screen: { flex: 1, backgroundColor: colors.surface },
+  content: { paddingHorizontal: 16, paddingBottom: 96, gap: 12 },
+  // same header as the calculator (CalculatorV2)
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 18, paddingHorizontal: 4, paddingBottom: 6 },
+  logo: { flexDirection: 'row', alignItems: 'flex-end' },
+  mark: { width: 26, height: 26, marginRight: -1, marginBottom: 1 },
+  heck: { fontFamily: Rubik.medium, fontSize: 24, letterSpacing: -0.5, lineHeight: 26, color: colors.text },
+  fuel: { fontFamily: Rubik.bold, color: colors.accentTextLarge },
+  infoBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
+  h1: { fontFamily: Rubik.extra, fontSize: 28, lineHeight: 32, letterSpacing: -0.28, color: colors.text, marginHorizontal: 4 },
 
-  emptyCard: { backgroundColor: colors.surface, borderRadius: radius.card, marginTop: -44, marginHorizontal: space.gutter, paddingTop: GAP, paddingHorizontal: 20, paddingBottom: GAP, alignItems: 'flex-start', gap: 6, ...shadow.card },
-  tile: { width: 40, height: 40, borderRadius: radius.tile, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  emptyTitle: { fontFamily: Heebo.extra, fontSize: 17, color: colors.text },
-  emptySub: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted },
-  cta: { height: 44, marginTop: 10, paddingHorizontal: 20, borderRadius: radius.pill, backgroundColor: colors.selectedFill, alignItems: 'center', justifyContent: 'center' },
-  ctaText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.guideText },
+  stack: { gap: 12 },
+  card: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.line, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 16 },
+  head: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', columnGap: 8, paddingTop: 10, paddingBottom: 6 },
+  headTitle: { fontFamily: Rubik.extra, fontSize: 17, color: colors.text },
+  headSub: { fontFamily: Rubik.regular, fontSize: 13, color: colors.textMuted, fontVariant: ['tabular-nums'] },
+  none: { alignItems: 'center', gap: 4, paddingVertical: 24 },
+  noneTitle: { fontFamily: Rubik.bold, fontSize: 15, color: colors.text, textAlign: 'center' },
+  noneSub: { fontFamily: Rubik.regular, fontSize: 13, color: colors.textMuted, textAlign: 'center' },
 
-  toast: { position: 'absolute', start: space.gutter, end: space.gutter, bottom: space.gutter, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: colors.text, borderRadius: radius.pill, paddingVertical: 4, paddingStart: 18, paddingEnd: 8, minHeight: 48 },
-  toastText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.white, flexShrink: 1 },
+  banner: { alignItems: 'center', marginTop: 12 },
+
+  emptyCard: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.line, borderRadius: 22, padding: 20, alignItems: 'flex-start', gap: 6 },
+  tile: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  emptyTitle: { fontFamily: Rubik.extra, fontSize: 17, color: colors.text },
+  emptySub: { fontFamily: Rubik.regular, fontSize: 14, color: colors.textMuted },
+  cta: { height: 44, marginTop: 10, paddingHorizontal: 20, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  ctaText: { fontFamily: Rubik.bold, fontSize: 14, color: colors.text },
+
+  toast: { position: 'absolute', start: 16, end: 16, bottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: colors.surfaceInverse, borderRadius: 14, paddingVertical: 4, paddingStart: 18, paddingEnd: 8, minHeight: 48 },
+  toastText: { fontFamily: Rubik.bold, fontSize: 14, color: colors.textInverse, flexShrink: 1 },
   toastAction: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
-  toastActionText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.selectedFill },
+  toastActionText: { fontFamily: Rubik.bold, fontSize: 14, color: colors.accent },
 });

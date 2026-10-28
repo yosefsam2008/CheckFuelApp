@@ -3,7 +3,8 @@ import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Keyframe, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { ease, revealDur, useLoop, useRevealReduced } from '../../constants/motion';
-import { colors, Heebo, radius } from '../../constants/theme';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 
 const skeletonOut = new Keyframe({
   0: { opacity: 1, transform: [{ scale: 1 }] },
@@ -38,13 +39,13 @@ export function VehicleCardSkeleton() {
 
 // mirrors addVehicle.tsx found/badge/foundHead so the swap to the real card has no layout jump
 const styles = StyleSheet.create({
-  card: { marginTop: 16, padding: 16, borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider },
+  card: {}, // the add screen's white panel draws the card
   status: { alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 4 },
-  statusText: { fontFamily: Heebo.semi, fontSize: 13, color: colors.textMuted },
+  statusText: { fontFamily: Rubik.semi, fontSize: 13, color: colors.textMuted },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  tile: { width: 48, height: 48, borderRadius: radius.tile, backgroundColor: colors.bg },
+  tile: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.surface },
   lines: { flex: 1, minWidth: 0 },
   nameRow: { height: 25, justifyContent: 'center' },
   subRow: { height: 22, marginTop: 4, justifyContent: 'center' },
-  bar: { height: 12, borderRadius: 6, backgroundColor: colors.bg },
+  bar: { height: 12, borderRadius: 6, backgroundColor: colors.surface },
 });

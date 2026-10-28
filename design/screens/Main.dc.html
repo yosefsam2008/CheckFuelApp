@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>CheckFuel — מחשבון</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0A7A43}a:hover{color:#075C32}
+button{font-family:inherit}
+input{font-family:inherit}
+input::placeholder{color:#8FA197}
+button{cursor:pointer;transition:transform 120ms ease-out}
+button:active{transform:scale(0.98)}
+.scrim{transition:opacity 300ms ease}
+.sheet{transition:transform 460ms cubic-bezier(.32,.72,0,1)}
+.sheet .it{opacity:0;transform:translateY(14px);transition:opacity 220ms ease, transform 420ms cubic-bezier(.2,.8,.2,1)}
+.sheet.open .it{opacity:1;transform:none}
+.sheet.open .d1{transition-delay:90ms}.sheet.open .d2{transition-delay:140ms}.sheet.open .d3{transition-delay:190ms}.sheet.open .d4{transition-delay:240ms}.sheet.open .d5{transition-delay:290ms}
+.sthumb{transition:transform 300ms cubic-bezier(.2,.8,.2,1)}
+.sopt{transition:color 200ms ease}
+.track{transition:background-color 220ms ease}
+.knob{transition:transform 260ms cubic-bezier(.2,.8,.2,1)}
+.sbtn:active{transform:none}
+.fade{animation:cffade 320ms cubic-bezier(.2,.8,.2,1) both}
+@keyframes cffade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.kin::placeholder{color:#3A4A41}
+.route{transition:stroke-dashoffset 900ms cubic-bezier(.65,0,.35,1)}
+.endpt{transition:opacity 260ms ease}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div dir="rtl" style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F5F1; font-family: Rubik, system-ui, sans-serif; color: #0B1410; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <!-- header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 6px">
+    <div dir="ltr" role="img" aria-label="Checkfuel" style="display: flex; align-items: flex-end">
+      <img src="/_blob/46285c9cbcdc83a2ec672f1fc7324c25" alt="" style="width: 26px; height: 26px; margin: 0 -1px 1px 0">
+      <span style="font-size: 24px; letter-spacing: -0.02em; font-weight: 500; line-height: 1">heck<span style="font-weight: 700; color: #22A321">fuel</span></span>
+    </div>
+    <button aria-label="מידע" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #E2E7E1; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #0B1410; padding: 0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+    </button>
+  </div>
+
+  <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 10px 16px 0">
+    <h1 style="margin: 0 4px 2px; font-size: 28px; line-height: 1.15; font-weight: 800; letter-spacing: -0.01em">כמה תעלה הנסיעה?</h1>
+
+    <!-- vehicle -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 20px; padding: 12px; display: flex; align-items: center; gap: 12px">
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #EAF9F0; color: #0A7A43; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>
+      </div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+        <span dir="ltr" style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #5B6660; text-align: right">MERCEDES-BENZ</span>
+        <span style="font-size: 17px; font-weight: 700">הרכב שלי</span>
+        <span style="font-size: 12px; color: #5B6660">בנזין {{fuel}} · ₪{{price}} לליטר</span>
+      </div>
+      <button style="height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #E2E7E1; background: #F3F5F1; font-size: 14px; font-weight: 600; color: #0B1410">החלף</button>
+    </div>
+
+    <!-- route -->
+    <div style="background: #0B1410; border-radius: 24px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 0; color: #FFFFFF">
+      <div role="radiogroup" aria-label="אופן חישוב המרחק" style="position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border-radius: 13px; background: #17231D; margin-bottom: 16px">
+        <span class="sthumb" style="{{srcThumb}}"></span>
+        <button class="sopt sbtn" role="radio" aria-checked="{{notManualStr}}" onClick="{{closeManual}}" style="{{tabA}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>לפי יעד</button>
+        <button class="sopt sbtn" role="radio" aria-checked="{{manualStr}}" onClick="{{openManual}}" style="{{tabB}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>מרחק ידני</button>
+      </div>
+      <sc-if value="{{notManual}}" hint-placeholder-val="{{ true }}">
+      <div class="fade" style="display: flex; flex-direction: column">
+      <div style="display: flex; gap: 14px; align-items: stretch">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 12px; color: #9FB0A6">מאיפה</span>
+            <span style="font-size: 18px; font-weight: 700">ויצמן <span style="font-size: 13px; font-weight: 400; color: #9FB0A6">· המיקום שלך</span></span>
+          </div>
+          <label style="height: 52px; border-radius: 16px; background: #17231D; border: 1px solid #2A3A31; display: flex; align-items: center; gap: 10px; padding: 0 14px; color: #9FB0A6">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input placeholder="לאן נוסעים?" aria-label="יעד" value="{{q}}" onChange="{{onQ}}" style="flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: #FFFFFF; font-size: 17px; font-weight: 500">
+          </label>
+        </div>
+        <!-- route shape: the real route geometry, no map -->
+        <div style="width: 72px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px">
+          <svg width="72" height="112" viewBox="0 0 72 112" aria-hidden="true">
+            <path d="M52 12 C52 52 20 60 20 100" fill="none" stroke="#2A3A31" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round" style="{{ghostStyle}}"></path>
+            <path class="route" d="M52 12 C58 36 44 48 40 64 S24 86 20 100" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="140" style="{{rEilat}}"></path>
+            <path class="route" d="M52 12 C34 26 44 52 32 72 S22 90 20 100" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="140" style="{{rPt}}"></path>
+            <path class="route" d="M52 12 C62 32 30 42 42 64 S12 84 20 100" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="140" style="{{rHaifa}}"></path>
+            <circle cx="52" cy="12" r="7" fill="#0B1410" stroke="#40D63C" stroke-width="3.5"></circle>
+            <rect class="endpt" x="13" y="93" width="14" height="14" rx="4" fill="#FFFFFF" style="{{endStyle}}"></rect>
+          </svg>
+          <span style="font-size: 11px; font-weight: 600; color: #9FB0A6; font-variant-numeric: tabular-nums">{{routeKm}}</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 14px; overflow: hidden">
+        <sc-for list="{{chips}}" as="c" hint-placeholder-count="3">
+          <button onClick="{{c.pick}}" style="{{c.style}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>{{c.name}}</button>
+        </sc-for>
+      </div>
+      </div>
+      </sc-if>
+
+      <!-- manual distance -->
+      <sc-if value="{{manual}}" hint-placeholder-val="{{ false }}">
+      <div class="fade" style="display: flex; flex-direction: column; gap: 14px">
+        <label style="height: 84px; border-radius: 18px; background: #17231D; border: 1.5px solid {{kmBorder}}; display: flex; align-items: center; gap: 14px; padding: 0 20px; box-sizing: border-box; cursor: text">
+          <span style="display: flex; flex-direction: column; gap: 2px; flex-shrink: 0">
+            <span style="font-size: 20px; font-weight: 700; color: #FFFFFF">ק״מ</span>
+            <span style="font-size: 11px; color: #9FB0A6">כיוון אחד</span>
+          </span>
+          <span style="width: 1px; align-self: stretch; margin: 18px 0; background: #2A3A31"></span>
+          <input class="kin" dir="ltr" inputmode="numeric" aria-label="מרחק בקילומטרים, כיוון אחד" placeholder="0" value="{{kmVal}}" onChange="{{onKm}}" style="flex: 1; min-width: 0; border: 0; background: transparent; outline: none; padding: 0; font-family: inherit; font-size: 52px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: #FFFFFF; text-align: right; font-variant-numeric: tabular-nums">
+        </label>
+        <div style="display: flex; gap: 8px">
+          <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+            <button onClick="{{p.pick}}" style="{{p.style}}">{{p.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+
+    <!-- trip options -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 20px; padding: 6px 14px; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; gap: 12px">
+        <span style="font-size: 15px; font-weight: 600">סוג נסיעה</span>
+        <div role="radiogroup" aria-label="סוג נסיעה" style="display: flex; background: #F3F5F1; border-radius: 14px; padding: 4px; gap: 2px">
+          <button aria-pressed="true" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: #0B1410; color: #FFFFFF; font-size: 14px; font-weight: 600">כיוון אחד</button>
+          <button aria-pressed="false" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: transparent; color: #5B6660; font-size: 14px; font-weight: 600">הלוך-חזור</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- advanced options trigger -->
+    <button onClick="{{openSheet}}" aria-haspopup="dialog" style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 20px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-align: right; color: #0B1410">
+      <span style="width: 40px; height: 40px; border-radius: 12px; background: #F3F5F1; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B1410" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg>
+      </span>
+      <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 600">אפשרויות מתקדמות</span>
+        <span style="font-size: 13px; color: #5B6660">{{optSummary}}</span>
+      </span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6660" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+    </button>
+
+    <div style="flex: 1"></div>
+
+    <sc-if value="{{ctaOff}}" hint-placeholder-val="{{ true }}">
+    <button disabled="" style="height: 56px; border-radius: 18px; border: 0; background: #DDE3DC; color: #4E5953; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; width: 100%">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      {{ctaOffLabel}}
+    </button>
+    </sc-if>
+    <sc-if value="{{ctaOn}}" hint-placeholder-val="{{ false }}">
+    <button class="fade" style="height: 56px; border-radius: 18px; border: 0; background: #0B1410; color: #FFFFFF; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; width: 100%">
+      חשב עלות · {{ctaLabel}}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#40D63C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
+    </button>
+    </sc-if>
+  </div>
+
+  <!-- tab bar -->
+  <nav aria-label="ניווט ראשי" style="background: #FFFFFF; border-top: 1px solid #E2E7E1; display: flex; padding: 8px 12px 22px">
+    <a href="#" aria-current="page" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #0B1410; font-size: 12px; font-weight: 700">
+      <span style="width: 56px; height: 32px; border-radius: 16px; background: #40D63C; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"></rect><line x1="8" x2="16" y1="6" y2="6"></line><line x1="16" x2="16" y1="14" y2="18"></line><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"></path></svg></span>
+      מחשבון
+    </a>
+    <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #5B6660; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 32px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></span>
+      היסטוריה
+    </a>
+    <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #5B6660; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 32px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg></span>
+      הרכבים שלי
+    </a>
+  </nav>
+
+  <!-- advanced options: bottom sheet -->
+  <button class="scrim sbtn" tabindex="-1" aria-label="סגור אפשרויות" onClick="{{closeSheet}}" style="{{scrimStyle}}"></button>
+  <div role="dialog" aria-modal="true" aria-label="אפשרויות מתקדמות" class="{{sheetCls}}" style="{{sheetStyle}}">
+    <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #DDE3DC"></span>
+
+    <div class="it d1" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 3px">
+        <h2 style="margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.01em">אפשרויות מתקדמות</h2>
+        <span style="font-size: 13px; color: #5B6660">משפיעות על הצריכה ועל המחיר</span>
+      </div>
+      <button aria-label="סגור" onClick="{{closeSheet}}" style="width: 40px; height: 40px; border-radius: 20px; border: 0; background: #F3F5F1; color: #0B1410; display: flex; align-items: center; justify-content: center; padding: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+      </button>
+    </div>
+
+    <div class="it d2" style="display: flex; flex-direction: column; gap: 12px">
+      <span style="font-size: 15px; font-weight: 700">סוג דלק</span>
+      <div role="radiogroup" aria-label="סוג דלק" style="position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 4px; border-radius: 14px; background: #F3F5F1">
+        <span class="sthumb" style="{{fuelThumb}}"></span>
+        <sc-for list="{{fuelOpts}}" as="o" hint-placeholder-count="2">
+          <button class="sopt" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.label}}</button>
+        </sc-for>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #F3F5F1; border-radius: 18px; padding: 12px 16px">
+        <label style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; cursor: text">
+          <span style="font-size: 13px; color: #5B6660">מחיר לליטר</span>
+          <span dir="ltr" style="display: flex; align-items: baseline; justify-content: flex-end; gap: 4px">
+            <span style="font-size: 22px; font-weight: 700; color: #22A321">₪</span>
+            <input inputmode="decimal" aria-label="מחיר לליטר, ניתן לעריכה" value="{{priceVal}}" onChange="{{onPrice}}" style="width: 118px; border: 0; background: transparent; outline: none; padding: 0; font-family: inherit; font-size: 42px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: #0B1410; font-variant-numeric: tabular-nums">
+          </span>
+        </label>
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0">
+          <sc-if value="{{isCustom}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size: 12px; font-weight: 600; color: #B4530A">המחיר שלך</span>
+            <button onClick="{{resetPrice}}" style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #E2E7E1; background: #FFFFFF; color: #0B1410; font-size: 12px; font-weight: 600">איפוס</button>
+          </sc-if>
+          <sc-if value="{{notCustom}}" hint-placeholder-val="{{ true }}">
+            <span style="font-size: 12px; font-weight: 600; color: #0A7A43; display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 3px; background: #22A321; display: block"></span>מחיר מפוקח</span>
+            <span style="font-size: 12px; color: #5B6660; display: flex; align-items: center; gap: 5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>הקש לעריכה</span>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 1px; background: #EEF1EC"></div>
+
+    <div class="it d3" style="display: flex; flex-direction: column; gap: 12px">
+      <span style="font-size: 15px; font-weight: 700">סגנון נהיגה</span>
+      <div role="radiogroup" aria-label="סגנון נהיגה" style="position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 4px; border-radius: 14px; background: #F3F5F1">
+        <span class="sthumb" style="{{modeThumb}}"></span>
+        <sc-for list="{{modeOpts}}" as="o" hint-placeholder-count="3">
+          <button class="sopt" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="{{o.style}}">
+            <span style="font-size: 14px; font-weight: 600">{{o.name}}</span>
+            <span dir="ltr" style="{{o.deltaStyle}}">{{o.delta}}</span>
+          </button>
+        </sc-for>
+      </div>
+      <span style="font-size: 13px; color: #5B6660">{{modeDesc}}</span>
+    </div>
+
+    <div style="height: 1px; background: #EEF1EC"></div>
+
+    <div class="it d4" style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 3px">
+        <span style="font-size: 15px; font-weight: 700">מזגן דולק</span>
+        <span style="font-size: 13px; color: #5B6660">מוסיף כ-4% לצריכה</span>
+      </div>
+      <button class="track sbtn" role="switch" aria-checked="{{acOn}}" aria-label="מזגן דולק" onClick="{{toggleAc}}" style="{{trackStyle}}"><span class="knob" style="{{knobStyle}}"></span></button>
+    </div>
+
+    <button class="it d5" onClick="{{apply}}" style="height: 56px; border-radius: 18px; border: 0; background: #0B1410; color: #FFFFFF; font-size: 16px; font-weight: 700">שמור הגדרות</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { fuel: '95', mode: 'normal', ac: true, custom: null, sheet: false, d: { fuel: '95', mode: 'normal', ac: true, custom: null }, manual: false, km: '', dest: null, q: '' };
+  }
+  renderVals() {
+    const PRICE = { '95': 7.77, '98': 8.55 };
+    const MODES = {
+      eco: { n: 'חסכוני', delta: '−8%', desc: 'האצות עדינות ומהירות קבועה — צריכה נמוכה מהרגיל' },
+      normal: { n: 'רגיל', delta: 'בסיס', desc: 'הצריכה הרגילה של הרכב, לפי נתוני היצרן' },
+      sport: { n: 'ספורט', delta: '+12%', desc: 'האצות חדות ומהירות גבוהה — צריכה גבוהה יותר' }
+    };
+    const { fuel, mode, ac, custom, sheet, d } = this.state;
+    const valid = (c) => c != null && c !== '' && !isNaN(parseFloat(c)) && parseFloat(c) > 0;
+    const priceOf = (f, c) => valid(c) ? parseFloat(c) : PRICE[f];
+    const dCustom = valid(d.custom) && parseFloat(d.custom) !== PRICE[d.fuel];
+    const optBase = 'position: relative; z-index: 1; border: 0; background: transparent; border-radius: 10px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; ';
+    const thumbBase = 'position: absolute; top: 4px; bottom: 4px; right: 4px; border-radius: 10px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(11,20,16,0.12), 0 0 0 1px #E2E7E1; ';
+    const fuelKeys = ['95', '98'], modeKeys = ['eco', 'normal', 'sport'];
+    const fi = fuelKeys.indexOf(d.fuel), mi = modeKeys.indexOf(d.mode);
+    const setD = (patch) => this.setState({ d: Object.assign({}, this.state.d, patch) });
+    return {
+      q: this.state.q,
+      onQ: (e) => this.setState({ q: String(e.target.value), dest: null }),
+      chips: [['eilat', 'אילת'], ['pt', 'פתח תקווה'], ['haifa', 'חיפה']].map((p) => ({
+        name: p[1],
+        pick: () => this.setState({ dest: p[0], q: p[1] }),
+        style: 'height: 36px; padding: 0 12px; border-radius: 18px; font-size: 14px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; ' + (this.state.dest === p[0] ? 'background: #FFFFFF; color: #0B1410; border: 1px solid #FFFFFF' : 'background: transparent; color: #DCE5E0; border: 1px solid #2A3A31')
+      })),
+      rEilat: 'stroke-dashoffset: ' + (this.state.dest === 'eilat' ? 0 : 140),
+      rPt: 'stroke-dashoffset: ' + (this.state.dest === 'pt' ? 0 : 140),
+      rHaifa: 'stroke-dashoffset: ' + (this.state.dest === 'haifa' ? 0 : 140),
+      ghostStyle: 'opacity: ' + (this.state.dest ? 0 : 1) + '; transition: opacity 200ms ease',
+      endStyle: 'opacity: ' + (this.state.dest ? 1 : 0.25),
+      routeKm: ({ eilat: '352 ק״מ', pt: '14 ק״מ', haifa: '96 ק״מ' })[this.state.dest] || ' ',
+      manual: this.state.manual, notManual: !this.state.manual,
+      openManual: () => this.setState({ manual: true }),
+      closeManual: () => this.setState({ manual: false }),
+      manualStr: String(this.state.manual), notManualStr: String(!this.state.manual),
+      srcThumb: 'position: absolute; top: 3px; bottom: 3px; right: 3px; width: calc((100% - 6px) / 2); border-radius: 10px; background: #FFFFFF; transform: translateX(' + (this.state.manual ? '-100%' : '0') + ')',
+      tabA: 'position: relative; z-index: 1; height: 38px; border: 0; background: transparent; padding: 0; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; color: ' + (this.state.manual ? '#9FB0A6' : '#0B1410'),
+      tabB: 'position: relative; z-index: 1; height: 38px; border: 0; background: transparent; padding: 0; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; color: ' + (this.state.manual ? '#0B1410' : '#9FB0A6'),
+      kmVal: this.state.km,
+      onKm: (e) => this.setState({ km: String(e.target.value).replace(/[^0-9]/g, '').slice(0, 4) }),
+      kmBorder: this.state.km ? '#40D63C' : '#2A3A31',
+      presets: [10, 25, 50, 100].map((n) => ({ label: n + ' ק״מ', pick: () => this.setState({ km: String(n) }), style: 'flex: 1; height: 36px; border-radius: 18px; font-size: 13px; font-weight: 500; padding: 0; ' + (this.state.km === String(n) ? 'background: #FFFFFF; color: #0B1410; border: 1px solid #FFFFFF' : 'background: transparent; color: #DCE5E0; border: 1px solid #2A3A31') })),
+      ctaOn: (this.state.manual && Number(this.state.km) > 0) || (!this.state.manual && !!this.state.dest),
+      ctaOff: !((this.state.manual && Number(this.state.km) > 0) || (!this.state.manual && !!this.state.dest)),
+      ctaLabel: this.state.manual ? this.state.km + ' ק״מ' : (({ eilat: '352', pt: '14', haifa: '96' })[this.state.dest] || '') + ' ק״מ',
+      ctaOffLabel: this.state.manual ? 'הקלד מרחק כדי לחשב' : 'בחר יעד כדי לחשב',
+      fuel: fuel, price: priceOf(fuel, custom).toFixed(2),
+      priceVal: d.custom != null ? d.custom : PRICE[d.fuel].toFixed(2),
+      onPrice: (e) => setD({ custom: String(e.target.value).replace(/[^0-9.]/g, '').slice(0, 5) }),
+      isCustom: dCustom, notCustom: !dCustom,
+      resetPrice: () => setD({ custom: null }),
+      optSummary: 'בנזין ' + fuel + ' · ' + MODES[mode].n + ' · ' + (ac ? 'מזגן דולק' : 'בלי מזגן'),
+      openSheet: () => this.setState({ sheet: true, d: { fuel: fuel, mode: mode, ac: ac, custom: custom } }),
+      closeSheet: () => this.setState({ sheet: false }),
+      apply: () => { const nd = this.state.d; this.setState({ sheet: false, fuel: nd.fuel, mode: nd.mode, ac: nd.ac, custom: valid(nd.custom) ? nd.custom : null }); },
+      scrimStyle: 'position: absolute; inset: 0; z-index: 20; border: 0; padding: 0; margin: 0; background: rgba(11,20,16,0.48); opacity: ' + (sheet ? 1 : 0) + '; pointer-events: ' + (sheet ? 'auto' : 'none'),
+      sheetCls: sheet ? 'sheet open' : 'sheet',
+      sheetStyle: 'position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: #FFFFFF; border-radius: 28px 28px 0 0; padding: 10px 20px 28px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 -16px 48px rgba(11,20,16,0.22); transform: translateY(' + (sheet ? '0' : '104%') + ')',
+      dPrice: PRICE[d.fuel].toFixed(2),
+      fuelThumb: thumbBase + 'width: calc((100% - 8px) / 2); transform: translateX(' + (-100 * fi) + '%)',
+      fuelOpts: fuelKeys.map((k) => ({ label: 'בנזין ' + k, on: String(k === d.fuel), pick: () => setD({ fuel: k, custom: null }), style: optBase + 'height: 44px; font-size: 15px; font-weight: 600; color: ' + (k === d.fuel ? '#0B1410' : '#5B6660') })),
+      modeThumb: thumbBase + 'width: calc((100% - 8px) / 3); transform: translateX(' + (-100 * mi) + '%)',
+      modeOpts: modeKeys.map((k) => ({ name: MODES[k].n, delta: MODES[k].delta, on: String(k === d.mode), pick: () => setD({ mode: k }), style: optBase + 'height: 58px; color: ' + (k === d.mode ? '#0B1410' : '#5B6660'), deltaStyle: 'font-size: 11px; font-weight: 600; color: ' + (k === d.mode ? (k === 'eco' ? '#0A7A43' : k === 'sport' ? '#B4530A' : '#5B6660') : '#8FA197') })),
+      modeDesc: MODES[d.mode].desc,
+      acOn: String(d.ac),
+      toggleAc: () => setD({ ac: !this.state.d.ac }),
+      trackStyle: 'position: relative; width: 52px; height: 32px; border-radius: 16px; border: 0; padding: 0; flex-shrink: 0; background: ' + (d.ac ? '#22A321' : '#DDE3DC'),
+      knobStyle: 'position: absolute; top: 3px; right: 3px; width: 26px; height: 26px; border-radius: 13px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(11,20,16,0.25); transform: translateX(' + (d.ac ? '-20px' : '0') + ')'
+    };
+  }
+}
+</script>
+</body>
+</html>

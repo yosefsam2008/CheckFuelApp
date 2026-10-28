@@ -1,13 +1,13 @@
-// GradientButton whose gradient rises like fuel when it becomes enabled and drains when it is disabled again.
-// At rest it looks exactly like GradientButton; `disabled` comes straight from the screen's validity check.
-import { LinearGradient } from 'expo-linear-gradient';
+// The add-vehicle primary button: green fuel rises inside it when it becomes enabled and drains when it is disabled again.
+// At rest: a solid accent pill with an ink label, or the grey disabled pill. `disabled` comes from the screen's validity check.
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { ease, revealDur as D, useRevealReduced } from '../../constants/motion';
 import { NO_TOUCH } from '../../constants/rtl';
-import { colors, Heebo, radius, shadow } from '../../constants/theme';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 import { PressableScale } from '../calculator/PressableScale';
 
 const H = 56;
@@ -54,7 +54,7 @@ export function FuelFillButton({ label, onPress, disabled, first = false }: Prop
 
   const liquid = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - f.value) * H }] }));
   const wave = useAnimatedStyle(() => ({ opacity: f.value > 0.001 && f.value < 0.999 ? 1 : 0, transform: [{ translateX: -f.value * PERIOD * 2 }] }));
-  const text = useAnimatedStyle(() => ({ color: interpolateColor(lit.value, [0, 1], [colors.guideText, colors.white]) }));
+  const text = useAnimatedStyle(() => ({ color: interpolateColor(lit.value, [0, 1], [colors.disabledText, colors.text]) }));
   // one ring spreading 16px around the pill while it fades
   const ring = useAnimatedStyle(() => ({
     opacity: pulse.value > 0 && pulse.value < 1 ? 0.35 * (1 - pulse.value) : 0,
@@ -67,7 +67,7 @@ export function FuelFillButton({ label, onPress, disabled, first = false }: Prop
       <PressableScale
         onPress={disabled ? undefined : onPress}
         scaleTo={0.95}
-        style={[styles.btn, !disabled && shadow.cta]}
+        style={styles.btn}
         accessibilityRole="button"
         accessibilityState={{ disabled }}
         accessibilityLabel={label}
@@ -76,10 +76,10 @@ export function FuelFillButton({ label, onPress, disabled, first = false }: Prop
         <Animated.View style={[StyleSheet.absoluteFill, NO_TOUCH, liquid]}>
           <Animated.View style={[styles.wave, wave]}>
             <Svg width={30 * PERIOD} height={WAVE_H}>
-              <Path d={WAVE} fill={colors.ctaGradient[0]} />
+              <Path d={WAVE} fill={colors.accent} />
             </Svg>
           </Animated.View>
-          <LinearGradient colors={colors.ctaGradient} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, styles.fuel]} />
         </Animated.View>
         <Animated.Text style={[styles.label, text]}>{label}</Animated.Text>
       </PressableScale>
@@ -87,11 +87,12 @@ export function FuelFillButton({ label, onPress, disabled, first = false }: Prop
   );
 }
 
-// btn and label copied from GradientButton (fuel.tsx) so the two look identical at rest
+// same size and radius as the calculator's CTA (CalculatorV2)
 const styles = StyleSheet.create({
-  btn: { height: H, borderRadius: radius.pill, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  empty: { backgroundColor: colors.guideFill },
-  ring: { borderRadius: radius.pill, backgroundColor: colors.brandGreen },
+  btn: { height: H, borderRadius: 18, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  empty: { backgroundColor: colors.disabled },
+  fuel: { backgroundColor: colors.accent },
+  ring: { borderRadius: 18, backgroundColor: colors.accent },
   wave: { position: 'absolute', top: -WAVE_H + 1, left: 0 },
-  label: { fontFamily: Heebo.extra, fontSize: 17 },
+  label: { fontFamily: Rubik.bold, fontSize: 16 },
 });

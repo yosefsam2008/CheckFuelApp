@@ -119,3 +119,15 @@ export function tripInputs({ vehicle, manual, manualText, routeKm, routeLoading,
           : null;
   return { manualError, km, kmValid, price, missing };
 }
+
+/** Each route's trip, through the calculator's own checks and formula; null where those inputs give no result. */
+export function routeCosts(kms: number[], inputs: Pick<TripInputs, 'vehicle' | 'roundTrip' | 'fuelPrice'>, prefs: TripPrefs) {
+  return kms.map((routeKm) => {
+    const { km, price, missing } = tripInputs({ ...inputs, manual: false, manualText: '', routeKm, routeLoading: false });
+    return missing || !inputs.vehicle ? null : computeTrip(inputs.vehicle, km, price, prefs);
+  });
+}
+
+/** index of the lowest totalCost, -1 when none could be priced */
+export const cheapestIndex = (trips: ({ totalCost: number } | null)[]) =>
+  trips.reduce((best, t, i) => (t && (best < 0 || t.totalCost < trips[best]!.totalCost) ? i : best), -1);

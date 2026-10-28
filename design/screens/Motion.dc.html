@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>CheckFuel — מפרט אנימציות</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0A7A43}a:hover{color:#075C32}
+.cell{display:inline-block;height:1em;overflow:hidden;width:0.6em;text-align:center;line-height:1em}
+.dg{display:block;height:1em;line-height:1em}
+.r3{display:block;animation:mr3 3s cubic-bezier(.16,1,.3,1) infinite}
+.r7a{display:block;animation:mr7 3s cubic-bezier(.16,1,.3,1) 70ms infinite}
+.r7b{display:block;animation:mr7 3s cubic-bezier(.16,1,.3,1) 0ms infinite}
+@keyframes mr3{0%,8%{transform:translateY(0)}38%,88%{transform:translateY(-3em)}100%{transform:translateY(0)}}
+@keyframes mr7{0%,8%{transform:translateY(0)}38%,88%{transform:translateY(-7em)}100%{transform:translateY(0)}}
+.spin{display:block;animation:ms 480ms linear infinite}
+.spin2{display:block;animation:ms 480ms linear -130ms infinite}
+.spin3{display:block;animation:ms 480ms linear -260ms infinite}
+@keyframes ms{from{transform:translateY(0)}to{transform:translateY(-10em)}}
+.draw{animation:md 2.6s cubic-bezier(.65,0,.35,1) infinite}
+@keyframes md{0%,10%{stroke-dashoffset:110}50%,85%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
+.endp{animation:me 2.6s ease infinite}
+@keyframes me{0%,45%{opacity:.2}55%,100%{opacity:1}}
+.thumb{animation:mt 2.4s cubic-bezier(.2,.8,.2,1) infinite}
+@keyframes mt{0%,35%{transform:translateX(0)}50%,85%{transform:translateX(-74px)}100%{transform:translateX(0)}}
+.press{animation:mp 1.8s ease-out infinite}
+@keyframes mp{0%,40%{transform:scale(1)}48%{transform:scale(.97)}60%,100%{transform:scale(1)}}
+.rise{animation:mrise 2.4s cubic-bezier(.2,.8,.2,1) infinite}
+@keyframes mrise{0%,10%{opacity:0;transform:translateY(12px)}26%,85%{opacity:1;transform:none}100%{opacity:0;transform:none}}
+.sc7{animation:msc 3.2s ease infinite}
+@keyframes msc{0%,12%{opacity:0}30%,78%{opacity:1}92%,100%{opacity:0}}
+.sh7{animation:msh 3.2s cubic-bezier(.32,.72,0,1) infinite}
+@keyframes msh{0%,12%{transform:translateY(105%)}32%,78%{transform:none}94%,100%{transform:translateY(105%)}}
+.st{animation:mst 2.8s cubic-bezier(.2,.8,.2,1) infinite both}
+@keyframes mst{0%,10%{opacity:0;transform:translateY(14px)}30%,82%{opacity:1;transform:none}96%,100%{opacity:0;transform:none}}
+.kn{animation:mkn 2.4s cubic-bezier(.2,.8,.2,1) infinite}
+@keyframes mkn{0%,38%{transform:none}50%,88%{transform:translateX(-20px)}100%{transform:none}}
+.tr{animation:mtr 2.4s ease infinite}
+@keyframes mtr{0%,38%{background:#DDE3DC}50%,88%{background:#22A321}100%{background:#DDE3DC}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+</helmet>
+<div dir="rtl" style="width: 1280px; height: 1260px; box-sizing: border-box; padding: 40px; background: #F3F5F1; font-family: Rubik, system-ui, sans-serif; color: #0B1410; display: flex; flex-direction: column; gap: 20px">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; height: 100px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <h1 style="margin: 0; font-size: 40px; font-weight: 800; letter-spacing: -0.02em">מפרט תנועה</h1>
+      <span style="font-size: 16px; color: #5B6660">כל אנימציה מסבירה מה קרה. אף אחת לא קיימת כדי "להיראות מגניב".</span>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 620px">
+      <span style="height: 34px; padding: 0 14px; border-radius: 17px; background: #0B1410; color: #FFFFFF; font-size: 13px; display: flex; align-items: center">גיבור אחד לכל רגע: המספר</span>
+      <span style="height: 34px; padding: 0 14px; border-radius: 17px; background: #FFFFFF; border: 1px solid #E2E7E1; font-size: 13px; display: flex; align-items: center">כל השאר ≤ 400ms</span>
+      <span style="height: 34px; padding: 0 14px; border-radius: 17px; background: #FFFFFF; border: 1px solid #E2E7E1; font-size: 13px; display: flex; align-items: center">שום דבר לא זז במנוחה</span>
+      <span style="height: 34px; padding: 0 14px; border-radius: 17px; background: #FFFFFF; border: 1px solid #E2E7E1; font-size: 13px; display: flex; align-items: center">Reduce Motion ← רק הופעה הדרגתית</span>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 20px">
+
+    <!-- 1 odometer -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #0B1410; display: flex; align-items: center; justify-content: center">
+        <div dir="ltr" style="display: flex; align-items: flex-end; gap: 4px; color: #FFFFFF; font-size: 64px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums">
+          <span style="font-size: 30px; color: #40D63C; margin-bottom: 6px">₪</span>
+          <span class="cell"><span class="r3"><span class="dg">0</span><span class="dg">1</span><span class="dg">2</span><span class="dg">3</span></span></span><span class="cell"><span class="r7a"><span class="dg">0</span><span class="dg">1</span><span class="dg">2</span><span class="dg">3</span><span class="dg">4</span><span class="dg">5</span><span class="dg">6</span><span class="dg">7</span></span></span><span class="cell"><span class="r7b"><span class="dg">0</span><span class="dg">1</span><span class="dg">2</span><span class="dg">3</span><span class="dg">4</span><span class="dg">5</span><span class="dg">6</span><span class="dg">7</span></span></span>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 18px; font-weight: 700">1 · גלגול ספרות המשאבה</span><span style="font-size: 12px; color: #0A7A43; font-weight: 600">גיבור</span></div>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>תוצאה מוכנה · שינוי נוסעים / כיוון</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>900ms · השהיה 70ms מימין לשמאל</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">cubic-bezier(.16,1,.3,1)</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">translateY: withSpring(-d*H, {damping:18, stiffness:170})</div>
+      </div>
+    </div>
+
+    <!-- 2 route draw -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #F3F5F1; border: 1px solid #E2E7E1; display: flex; align-items: center; justify-content: center">
+        <svg width="56" height="104" viewBox="0 0 56 104" aria-hidden="true">
+          <path d="M44 12 C44 52 12 44 12 92" fill="none" stroke="#DDE3DC" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"></path>
+          <path class="draw" d="M44 12 C44 52 12 44 12 92" fill="none" stroke="#0B1410" stroke-width="3" stroke-linecap="round" stroke-dasharray="110"></path>
+          <circle cx="44" cy="12" r="6" fill="#FFFFFF" stroke="#40D63C" stroke-width="3"></circle>
+          <rect class="endp" x="6" y="86" width="12" height="12" rx="3" fill="#0B1410"></rect>
+        </svg>
+      </div>
+      <span style="font-size: 18px; font-weight: 700">2 · ציור המסלול</span>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>בחירת יעד</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>1000ms · נקודת יעד ב-800ms</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">cubic-bezier(.65,0,.35,1)</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">AnimatedPath strokeDashoffset: withTiming(0)</div>
+      </div>
+    </div>
+
+    <!-- 3 calculating -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #0B1410; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
+        <div dir="ltr" style="display: flex; align-items: flex-end; gap: 4px; color: #33433A; font-size: 64px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums">
+          <span style="font-size: 30px; color: #40D63C; margin-bottom: 6px">₪</span>
+          <span class="cell"><span class="spin"><span class="dg">0</span><span class="dg">1</span><span class="dg">2</span><span class="dg">3</span><span class="dg">4</span><span class="dg">5</span><span class="dg">6</span><span class="dg">7</span><span class="dg">8</span><span class="dg">9</span><span class="dg">0</span></span></span><span class="cell"><span class="spin2"><span class="dg">0</span><span class="dg">1</span><span class="dg">2</span><span class="dg">3</span><span class="dg">4</span><span class="dg">5</span><span class="dg">6</span><span class="dg">7</span><span class="dg">8</span><span class="dg">9</span><span class="dg">0</span></span></span><span class="cell"><span class="spin3"><span class="dg">0</span><span class="dg">1</span><span class="dg">2</span><span class="dg">3</span><span class="dg">4</span><span class="dg">5</span><span class="dg">6</span><span class="dg">7</span><span class="dg">8</span><span class="dg">9</span><span class="dg">0</span></span></span>
+        </div>
+      </div>
+      <span style="font-size: 18px; font-weight: 700">3 · מצב חישוב (במקום ספינר)</span>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>בקשת מרחק ל-API</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>לופ 480ms · מינימום 600ms</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">linear</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">withRepeat(withTiming(-10*H, {duration:480}), -1)</div>
+      </div>
+    </div>
+
+    <!-- 4 segmented -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #0B1410; display: flex; align-items: center; justify-content: center">
+        <div style="position: relative; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: #17231D">
+          <span class="thumb" style="position: absolute; top: 4px; right: 4px; width: 72px; height: 36px; border-radius: 10px; background: #FFFFFF"></span>
+          <span style="position: relative; width: 72px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #5B6660">כיוון אחד</span>
+          <span style="position: relative; width: 72px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #5B6660">הלוך-חזור</span>
+        </div>
+      </div>
+      <span style="font-size: 18px; font-weight: 700">4 · מתג סוג נסיעה</span>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>לחיצה · מפעיל גם את #1</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>280ms</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">cubic-bezier(.2,.8,.2,1)</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">translateX: withTiming(x, {duration:280}) + Haptics.selectionAsync()</div>
+      </div>
+    </div>
+
+    <!-- 5 press -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #F3F5F1; border: 1px solid #E2E7E1; display: flex; align-items: center; justify-content: center">
+        <span class="press" style="height: 52px; padding: 0 28px; border-radius: 16px; background: #0B1410; color: #FFFFFF; font-size: 15px; font-weight: 700; display: flex; align-items: center">שלח לחברים</span>
+      </div>
+      <span style="font-size: 18px; font-weight: 700">5 · לחיצה + רטט</span>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>כל כפתור (onPressIn / Out)</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>120ms · scale 0.97</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">ease-out</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">Haptics.impactAsync(Light) — רק ב-CTA ובסטפר</div>
+      </div>
+    </div>
+
+    <!-- 6 rise -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #F3F5F1; border: 1px solid #E2E7E1; display: flex; align-items: center; justify-content: center">
+        <div class="rise" style="display: flex; gap: 8px">
+          <span style="height: 52px; width: 180px; border-radius: 16px; background: #0B1410; color: #FFFFFF; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center">שלח לחברים</span>
+          <span style="height: 52px; width: 52px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E2E7E1; box-sizing: border-box"></span>
+        </div>
+      </div>
+      <span style="font-size: 18px; font-weight: 700">6 · עליית פעולות התוצאה</span>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>אחרי שהמספר נוחת</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>380ms · 12px למעלה + fade</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">cubic-bezier(.2,.8,.2,1)</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">entering={FadeInDown.duration(380).springify()}</div>
+      </div>
+    </div>
+
+    <!-- 7 sheet -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #F3F5F1; border: 1px solid #E2E7E1; display: flex; align-items: center; justify-content: center">
+        <div style="position: relative; width: 84px; height: 116px; border-radius: 14px; background: #FFFFFF; border: 1px solid #E2E7E1; overflow: hidden">
+          <div style="position: absolute; top: 12px; left: 10px; right: 10px; height: 40px; border-radius: 8px; background: #0B1410"></div>
+          <div class="sc7" style="position: absolute; inset: 0; background: rgba(11,20,16,0.48)"></div>
+          <div class="sh7" style="position: absolute; left: 0; right: 0; bottom: 0; height: 74px; border-radius: 12px 12px 0 0; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 6px; box-sizing: border-box">
+            <span style="width: 16px; height: 3px; border-radius: 2px; background: #DDE3DC"></span>
+            <span style="width: 60px; height: 8px; border-radius: 4px; background: #F3F5F1"></span>
+            <span style="width: 60px; height: 8px; border-radius: 4px; background: #F3F5F1"></span>
+            <span style="width: 60px; height: 12px; border-radius: 4px; background: #0B1410"></span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 18px; font-weight: 700">7 · פתיחת אפשרויות מתקדמות</span><span style="font-size: 12px; color: #0A7A43; font-weight: 600">חדש</span></div>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>לחיצה על "95 · רגיל · מזגן"</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>גיליון 460ms · רקע כהה 300ms</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">cubic-bezier(.32,.72,0,1)</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">@gorhom/bottom-sheet · gesture drag-to-close</div>
+      </div>
+    </div>
+
+    <!-- 8 stagger -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #F3F5F1; border: 1px solid #E2E7E1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px">
+        <span class="st" style="width: 180px; height: 18px; border-radius: 6px; background: #FFFFFF; border: 1px solid #E2E7E1; animation-delay: 0ms"></span>
+        <span class="st" style="width: 180px; height: 18px; border-radius: 6px; background: #FFFFFF; border: 1px solid #E2E7E1; animation-delay: 50ms"></span>
+        <span class="st" style="width: 180px; height: 18px; border-radius: 6px; background: #FFFFFF; border: 1px solid #E2E7E1; animation-delay: 100ms"></span>
+        <span class="st" style="width: 180px; height: 22px; border-radius: 6px; background: #0B1410; animation-delay: 150ms"></span>
+      </div>
+      <span style="font-size: 18px; font-weight: 700">8 · כניסה מדורגת של התוכן</span>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>הגיליון מתחיל לעלות</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>420ms · 90ms + 50ms לכל שורה</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">Easing</span><span dir="ltr">cubic-bezier(.2,.8,.2,1)</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">entering={FadeInDown.delay(90 + i*50)}</div>
+      </div>
+    </div>
+
+    <!-- 9 switch + apply -->
+    <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="height: 130px; border-radius: 16px; background: #F3F5F1; border: 1px solid #E2E7E1; display: flex; align-items: center; justify-content: center; gap: 16px">
+        <span style="font-size: 14px; font-weight: 700">מזגן דולק</span>
+        <span class="tr" style="position: relative; width: 52px; height: 32px; border-radius: 16px; background: #DDE3DC; display: block"><span class="kn" style="position: absolute; top: 3px; right: 3px; width: 26px; height: 26px; border-radius: 13px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(11,20,16,0.25); display: block"></span></span>
+      </div>
+      <span style="font-size: 18px; font-weight: 700">9 · מתגים ← "עדכן חישוב"</span>
+      <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">טריגר</span><span>שינוי בגיליון · לחיצה על עדכן</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">משך</span><span>מתג 260ms · עדכון אחרי 280ms</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6660">רצף</span><span>הגיליון יורד ← ואז הספרות מתגלגלות (#1)</span></div>
+        <div dir="ltr" style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #22302A; background: #F3F5F1; border-radius: 8px; padding: 6px 8px; text-align: left">sheet.close(); setTimeout(commit, 280)</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

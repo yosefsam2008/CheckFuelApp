@@ -1,5 +1,5 @@
 // One trip: collapsed line that opens in place to the details and a single inline delete confirmation
-import { ChevronDown, Trash2 } from 'lucide-react-native';
+import { ChevronDown, MapPin, Pencil, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
@@ -10,9 +10,10 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { dur, ease, haptic } from '../../constants/motion';
-import { NO_TOUCH } from '../../constants/rtl';
-import { colors, Heebo, radius } from '../../constants/theme';
+import { dur, EASE, ease, haptic } from '../../constants/motion';
+import { LTR, NO_TOUCH } from '../../constants/rtl';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 import { dayLabel, tripTime } from '../../lib/calc/monthly';
 import { formatAmount, formatMoney } from '../../lib/format';
 import type { Vehicle } from '../../lib/tripCost';
@@ -21,28 +22,15 @@ import { PressableScale } from '../calculator/PressableScale';
 import { vehicleTitle } from '../calculator/VehiclePriceCard';
 import { LtrText } from './LtrText';
 
-const PAD_X = 24;
 const energyName = (t: TripRecord) => (t.energyType === 'electricity' ? 'חשמל' : t.fuelType === 'Diesel' ? 'סולר' : 'בנזין');
 
-/** Each detail line starts a little after the previous one (about 30ms apart) while the open progress `p` runs 0 -> 1 */
-function Reveal({ p, i, children }: { p: SharedValue<number>; i: number; children: React.ReactNode }) {
+/** A detail cell rises in a little after the previous one (reading order) while the open progress `p` runs 0 -> 1 */
+function Cell({ p, i, children }: { p: SharedValue<number>; i: number; children: React.ReactNode }) {
   const style = useAnimatedStyle(() => {
-    const q = Math.min(1, Math.max(0, (p.value - i * 0.1) / 0.5));
-    return { opacity: q, transform: [{ translateY: (1 - q) * 8 }] };
+    const q = Math.min(1, Math.max(0, (p.value - 0.15 - i * 0.1) / 0.5));
+    return { alignItems: 'center', gap: 2, opacity: q, transform: [{ translateY: (1 - q) * 6 }] };
   });
   return <Animated.View style={style}>{children}</Animated.View>;
-}
-
-function Line({ label, value, unit, ltr, first }: { label: string; value: string; unit?: string; ltr?: boolean; first?: boolean }) {
-  return (
-    <View style={[styles.kv, !first && styles.kvBorder]}>
-      <Text style={styles.kvLabel}>{label}</Text>
-      <View style={styles.kvValue}>
-        {ltr || unit ? <LtrText style={styles.kvText}>{value}</LtrText> : <Text style={styles.kvText}>{value}</Text>}
-        {!!unit && <Text style={styles.kvText}>{unit}</Text>}
-      </View>
-    </View>
-  );
 }
 
 function FadeIn({ children, style }: { children: React.ReactNode; style?: object }) {
@@ -69,6 +57,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
   const reduced = useReducedMotion();
   const [confirming, setConfirming] = useState(false);
   const p = useSharedValue(open ? 1 : 0);
+  const rot = useSharedValue(open ? 1 : 0);
   const detailH = useSharedValue(0);
   const fullH = useSharedValue(0);
   const exit = useSharedValue(0);
@@ -77,16 +66,25 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
 
   useEffect(() => {
     if (!open) setConfirming(false);
-    p.value = reduced ? (open ? 1 : 0) : withTiming(open ? 1 : 0, { duration: dur.std, easing: ease.out });
-  }, [open, reduced, p]);
+    const to = open ? 1 : 0;
+    p.value = reduced ? to : withTiming(to, { duration: 280, easing: EASE.out });
+    rot.value = reduced ? to : withTiming(to, { duration: 240, easing: EASE.out });
+  }, [open, reduced, p, rot]);
 
   const ev = trip.energyType === 'electricity';
   const used = trip.fuelConsumed;
   const consumption = trip.distance > 0 && used > 0 ? (ev ? (used / trip.distance) * 100 : trip.distance / used) : 0;
+  const unitPrice = used > 0 ? trip.totalCost / used : 0; // display only: totalCost = fuelConsumed * price
   const when = dayLabel(tripTime(trip), Date.now());
   const cost = formatMoney(trip.totalCost);
   const route = trip.from && trip.to ? `${trip.from} ← ${trip.to}` : '';
   const km = `${formatAmount(trip.distance, 0)} ק״מ`;
+  const cells: [string, string][] = [
+    [used.toFixed(1), ev ? 'קוט״ש' : 'ליטר'],
+    [consumption.toFixed(1), ev ? 'קוט״ש ל־100 ק״מ' : 'ק״מ לליטר'],
+    [formatAmount(trip.costPerKm), '₪ לק״מ'],
+    [formatAmount(unitPrice), `${ev ? '₪ לקוט״ש' : '₪ לליטר'} · ${energyName(trip)}`],
+  ];
 
   const wrap = useAnimatedStyle(() =>
     exit.value > 0
@@ -94,7 +92,8 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
       : {},
   );
   const detail = useAnimatedStyle(() => ({ height: detailH.value * p.value }));
-  const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${180 * p.value}deg` }] }));
+  const reveal = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ translateY: (1 - p.value) * 6 }] }));
+  const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${180 * rot.value}deg` }] }));
 
   const confirmDelete = () => {
     haptic.press();
@@ -114,55 +113,49 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
       {!first && <View style={styles.divider} />}
       <PressableScale
         onPress={onToggle}
-        scaleTo={0.985}
+        scaleTo={reduced ? 1 : 0.98}
         style={styles.row}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityLabel={`${route ? `מ${trip.from} אל ${trip.to}, ` : ''}${when}, ${trip.distance} ק״מ, ${cost}`}
       >
+        <View style={[styles.tile, route ? styles.tileRoute : styles.tileManual]}>
+          {route ? <MapPin size={20} color={colors.accentText} strokeWidth={2} /> : <Pencil size={18} color={colors.textMuted} strokeWidth={2} />}
+        </View>
         <View style={styles.main}>
-          {/* a routed trip leads with its route; manual-distance and older trips keep the date */}
-          <Text style={styles.when} numberOfLines={1}>
-            {route || when}
+          {/* a routed trip leads with its route; manual-distance and older trips lead with the distance */}
+          <Text style={styles.title} numberOfLines={2}>
+            {route || `מרחק ידני · ${km}`}
           </Text>
-          <Text style={styles.km} numberOfLines={1}>
-            {route ? `${when} · ${km}` : km}
+          <Text style={styles.meta} numberOfLines={1}>
+            {route ? `${when} · ${km}` : when}
           </Text>
         </View>
-        <Text style={styles.cost}>{cost}</Text>
+        <View {...LTR.props} style={[styles.amount, LTR.style]}>
+          <Text style={styles.amountShekel}>₪</Text>
+          <Text style={styles.amountNum}>{formatAmount(trip.totalCost)}</Text>
+        </View>
         <Animated.View style={chevron}>
           <ChevronDown size={18} color={colors.textMuted} strokeWidth={2} />
         </Animated.View>
       </PressableScale>
 
       <Animated.View style={[styles.clip, detail, !open && NO_TOUCH]} accessibilityElementsHidden={!open} importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}>
-        {/* mounted on the first open only: a closed row skipped ~10 animated hooks, which made the tab's first open heavy */}
+        {/* mounted on the first open only, so closed rows stay light */}
         {everOpen.current && (
-        <View style={styles.measure} onLayout={(e) => (detailH.value = e.nativeEvent.layout.height)}>
-          <View style={styles.dl}>
-            <Reveal p={p} i={0}>
-              <Line first label="רכב" value={vehicleTitle({ name: trip.vehicleName, model: trip.vehicleModel } as Vehicle)} ltr />
-            </Reveal>
-            {!!route && (
-              <Reveal p={p} i={1}>
-                <Line label="מוצא" value={trip.from!} />
-                <Line label="יעד" value={trip.to!} />
-              </Reveal>
-            )}
-            <Reveal p={p} i={1}>
-              <Line label={ev ? 'חשמל שנצרך' : 'דלק שנצרך'} value={used.toFixed(1)} unit={ev ? 'קוט״ש' : 'ליטר'} />
-            </Reveal>
-            <Reveal p={p} i={2}>
-              <Line label="צריכה" value={consumption.toFixed(1)} unit={ev ? 'קוט״ש ל־100 ק״מ' : 'ק״מ לליטר'} />
-            </Reveal>
-            <Reveal p={p} i={3}>
-              <Line label="עלות לק״מ" value={formatMoney(trip.costPerKm)} />
-            </Reveal>
-            <Reveal p={p} i={4}>
-              <Line label="סוג אנרגיה" value={energyName(trip)} />
-            </Reveal>
-          </View>
-          <Reveal p={p} i={5}>
+          <Animated.View style={[styles.measure, reveal]} onLayout={(e) => (detailH.value = e.nativeEvent.layout.height)}>
+            <View style={styles.strip}>
+              {cells.map(([value, label], i) => (
+                <View key={i} style={[styles.cell, i > 0 && styles.cellDivider]}>
+                  <Cell p={p} i={i}>
+                    <LtrText style={styles.cellValue}>{value}</LtrText>
+                    <Text style={styles.cellLabel} numberOfLines={2}>
+                      {label}
+                    </Text>
+                  </Cell>
+                </View>
+              ))}
+            </View>
             <View style={styles.actions}>
               {confirming ? (
                 <FadeIn style={styles.confirm}>
@@ -172,21 +165,22 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
                       <Text style={styles.btnText}>ביטול</Text>
                     </PressableScale>
                     <PressableScale onPress={confirmDelete} style={[styles.btn, styles.danger]} accessibilityRole="button">
-                      <Text style={[styles.btnText, { color: colors.white }]}>מחק</Text>
+                      <Text style={[styles.btnText, { color: colors.textInverse }]}>מחק</Text>
                     </PressableScale>
                   </View>
                 </FadeIn>
               ) : (
-                <FadeIn>
-                  <PressableScale onPress={() => setConfirming(true)} style={styles.askBtn} accessibilityRole="button">
-                    <Trash2 size={18} color={colors.error} strokeWidth={2} />
-                    <Text style={[styles.btnText, { color: colors.error }]}>מחק נסיעה</Text>
+                <FadeIn style={styles.actionRow}>
+                  <LtrText style={styles.vehicle} numberOfLines={1}>
+                    {vehicleTitle({ name: trip.vehicleName, model: trip.vehicleModel } as Vehicle)}
+                  </LtrText>
+                  <PressableScale onPress={() => setConfirming(true)} scaleTo={reduced ? 1 : 0.98} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="מחק נסיעה">
+                    <Trash2 size={18} color={colors.textMuted} strokeWidth={2} />
                   </PressableScale>
                 </FadeIn>
               )}
             </View>
-          </Reveal>
-        </View>
+          </Animated.View>
         )}
       </Animated.View>
     </Animated.View>
@@ -194,28 +188,34 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
 }
 
 const styles = StyleSheet.create({
-  divider: { height: StyleSheet.hairlineWidth, marginHorizontal: PAD_X, backgroundColor: colors.divider },
-  row: { minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 20, paddingHorizontal: PAD_X },
-  main: { flex: 1, minWidth: 0 },
-  when: { fontFamily: Heebo.semi, fontSize: 16, color: colors.text },
-  km: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted, marginTop: 4 },
-  cost: { fontFamily: Heebo.extra, fontSize: 18, color: colors.text },
+  divider: { height: 1, backgroundColor: colors.lineSubtle },
+  row: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  tile: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  tileRoute: { backgroundColor: colors.accentTint },
+  tileManual: { backgroundColor: colors.surfaceSunken },
+  main: { flex: 1, minWidth: 0, gap: 2 },
+  title: { fontFamily: Rubik.bold, fontSize: 15, color: colors.text },
+  meta: { fontFamily: Rubik.regular, fontSize: 12, color: colors.textMuted, fontVariant: ['tabular-nums'] },
+  amount: { flexDirection: 'row', alignItems: 'baseline', gap: 1 },
+  amountShekel: { fontFamily: Rubik.bold, fontSize: 13, color: colors.accentText },
+  amountNum: { fontFamily: Rubik.extra, fontSize: 19, color: colors.text, fontVariant: ['tabular-nums'] },
   clip: { overflow: 'hidden' },
   // measured at its natural height; absolute so the clip's animated height does not squeeze it
-  measure: { position: 'absolute', width: '100%' },
-  dl: { marginHorizontal: PAD_X, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: colors.bg, borderRadius: radius.tile },
-  kv: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 12 },
-  kvBorder: { borderTopWidth: 1, borderTopColor: colors.divider },
-  kvLabel: { fontFamily: Heebo.regular, fontSize: 15, color: colors.textMuted },
-  kvValue: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
-  kvText: { fontFamily: Heebo.bold, fontSize: 15, color: colors.text },
-  actions: { minHeight: 68, justifyContent: 'center', paddingTop: 12, paddingBottom: 18, paddingHorizontal: PAD_X },
+  measure: { position: 'absolute', width: '100%', paddingBottom: 12 },
+  strip: { flexDirection: 'row', backgroundColor: colors.surfaceSunken, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 4 },
+  cell: { flex: 1, alignItems: 'center', gap: 2, paddingHorizontal: 4 },
+  cellDivider: { borderStartWidth: 1, borderStartColor: colors.line },
+  cellValue: { fontFamily: Rubik.extra, fontSize: 16, color: colors.text, fontVariant: ['tabular-nums'] },
+  cellLabel: { fontFamily: Rubik.regular, fontSize: 11, color: colors.textMuted, textAlign: 'center' },
+  actions: { minHeight: 52, justifyContent: 'center', paddingTop: 8 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  vehicle: { flex: 1, fontFamily: Rubik.regular, fontSize: 13, color: colors.textMuted, textAlign: 'right' },
+  iconBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   confirm: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  confirmQ: { fontFamily: Heebo.bold, fontSize: 14, color: colors.text },
+  confirmQ: { fontFamily: Rubik.bold, fontSize: 14, color: colors.text },
   btns: { flexDirection: 'row', gap: 8 },
-  btn: { height: 44, minWidth: 44, paddingHorizontal: 18, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  ghost: { backgroundColor: colors.bg },
-  danger: { backgroundColor: colors.error },
-  askBtn: { height: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
-  btnText: { fontFamily: Heebo.bold, fontSize: 14, color: colors.text },
+  btn: { height: 44, minWidth: 44, paddingHorizontal: 18, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  ghost: { backgroundColor: colors.surfaceSunken },
+  danger: { backgroundColor: colors.surfaceInverse },
+  btnText: { fontFamily: Rubik.bold, fontSize: 14, color: colors.text },
 });

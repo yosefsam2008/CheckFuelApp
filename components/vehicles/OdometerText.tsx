@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { type AnimatedStyle, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { ease, revealDur } from '../../constants/motion';
-import { colors, Heebo } from '../../constants/theme';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 
 const LH = 24;
 const STRIP = Array.from({ length: 20 }, (_, i) => i % 10); // 0-9 twice, so every digit rolls a full turn
@@ -55,5 +56,5 @@ const styles = StyleSheet.create({
   cell: { height: LH, overflow: 'hidden' },
   ghost: { opacity: 0 },
   strip: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' },
-  text: { height: LH, lineHeight: LH, fontFamily: Heebo.bold, fontSize: 17, color: colors.text, includeFontPadding: false },
+  text: { height: LH, lineHeight: LH, fontFamily: Rubik.bold, fontSize: 17, color: colors.text, includeFontPadding: false },
 });

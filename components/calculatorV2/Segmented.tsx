@@ -1,11 +1,12 @@
-// Segmented control with a sliding thumb (design motion #4: 300ms, bezier(.2,.8,.2,1), selection haptic).
+// Segmented control with a sliding thumb (spring damping 20 / stiffness 260, selection haptic).
 // Same RTL approach as SlidingSegment: the thumb sits in an LTR layer and moves to each option's measured x.
 import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
-import { haptic } from '../../constants/motion';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import { haptic, spring } from '../../constants/motion';
 import { LTR, NO_TOUCH } from '../../constants/rtl';
-import { c, Rubik } from '../../constants/themeV2';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 
 export interface Option<T extends string> {
   value: T;
@@ -17,11 +18,10 @@ export interface Option<T extends string> {
 
 type Variant = 'dark' | 'light' | 'ink';
 const THEME: Record<Variant, { track: string; thumb: string; on: string; off: string }> = {
-  dark: { track: c.ink2, thumb: c.white, on: c.ink, off: c.inkMuted }, // on the dark route card
-  light: { track: c.mist, thumb: c.white, on: c.ink, off: c.muted },
-  ink: { track: c.mist, thumb: c.ink, on: c.white, off: c.muted }, // compact trip-type toggle
+  dark: { track: colors.surfaceInverseRaised, thumb: colors.surfaceRaised, on: colors.text, off: colors.textMutedInverse }, // on the dark route card
+  light: { track: colors.surfaceSunken, thumb: colors.surfaceRaised, on: colors.text, off: colors.textMuted },
+  ink: { track: colors.surfaceSunken, thumb: colors.surfaceInverse, on: colors.textInverse, off: colors.textMuted }, // compact trip-type toggle
 };
-const EASE = Easing.bezier(0.2, 0.8, 0.2, 1);
 
 interface Props<T extends string> {
   options: Option<T>[];
@@ -45,8 +45,8 @@ export function Segmented<T extends string>({ options, value, onChange, variant 
     const box = boxes[index];
     if (!box) return;
     const instant = reduced || w.value === 0; // first placement does not slide in from nowhere
-    x.value = instant ? box.x : withTiming(box.x, { duration: 300, easing: EASE });
-    w.value = instant ? box.width : withTiming(box.width, { duration: 300, easing: EASE });
+    x.value = instant ? box.x : withSpring(box.x, spring.thumb);
+    w.value = instant ? box.width : withSpring(box.width, spring.thumb);
   }, [index, boxes, reduced, x, w]);
 
   const thumb = useAnimatedStyle(() => ({ width: w.value, opacity: w.value ? 1 : 0, transform: [{ translateX: x.value }] }));
@@ -66,7 +66,7 @@ export function Segmented<T extends string>({ options, value, onChange, variant 
         return (
           <Pressable
             key={o.value}
-            style={[styles.item, { height }, compact ? styles.compact : styles.fill]}
+            style={[styles.item, { minHeight: height }, compact ? styles.compact : styles.fill]}
             onLayout={onItemLayout(i)}
             onPress={() => {
               if (on) return;
@@ -82,7 +82,7 @@ export function Segmented<T extends string>({ options, value, onChange, variant 
                 {o.label}
               </Text>
             </View>
-            {!!o.sub && <Text style={[styles.sub, { color: on ? (o.subColor ?? c.muted) : c.faint }]}>{o.sub}</Text>}
+            {!!o.sub && <Text style={[styles.sub, { color: on ? (o.subColor ?? colors.textMuted) : colors.faint }]}>{o.sub}</Text>}
           </Pressable>
         );
       })}
@@ -93,11 +93,12 @@ export function Segmented<T extends string>({ options, value, onChange, variant 
 const styles = StyleSheet.create({
   track: { flexDirection: 'row', gap: 2 },
   thumb: { position: 'absolute', left: 0, borderRadius: 10 },
-  thumbLight: { borderWidth: 1, borderColor: c.line },
+  thumbLight: { borderWidth: 1, borderColor: colors.line },
   item: { alignItems: 'center', justifyContent: 'center', gap: 2 },
   fill: { flex: 1 },
   compact: { paddingHorizontal: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  label: { fontFamily: Rubik.semi, fontSize: 14 },
-  sub: { fontFamily: Rubik.semi, fontSize: 11 },
+  label: { fontFamily: Rubik.semi, fontSize: 14, lineHeight: 18, includeFontPadding: false },
+  // ltr so a signed delta like "-8%" keeps its sign on the left
+  sub: { fontFamily: Rubik.semi, fontSize: 11, lineHeight: 15, includeFontPadding: false, writingDirection: 'ltr', textAlign: 'center' },
 });

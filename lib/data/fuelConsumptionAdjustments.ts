@@ -895,7 +895,8 @@ function calculateAgeDegradation(
   const params = {
     Gasoline: { baseRate: 0.002, growth: 1.05 },  // בנזין - הידרדרות בינונית
     Diesel: { baseRate: 0.005, growth: 1.06 },     // דיזל - עמיד יותר
-    Electric: { baseRate: 0.15, growth: 1.10 },   // חשמלי - סוללה מתדרדרת מהר בחום
+    // battery wear cuts range, not kWh per km; the old 0.15 added ~37% to a 3-year-old EV's trip cost
+    Electric: { baseRate: 0.004, growth: 1.05 },
   };
 
   const { baseRate, growth } = params[fuelType];
@@ -975,7 +976,7 @@ export function calculateAdjustedConsumption(
   factors: AdjustmentFactors
 ): ConsumptionResult {
   // חישוב כל המקדמים
-  const ageFactor = calculateAgeDegradation(factors.vehicleAge, factors.fuelType)*0.91; // הוספנו שיפור של 2% כדי לאזן את ההידרדרות הטבעית עם תחזוקה טובה
+  const ageFactor = calculateAgeDegradation(factors.vehicleAge, factors.fuelType);
   const styleFactor = calculateDrivingStyleFactor(factors.drivingStyle || 'normal');
   const climateFactor = calculateClimateFactor(factors.climate || 'hot');
   const tripFactor = calculateTripTypeFactor(factors.tripType || 'mixed');

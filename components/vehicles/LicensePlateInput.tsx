@@ -11,7 +11,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ease, haptic, revealDur, useLoop, useRevealReduced } from '../../constants/motion';
 import { LTR, NO_OUTLINE, NO_TOUCH } from '../../constants/rtl';
-import { Heebo, plate as P } from '../../constants/theme';
+import { plate as P } from '../../constants/theme';
+import { Rubik } from '../../constants/themeV2';
 import { plateDigits } from '../../lib/vehicles/plateLookup';
 import { PlateScanBeam } from './PlateScanBeam';
 
@@ -32,9 +33,9 @@ interface Props {
 export function LicensePlateInput({ value, onChangeText, editable = true, scanning = false, shake = false }: Props) {
   const reduced = useRevealReduced();
   const [focused, setFocused] = useState(false);
-  // plate digits only; Heebo stands in until the font file is loaded
+  // plate digits only; Rubik stands in until the font file is loaded
   const [barlow] = useFonts({ BarlowCondensed_700Bold });
-  const glyphFont = { fontFamily: barlow ? 'BarlowCondensed_700Bold' : Heebo.extra };
+  const glyphFont = { fontFamily: barlow ? 'BarlowCondensed_700Bold' : Rubik.extra };
   const digits = plateDigits(value);
   // digits at or past this index arrived in the latest change; a paste staggers them
   const prevCount = useRef(digits.length);
@@ -161,8 +162,8 @@ const styles = StyleSheet.create({
   ringFill: { borderRadius: 14, backgroundColor: P.focusRing },
   plate: { height: 66, flexDirection: 'row', borderRadius: 10, borderWidth: 3, borderColor: P.ink, backgroundColor: P.fill, overflow: 'hidden' },
   strip: { width: 40, backgroundColor: P.strip, alignItems: 'center', justifyContent: 'center' },
-  il: { fontFamily: Heebo.black, fontSize: 15, color: P.stripText },
-  country: { fontFamily: Heebo.semi, fontSize: 9, color: P.stripText },
+  il: { fontFamily: Rubik.extra, fontSize: 15, color: P.stripText },
+  country: { fontFamily: Rubik.semi, fontSize: 9, color: P.stripText },
   row: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   glyph: { fontSize: FONT, lineHeight: 52, color: P.ink, fontVariant: ['tabular-nums'], includeFontPadding: false },
   placeholder: { opacity: 0.25 },

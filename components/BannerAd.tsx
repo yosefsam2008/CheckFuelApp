@@ -23,6 +23,8 @@ export default function AdBanner({ style, size = BannerAdSize.ANCHORED_ADAPTIVE_
   // The slot below already reserves its height, so the late mount does not move anything.
   // shortcut: a fixed delay, not tied to the transition; switch to requestIdleCallback if it proves unreliable
   const [ready, setReady] = useState(false);
+  // adaptive banners default to the full device width and overflow the card; size them to the slot instead
+  const [slotWidth, setSlotWidth] = useState(0);
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 600);
     return () => clearTimeout(t);
@@ -60,12 +62,14 @@ export default function AdBanner({ style, size = BannerAdSize.ANCHORED_ADAPTIVE_
         { minHeight: reservedHeight + 24 }, // Reserve slot height + padding vertical
         style
       ]}
+      onLayout={(e) => setSlotWidth(Math.floor(e.nativeEvent.layout.width) - 2)} // minus the 1px border each side
     >
       <Text style={styles.adLabel}>ממומן</Text>    
       
-      {ready && <BannerAd
+      {ready && slotWidth > 0 && <BannerAd
         unitId={AD_UNIT_ID}
         size={resolvedSize}
+        width={resolvedSize === BannerAdSize.ANCHORED_ADAPTIVE_BANNER ? slotWidth : undefined}
         requestOptions={{
           requestNonPersonalizedAdsOnly: true, // Keeps user privacy
         }}

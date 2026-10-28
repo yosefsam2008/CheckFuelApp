@@ -16,7 +16,7 @@ interface Props {
   status: PriceStatus;
 }
 
-function PulseDot() {
+export function PulseDot({ color }: { color?: string }) {
   const p = useLoop(1800, { rest: 0 });
   const ring = useAnimatedStyle(() => ({
     opacity: interpolate(p.value, [0, 1], [0.6, 0]),
@@ -24,8 +24,8 @@ function PulseDot() {
   }));
   return (
     <View style={styles.dotWrap}>
-      <Animated.View style={[styles.dot, styles.dotRing, ring]} />
-      <View style={styles.dot} />
+      <Animated.View style={[styles.dot, styles.dotRing, color && { backgroundColor: color }, ring]} />
+      <View style={[styles.dot, color && { backgroundColor: color }]} />
     </View>
   );
 }

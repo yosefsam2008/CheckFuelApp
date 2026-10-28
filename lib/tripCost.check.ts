@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 require.cache[require.resolve('@react-native-async-storage/async-storage')] = { exports: { default: {} } } as NodeModule;
 
 const { calculateAdjustedConsumption, calculateVehicleAge } = require('./data/fuelConsumptionAdjustments');
-const { computeTrip, DEFAULT_PREFS, priceFor, tripInputs, PRICE_HINT } = require('./tripCost') as typeof import('./tripCost');
-const { decodePolyline } = require('./route') as typeof import('./route');
+const { computeTrip, DEFAULT_PREFS, priceFor, tripInputs, PRICE_HINT, routeCosts, cheapestIndex } = require('./tripCost') as typeof import('./tripCost');
+const { decodePolyline, routeOptions } = require('./route') as typeof import('./route');
 
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
 const year = new Date().getFullYear() - 5;
@@ -70,5 +70,27 @@ assert.equal(ti({ fuelPrice: '100' }).missing, null);
 
 // Google's reference polyline
 assert.deepEqual(decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@'), [[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]]);
+
+// route options: server list (max 3), and an older server's single route
+const server = { distanceMeters: 50000, durationSeconds: 2400, polyline: 'a', routes: [
+  { distanceMeters: 50000, durationSeconds: 2400, polyline: 'a', name: 'כביש 6', hasToll: true },
+  { distanceMeters: 43210, durationSeconds: 3000, polyline: 'b', name: 'כביש 4', hasToll: false },
+  { distanceMeters: 61000, durationSeconds: 2700, polyline: 'c', name: 'כביש 2', hasToll: false },
+  { distanceMeters: 70000, durationSeconds: 2000, polyline: 'd', name: 'x', hasToll: false },
+] };
+const opts = routeOptions(server);
+assert.equal(opts.length, 3);
+assert.deepEqual(opts[0], { polyline: 'a', distanceKm: 50, durationMin: 40, hasToll: true, name: 'כביש 6' });
+assert.deepEqual(routeOptions({ distanceMeters: 1000, durationSeconds: 90 }), [{ polyline: '', distanceKm: 1, durationMin: 2, hasToll: false, name: '' }]);
+
+// each route's cost is exactly computeTrip with that route's km (one way and round trip)
+for (const roundTrip of [false, true]) {
+  const prefs = { mode: 'eco' as const, ac: true };
+  const trips = routeCosts(opts.map((o) => o.distanceKm), { vehicle: car, roundTrip, fuelPrice: '7.5' }, prefs);
+  opts.forEach((o, i) => assert.deepEqual(trips[i], computeTrip(car, o.distanceKm * (roundTrip ? 2 : 1), 7.5, prefs)));
+  assert.equal(cheapestIndex(trips), 1); // the 43.2 km route
+}
+assert.deepEqual(routeCosts([10], { vehicle: car, roundTrip: false, fuelPrice: '0' }, DEFAULT_PREFS), [null]);
+assert.equal(cheapestIndex([null, null]), -1);
 
 console.log('tripCost checks passed');

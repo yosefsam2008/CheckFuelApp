@@ -20,7 +20,14 @@ export const spring = {
   digit: { damping: 18, stiffness: 280, mass: 0.3 }, // Motion Primitives "Sliding Number"
   // critical damping is 2*sqrt(260*0.6) = 24.98, so 25 never overshoots; clamping guards a moving start
   calm: { damping: 25, stiffness: 260, mass: 0.6, overshootClamping: true },
+  thumb: { damping: 20, stiffness: 260 }, // segmented control thumb
 };
+
+/** Result screen motion tokens (spec: one hero roll, everything else event-driven) */
+export const DUR = { hero: 1000, change: 600, enter: 420, card: 360, fade: 150, toastIn: 260, toastOut: 200, toastStay: 1800 };
+export const STAGGER = 60; // between entering cards
+export const PLACE_STAGGER = 80; // between digit columns: highest place lands first
+export const EASE = { hero: Easing.bezier(0.16, 1, 0.3, 1), out: Easing.bezier(0.2, 0.8, 0.2, 1) };
 
 export const dur = { micro: 150, std: 300, emph: 550 };
 

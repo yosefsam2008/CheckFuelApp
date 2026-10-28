@@ -4,7 +4,8 @@ import { StyleSheet, Text, TextInput, View, type KeyboardTypeOptions, type Style
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { useEnter } from '../../constants/motion';
 import { LTR, NO_OUTLINE } from '../../constants/rtl';
-import { colors, Heebo, radius } from '../../constants/theme';
+import { colors } from '../../constants/colors';
+import { Rubik } from '../../constants/themeV2';
 import { PressableScale } from '../calculator/PressableScale';
 
 interface FieldProps {
@@ -86,15 +87,15 @@ export function Message({ icon, title, body, link, onLink }: { icon: React.React
 
 const styles = StyleSheet.create({
   field: { marginTop: 14 },
-  label: { fontFamily: Heebo.semi, fontSize: 14, color: colors.textMuted, marginBottom: 6 },
-  box: { height: 52, flexDirection: 'row', alignItems: 'center', borderRadius: radius.tile, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, paddingHorizontal: 14, gap: 8 },
-  input: { flex: 1, minWidth: 0, height: '100%', fontFamily: Heebo.bold, fontSize: 17, color: colors.text },
+  label: { fontFamily: Rubik.semi, fontSize: 14, color: colors.textMuted, marginBottom: 6 },
+  box: { height: 52, flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surfaceRaised, paddingHorizontal: 14, gap: 8 },
+  input: { flex: 1, minWidth: 0, height: '100%', fontFamily: Rubik.bold, fontSize: 17, color: colors.text },
   inputWrap: { flex: 1, minWidth: 0, height: '100%' },
   overlay: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', alignItems: 'center' },
-  suffix: { flexShrink: 0, fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted }, // the input gives way, not the unit
-  message: { marginTop: 16, padding: 16, borderRadius: radius.tile, backgroundColor: colors.bg, alignItems: 'flex-start', gap: 4 },
-  msgTitle: { fontFamily: Heebo.bold, fontSize: 16, color: colors.text, marginTop: 4 },
-  msgBody: { fontFamily: Heebo.regular, fontSize: 14, color: colors.textMuted },
+  suffix: { flexShrink: 0, fontFamily: Rubik.regular, fontSize: 13, color: colors.textMuted }, // the input gives way, not the unit
+  message: { alignItems: 'flex-start', gap: 4 }, // inside the add screen's white panel
+  msgTitle: { fontFamily: Rubik.bold, fontSize: 16, color: colors.text, marginTop: 4 },
+  msgBody: { fontFamily: Rubik.regular, fontSize: 14, color: colors.textMuted },
   linkBtn: { minHeight: 44, justifyContent: 'center' },
-  link: { fontFamily: Heebo.bold, fontSize: 14, color: colors.guideText, textDecorationLine: 'underline' },
+  link: { fontFamily: Rubik.bold, fontSize: 14, color: colors.accentText, textDecorationLine: 'underline' },
 });

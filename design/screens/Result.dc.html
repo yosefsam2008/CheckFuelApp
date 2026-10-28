@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>CheckFuel — תוצאה</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0A7A43}a:hover{color:#075C32}
+button{font-family:inherit;cursor:pointer;transition:transform 120ms ease-out}
+button:active{transform:scale(0.98)}
+.rt{transition:stroke 240ms ease, stroke-width 240ms ease}
+.bub{transition:background-color 240ms ease, color 240ms ease, transform 240ms cubic-bezier(.2,.8,.2,1)}
+.opt{transition:background-color 220ms ease, color 220ms ease, border-color 220ms ease}
+.thumb{transition:transform 280ms cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</helmet>
+<div dir="rtl" style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F5F1; font-family: Rubik, system-ui, sans-serif; color: #0B1410; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 14px; overflow: hidden">
+
+  <!-- top bar -->
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+    <button aria-label="חזרה" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #E2E7E1; background: #FFFFFF; color: #0B1410; display: flex; align-items: center; justify-content: center; padding: 0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+    </button>
+    <div style="display: flex; flex-direction: column; align-items: center">
+      <span style="font-size: 12px; color: #5B6660">הרכב שלי · 14.5 ק״מ לליטר</span>
+      <span style="font-size: 17px; font-weight: 700">ויצמן ← אילת</span>
+    </div>
+    <button aria-label="שמור להיסטוריה" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #E2E7E1; background: #FFFFFF; color: #0B1410; display: flex; align-items: center; justify-content: center; padding: 0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>
+    </button>
+  </div>
+
+  <!-- route options -->
+  <div role="radiogroup" aria-label="מסלולים" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; flex-shrink: 0">
+    <sc-for list="{{routes}}" as="r" hint-placeholder-count="3">
+      <button class="opt" role="radio" aria-checked="{{r.on}}" onClick="{{r.pick}}" style="{{r.style}}">
+        <span style="display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700">{{r.name}}<span style="{{r.dotStyle}}"></span></span>
+        <span style="{{r.metaStyle}}">{{r.time}}</span>
+        <span dir="ltr" style="font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums">₪{{r.cost}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <!-- total -->
+  <div style="background: #0B1410; border-radius: 22px; padding: 16px 18px; color: #FFFFFF; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+      <span style="font-size: 13px; color: #9FB0A6">עלות דלק · {{routeName}}</span>
+      <div style="position: relative; display: flex; padding: 3px; border-radius: 12px; background: #17231D">
+        <span class="thumb" style="{{thumbStyle}}"></span>
+        <button aria-pressed="{{oneOn}}" onClick="{{setOne}}" style="{{oneStyle}}">כיוון אחד</button>
+        <button aria-pressed="{{roundOn}}" onClick="{{setRound}}" style="{{roundStyle}}">הלוך-חזור</button>
+      </div>
+    </div>
+    <span dir="ltr" style="font-size: 64px; font-weight: 800; line-height: 0.95; letter-spacing: -0.035em; text-align: right; font-variant-numeric: tabular-nums"><span style="color: #40D63C; font-size: 32px; font-weight: 700; margin-right: 4px">₪</span>{{total}}</span>
+    <span style="font-size: 13px; color: #9FB0A6">{{liters}} ליטר · {{km}} ק״מ · ₪7.77 לליטר</span>
+  </div>
+
+  <!-- split & share -->
+  <div style="background: #FFFFFF; border: 1px solid #E2E7E1; border-radius: 22px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 13px; color: #5B6660">כל אחד מעביר</span>
+        <span dir="ltr" style="font-size: 36px; font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; text-align: right; font-variant-numeric: tabular-nums"><span style="font-size: 20px; font-weight: 700; color: #22A321; margin-right: 3px">₪</span>{{per}}</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+        <div style="display: flex; align-items: center; gap: 2px; background: #F3F5F1; border-radius: 14px; padding: 3px">
+          <button aria-label="הוסף נוסע" onClick="{{inc}}" style="width: 40px; height: 40px; border-radius: 11px; border: 0; background: #FFFFFF; color: #0B1410; font-size: 20px; padding: 0">+</button>
+          <span style="width: 30px; text-align: center; font-size: 18px; font-weight: 700">{{pax}}</span>
+          <button aria-label="הסר נוסע" onClick="{{dec}}" style="width: 40px; height: 40px; border-radius: 11px; border: 0; background: #FFFFFF; color: #0B1410; font-size: 20px; padding: 0">−</button>
+        </div>
+        <span style="font-size: 11px; color: #5B6660">נוסעים</span>
+      </div>
+    </div>
+    <button style="height: 52px; border-radius: 16px; border: 0; background: #40D63C; color: #0B1410; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" x2="12" y1="2" y2="15"></line></svg>
+      שלח לחברים
+    </button>
+  </div>
+
+  <!-- navigate -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid #E2E7E1; border-radius: 16px; background: #FFFFFF; overflow: hidden; flex-shrink: 0">
+    <button style="height: 46px; border: 0; border-left: 1px solid #E2E7E1; background: transparent; color: #0B1410; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>נווט ב-Waze</button>
+    <button style="height: 46px; border: 0; background: transparent; color: #0B1410; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>Apple Maps</button>
+  </div>
+
+  <!-- ad slot -->
+  <div style="height: 50px; border-radius: 10px; background: #E9EDE8; display: flex; align-items: center; justify-content: center; gap: 8px; color: #5B6660; font-size: 12px; flex-shrink: 0">
+    <span style="font-size: 11px; font-weight: 600">מודעה</span>
+    <span>320×50</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { round: true, pax: 3, sel: 0 }; }
+  renderVals() {
+    const PRICE = 7.77, KPL = 14.5;
+    const R = [
+      { name: 'כביש 40', km: 352, time: '4:10 שע׳', toll: false },
+      { name: 'כביש 90', km: 371, time: '4:25 שע׳', toll: false },
+      { name: 'כביש 6', km: 365, time: '4:00 שע׳', toll: true }
+    ];
+    const { round, pax, sel } = this.state;
+    const mult = round ? 2 : 1;
+    const costOf = (r) => Math.round(r.km * mult / KPL * PRICE);
+    const costs = R.map(costOf);
+    const min = Math.min.apply(null, costs);
+    const S = R[sel];
+    const km = S.km * mult;
+    const liters = km / KPL;
+    const total = costs[sel];
+    const line = (i) => i === sel ? 'stroke: #0B1410; stroke-width: 4.5' : 'stroke: #D3DBD4; stroke-width: 3';
+    const bub = (i) => 'position: absolute; height: 28px; padding: 0 10px; border-radius: 14px; border: 0; font-size: 12px; font-weight: 800; box-shadow: 0 2px 6px rgba(11,20,16,0.18); font-variant-numeric: tabular-nums; ' + (i === sel ? 'background: #0B1410; color: #FFFFFF; z-index: 2; transform: scale(1.08)' : 'background: #FFFFFF; color: #0B1410; z-index: 1');
+    const pick = (i) => () => this.setState({ sel: i });
+    const segBase = 'position: relative; z-index: 1; width: 78px; height: 30px; border-radius: 9px; border: 0; background: transparent; font-size: 12px; font-weight: 600; padding: 0; color: ';
+    return {
+      r0Style: line(0), r1Style: line(1), r2Style: line(2),
+      b0Style: bub(0), b1Style: bub(1), b2Style: bub(2),
+      c0: String(costs[0]), c1: String(costs[1]), c2: String(costs[2]),
+      pick0: pick(0), pick1: pick(1), pick2: pick(2),
+      routes: R.map((r, i) => {
+        const on = i === sel;
+        return {
+          name: r.name, time: r.time + (r.toll ? ' · אגרה' : ''), cost: String(costs[i]), on: String(on), pick: pick(i),
+          style: 'min-height: 70px; border-radius: 16px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; ' + (on ? 'background: #0B1410; color: #FFFFFF; border: 1px solid #0B1410' : 'background: #FFFFFF; color: #0B1410; border: 1px solid #E2E7E1'),
+          metaStyle: 'font-size: 11px; color: ' + (on ? '#9FB0A6' : '#5B6660'),
+          dotStyle: costs[i] === min ? 'width: 7px; height: 7px; border-radius: 4px; background: #40D63C; display: block' : 'display: none'
+        };
+      }),
+      routeName: S.name + (costs[sel] === min ? ' · הכי זול' : ''),
+      km: String(km), liters: liters.toFixed(1), total: String(total),
+      per: String(Math.round(total / pax)), pax: String(pax),
+      tripLabel: round ? 'הלוך-חזור' : 'כיוון אחד',
+      thumbStyle: 'position: absolute; top: 3px; right: 3px; width: 78px; height: 30px; border-radius: 9px; background: #FFFFFF; transform: translateX(' + (round ? '-78px' : '0') + ')',
+      oneOn: String(!round), roundOn: String(round),
+      oneStyle: segBase + (round ? '#9FB0A6' : '#0B1410'),
+      roundStyle: segBase + (round ? '#0B1410' : '#9FB0A6'),
+      setOne: () => this.setState({ round: false }),
+      setRound: () => this.setState({ round: true }),
+      inc: () => this.setState({ pax: Math.min(7, pax + 1) }),
+      dec: () => this.setState({ pax: Math.max(1, pax - 1) })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 // Result screen (design Result.dc.html): route choice, dark cost card with rolling total + trip type,
 // split & share with passengers, navigation. No map here: the route shape lives on the home screen.
 // Motion: one hero (the total's digit roll); everything else only answers an event. Entrance: ResultMotion.
-import { Bookmark, Check, ChevronRight, Navigation, Send } from 'lucide-react-native';
+import { Check, ChevronRight, History, Navigation, Send } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { AccessibilityInfo, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -115,7 +115,7 @@ function ResultBody({ visible, data, octane, routes, onSave, onClose }: Props & 
             {from && to ? `${from} ← ${to}` : `${Math.round(result.distance)} ק״מ`}
           </Text>
         </View>
-        <SaveButton onSave={onSave} />
+        <View style={styles.iconSpacer} />
       </View>
 
       {single ? (
@@ -193,6 +193,10 @@ function ResultBody({ visible, data, octane, routes, onSave, onClose }: Props & 
         <ShareButton share={share} />
       </Animated.View>
 
+      <Animated.View style={enter.share}>
+        <SaveButton onSave={onSave} />
+      </Animated.View>
+
       {navApps.length > 0 && (
         <Animated.View style={[styles.navRow, enter.nav]}>
           {navApps.slice(0, 2).map((a, i) => (
@@ -248,14 +252,16 @@ function PaxCount({ value, dir }: { value: number; dir: 1 | -1 }) {
   );
 }
 
-/** Bookmark: fills and pops on save. The toast and closing the screen come from the hook. */
+/** Labeled, under the split card: an unlabeled corner icon read as navigation and never said where the trip goes.
+ * The icon swaps to a check and pops; the toast and closing the screen come from the hook. */
 function SaveButton({ onSave }: { onSave: () => void }) {
   const [saved, setSaved] = useState(false);
   const s = useSharedValue(1);
   const pop = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return (
     <PressableScale
-      style={styles.iconBtn}
+      style={styles.saveBtn}
+      scaleTo={0.97}
       onPress={() => {
         if (!saved) {
           setSaved(true);
@@ -268,8 +274,9 @@ function SaveButton({ onSave }: { onSave: () => void }) {
       accessibilityLabel={saved ? 'נשמר בהיסטוריה' : 'שמור להיסטוריה'}
     >
       <Animated.View style={pop}>
-        <Bookmark size={20} color={colors.text} fill={saved ? colors.text : 'none'} strokeWidth={2} />
+        {saved ? <Check size={18} color={colors.text} strokeWidth={2.4} /> : <History size={18} color={colors.text} strokeWidth={2} />}
       </Animated.View>
+      <Text style={styles.navText}>{saved ? 'נשמר בהיסטוריה' : 'שמירה בהיסטוריה'}</Text>
     </PressableScale>
   );
 }
@@ -325,6 +332,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 12 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   iconBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
+  iconSpacer: { width: 44 }, // keeps the title centred opposite the back button
+  saveBtn: { height: 52, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surfaceRaised, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   titleBox: { flex: 1, alignItems: 'center' },
   small: { fontFamily: Rubik.regular, fontSize: 12, color: colors.textMuted },
   title: { fontFamily: Rubik.bold, fontSize: 17, color: colors.text },

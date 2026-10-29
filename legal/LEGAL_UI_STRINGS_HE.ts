@@ -53,7 +53,7 @@ export const LEGAL_UI_STRINGS = {
 
   // Toast Messages
   toasts: {
-    dataSaved: '✅ הנתונים נשמרו בהתקן שלך בלבד',
+    dataSaved: '✅ נשמר בהיסטוריה, בהתקן שלך בלבד',
     dataDeleted: '🗑️ הנתונים נמחקו',
     acceptedTerms: '✓ תודה שקבלת את התנאים',
   },

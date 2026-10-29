@@ -5,8 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { CalendarDays, Car, ChevronDown, ChevronRight, Droplet, Fuel, Gauge, Info, ListPlus, Search, ShieldCheck, WifiOff, Zap } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, ReducedMotionConfig, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
+import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition, ReducedMotionConfig, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale } from '../components/calculator/PressableScale';
 import { Segmented } from '../components/calculatorV2/Segmented';
@@ -45,6 +45,9 @@ const PREVIEW = [
 
 type Tab = 'plate' | 'manual';
 type Phase = 'idle' | 'searching' | 'found' | 'notfound' | 'offline' | 'duplicate';
+
+// the stage shrinks when the search button leaves; the panel under it glides up instead of jumping mid-reveal
+const reflow = LinearTransition.duration(260);
 
 const readList = async (): Promise<Vehicle[]> => JSON.parse((await AsyncStorage.getItem('vehicles')) ?? '[]');
 
@@ -96,6 +99,7 @@ export default function AddVehicleScreen() {
   };
 
   const search = async () => {
+    Keyboard.dismiss(); // the keyboard closes during the scan, not on top of the reveal
     setPhase('searching');
     try {
       const d = plateDigits(plate);
@@ -199,7 +203,7 @@ export default function AddVehicleScreen() {
 
         {tab === 'plate' ? (
           <Animated.View key="plate" entering={fade} style={styles.stack}>
-            <View style={styles.stage}>
+            <Animated.View style={styles.stage} layout={reflow}>
               <View style={styles.stageHead}>
                 <Text style={styles.stageTitle}>מה מספר הרישוי?</Text>
                 <Text style={styles.stageHint}>7 או 8 ספרות</Text>
@@ -207,6 +211,7 @@ export default function AddVehicleScreen() {
               <LicensePlateInput value={plate} onChangeText={onPlate} editable={!searching} scanning={reveal === 'searching'} shake={reveal === 'notFound'} />
 
               {phase !== 'found' && (
+                <Animated.View exiting={FadeOut.duration(150)}>
                 <PressableScale
                   onPress={canSearch ? search : undefined}
                   style={[styles.searchBtn, !canSearch && !searching && styles.searchOff]}
@@ -217,15 +222,16 @@ export default function AddVehicleScreen() {
                   {searching ? <ActivityIndicator size="small" color={colors.text} /> : <Search size={18} color={canSearch ? colors.text : colors.textMutedInverse} strokeWidth={2.4} />}
                   <Text style={[styles.searchText, !canSearch && !searching && styles.searchTextOff]}>{searching ? 'מחפש…' : 'חפש רכב'}</Text>
                 </PressableScale>
+                </Animated.View>
               )}
 
-              <View style={styles.source}>
+              <Animated.View style={styles.source} layout={reflow}>
                 <ShieldCheck size={14} color={colors.textMutedInverse} strokeWidth={2} />
                 <Text style={styles.sourceText}>נתונים רשמיים ממאגר משרד התחבורה</Text>
-              </View>
-            </View>
+              </Animated.View>
+            </Animated.View>
 
-            <View style={styles.panel}>
+            <Animated.View style={styles.panel} layout={reflow}>
               {reveal === 'searching' ? (
                 <VehicleCardSkeleton />
               ) : phase === 'found' && found ? (
@@ -270,7 +276,7 @@ export default function AddVehicleScreen() {
                   ))}
                 </View>
               )}
-            </View>
+            </Animated.View>
           </Animated.View>
         ) : (
           <Animated.View key="manual" entering={fade} style={styles.stack}>

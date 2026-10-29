@@ -13,6 +13,7 @@ function RoundButton({ icon, label, disabled, onPress }: { icon: React.ReactNode
   return (
     <PressableScale
       scaleTo={0.9}
+      hitSlop={4}
       disabled={disabled}
       onPress={onPress}
       style={[styles.btn, disabled && { opacity: 0.4 }]}

@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { StatusBar, Platform, I18nManager } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
+import { colors } from '../constants/theme';
 import { initAds } from '../lib/ads/initAds';
 import { runAutoMigration } from '../lib/utils/evDataMigration';
 import * as Updates from 'expo-updates';
@@ -62,7 +63,7 @@ export default function RootLayout() {
     <BottomSheetModalProvider>
     <Stack screenOptions={{
       headerShown: false,
-      contentStyle: { backgroundColor: '#f5f7fa' }
+      contentStyle: { backgroundColor: colors.bg }
     }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="addVehicle" />

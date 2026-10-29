@@ -7,6 +7,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, Vi
 import { haptic } from '../../constants/motion';
 import { NO_OUTLINE } from '../../constants/rtl';
 import { colors, Heebo, radius } from '../../constants/theme';
+import { markSessionError } from '../../lib/growth';
 import { Favorites, FavKey, MY_LOCATION, Place, placeLabel } from '../../lib/places';
 import type { LatLng } from '../../lib/route';
 import { usePlaceSearch } from '../../lib/usePlaceSearch';
@@ -115,6 +116,7 @@ export function PlaceSheet({ sheetRef, title, placeholder, allowMyLocation, rece
       onPick(r);
       sheetRef.current?.dismiss();
     } catch (e) {
+      markSessionError();
       setError(failMsg(e));
     } finally {
       setBusy(false);
@@ -130,6 +132,7 @@ export function PlaceSheet({ sheetRef, title, placeholder, allowMyLocation, rece
       onSaveFavorite(k, await search.select(p));
       haptic.success();
     } catch (e) {
+      markSessionError();
       setError(failMsg(e));
     } finally {
       setBusy(false);

@@ -23,7 +23,8 @@ import { DUR, haptic, spring } from '../../constants/motion';
 import { LTR } from '../../constants/rtl';
 import { colors } from '../../constants/colors';
 import { Rubik } from '../../constants/themeV2';
-import { formatAmount, roundHalf, splitMessage } from '../../lib/format';
+import { formatAmount, roundHalf } from '../../lib/format';
+import { shareSplit } from '../../lib/growth';
 import type { RouteOption } from '../../lib/route';
 import { formatDuration, RouteCards } from './RouteCards';
 import { ENTRANCE, useResultEntrance } from './ResultMotion';
@@ -98,7 +99,7 @@ function ResultBody({ visible, data, octane, routes, onSave, onClose }: Props & 
     setPaxDir(d);
     setPax(next);
   };
-  const share = () => Share.share({ message: splitMessage({ total: result.totalCost, km: result.distance, roundTrip, from, to }, pax) });
+  const share = () => shareSplit({ total: result.totalCost, km: result.distance, roundTrip, from, to, people: pax });
   const single = routes?.options.length === 1 ? routes.options[0] : undefined;
 
   return (

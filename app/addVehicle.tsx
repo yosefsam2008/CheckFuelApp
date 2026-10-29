@@ -25,6 +25,7 @@ import { Rubik } from '../constants/themeV2';
 import { useOpenInfoMenu } from '../hooks/use-info-menu';
 import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
 import type { Vehicle } from '../lib/data/vehiclesData';
+import { markSessionError } from '../lib/growth';
 import { isValidConsumption, parseDecimal, toDisplay, toStored } from '../lib/vehicles/consumption';
 import { lookupPlate, plateDigits } from '../lib/vehicles/plateLookup';
 import { derivePhase, formatPlate, titleCase } from '../lib/vehicles/reveal';
@@ -87,6 +88,7 @@ export default function AddVehicleScreen() {
       goBack();
     } catch (e) {
       console.error('Failed to save vehicle:', e);
+      markSessionError();
       setError(LEGAL_UI_STRINGS.errors.apiError);
     }
   };
@@ -108,6 +110,7 @@ export default function AddVehicleScreen() {
       console.error('Error checking duplicates:', e);
     }
     const r = await lookupPlate(plate);
+    if (r.status === 'offline') markSessionError();
     if (r.status === 'found') {
       const { model, year } = r.vehicle;
       setFound(r.vehicle);

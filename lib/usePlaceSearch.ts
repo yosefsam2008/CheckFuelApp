@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { autocomplete, filterLocal, isLocal, log, Place, placeDetails, placeLabel, samePlace } from './places';
 import type { LatLng } from './route';
+import { markSessionError } from './growth';
 
 // Places session token: only needs to be unique, not secure, so no native crypto module.
 const randomUUID = () =>
@@ -46,6 +47,7 @@ export function usePlaceSearch(local: Place[], bias: LatLng | null) {
         setStatus(r.length ? 'ok' : 'empty');
       } catch (e) {
         if (ctrl.signal.aborted) return;
+        markSessionError();
         setRemote([]);
         setStatus(e instanceof TypeError ? 'offline' : 'error'); // RN's fetch throws TypeError on network failure
       }

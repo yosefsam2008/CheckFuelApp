@@ -17,6 +17,7 @@ import { StatusBar, Platform, I18nManager } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { colors } from '../constants/theme';
 import { initAds } from '../lib/ads/initAds';
+import { markFirstOpen, useReviewAfterShare } from '../lib/growth';
 import { runAutoMigration } from '../lib/utils/evDataMigration';
 import * as Updates from 'expo-updates';
 
@@ -24,7 +25,10 @@ export default function RootLayout() {
   const [fontsLoaded] = useFonts({ Heebo_400Regular, Heebo_500Medium, Heebo_600SemiBold, Heebo_700Bold, Heebo_800ExtraBold, Heebo_900Black, Nunito_800ExtraBold,
     Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold }); // Rubik: CalculatorV2
 
+  useReviewAfterShare();
+
   useEffect(() => {
+    markFirstOpen();
     const initializeApp = async () => {
       try {
         // 1. טיפול ב-RTL

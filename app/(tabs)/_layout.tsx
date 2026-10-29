@@ -3,7 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronLeft, ExternalLink, Scale, SlidersHorizontal, Trash2, X } from 'lucide-react-native';
+import { ChevronLeft, ExternalLink, Scale, SlidersHorizontal, Star, Trash2, X } from 'lucide-react-native';
 import { Alert, Image, Linking, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Updates from 'expo-updates';
@@ -14,6 +14,7 @@ import { LEGAL_VERSION } from '../../legal/LEGAL_CONTENT_HE';
 import { InfoMenuContext } from '../../hooks/use-info-menu';
 import { PRIVACY_POLICY_URL } from '../../legal/LEGAL_UI_STRINGS_HE';
 import { privacyOptionsRequired, showPrivacyOptions } from '../../lib/ads/initAds';
+import { openStorePage } from '../../lib/growth';
 import { colors } from '../../constants/colors';
 import { LTR } from '../../constants/rtl';
 import { Rubik } from '../../constants/themeV2';
@@ -117,6 +118,9 @@ function SideMenu({ visible, onClose, onDataDeleted }: { visible: boolean; onClo
               <MenuRow divider icon={<ExternalLink size={18} color={colors.text} strokeWidth={2} />} label="מדיניות פרטיות" sub="נפתח באתר" trail="external" onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} role="link" />
               {showAdPrivacy && (
                 <MenuRow divider icon={<SlidersHorizontal size={18} color={colors.text} strokeWidth={2} />} label="הגדרות פרטיות לפרסומות" trail="chevron" onPress={() => showPrivacyOptions().catch(() => {})} role="button" />
+              )}
+              {Platform.OS === 'android' && (
+                <MenuRow divider icon={<Star size={18} color={colors.text} strokeWidth={2} />} label="דרגו אותנו" sub="נפתח ב-Google Play" trail="external" onPress={openStorePage} role="link" />
               )}
             </View>
 

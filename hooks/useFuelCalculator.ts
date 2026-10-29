@@ -10,6 +10,7 @@ import type { InputMode, OriginStatus, RouteStatus } from '../components/calcula
 import { LEGAL_UI_STRINGS } from '../legal/LEGAL_UI_STRINGS_HE';
 import { afterCalculation, afterShown, AdState, loadAdState, saveAdState, shouldShowInterstitial } from '../lib/ads/policy';
 import { saveTrip } from '../lib/calc/history';
+import { markSessionError, onTripSaved } from '../lib/growth';
 import { addRecent, Favorites, FavKey, isGpsPlace, loadFavorites, loadOrigin, loadRecents, MY_LOCATION, Place, placeEndpoint, placeLabel, saveFavorites, saveOrigin, saveRecents } from '../lib/places';
 import { DEFAULT_PRICES, defaultIO, getPrices, PriceInfo, PriceResult } from '../lib/prices';
 import { endpointKey, getRoute, LatLng, RouteResult, routeOptions as toOptions, routeProviderConfigured } from '../lib/route';
@@ -43,6 +44,7 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
       setVehicles(stored ? (JSON.parse(stored) as Vehicle[]) : []);
     } catch (error) {
       console.error('Failed to load vehicles:', error);
+      markSessionError();
       setToast({ text: LEGAL_UI_STRINGS.errors.apiError, type: 'error' });
     }
   }, []);
@@ -77,6 +79,7 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
     let cancelled = false;
     const apply = (r: PriceResult) => {
       if (cancelled) return;
+      if (r.source === 'default') markSessionError(); // live fetch failed and nothing cached
       setLivePrices(r.source === 'default' ? null : r.prices);
       setPriceInfo(r.info);
     };
@@ -201,6 +204,7 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
       setRouteStatus('ok');
     } catch (e) {
       if (id !== routeRequest.current) return;
+      markSessionError();
       const msg = (e as Error).message;
       setRoute(null);
       setRouteStatus('error');
@@ -376,9 +380,11 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
       const status = await saveTrip(tripRecord);
       dismissResult();
       setToast({ text: status === 'duplicate' ? 'כבר נשמר' : LEGAL_UI_STRINGS.toasts.dataSaved, type: 'success' });
+      if (status === 'saved') onTripSaved();
     } catch (error) {
       savedFor.current = null; // nothing was written, so a retry must be allowed
       console.error('Failed to save calculation:', error);
+      markSessionError();
       setToast({ text: LEGAL_UI_STRINGS.errors.apiError, type: 'error' });
     }
   };

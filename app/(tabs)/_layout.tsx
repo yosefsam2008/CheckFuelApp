@@ -200,6 +200,8 @@ export default function TabsLayout() {
             </TouchableOpacity>
           ),
           sceneStyle: { backgroundColor: '#f5f7fa' },
+          // background tabs stop re-rendering while another tab is shown
+          freezeOnBlur: true,
         }}
       >
         <Tabs.Screen

@@ -23,7 +23,7 @@ interface Props {
   isCurrent: boolean;
 }
 
-export function HistoryHero({ summary, months, selectedKey, onSelectMonth, isCurrent }: Props) {
+export const HistoryHero = React.memo(function HistoryHero({ summary, months, selectedKey, onSelectMonth, isCurrent }: Props) {
   const reduced = useReducedMotion();
   const swap = reduced ? undefined : FadeIn.duration(220);
   // display only: electric trips store kWh in fuelConsumed, so they stay out of the liters sum
@@ -71,7 +71,7 @@ export function HistoryHero({ summary, months, selectedKey, onSelectMonth, isCur
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surfaceInverse, borderRadius: 24, paddingTop: 18, paddingHorizontal: 18, paddingBottom: 14, gap: 14 },

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { History as HistoryIcon, Info } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +17,6 @@ import { colors } from '../../constants/colors';
 import { Rubik } from '../../constants/themeV2';
 import { formatMoney } from '../../lib/format';
 import { useOpenInfoMenu } from '../../hooks/use-info-menu';
-import { loadTrips } from '../../lib/calc/history';
 import { lastMonths, monthKey, monthName, monthSummary } from '../../lib/calc/monthly';
 import { LEGAL_UI_STRINGS } from '../../legal/LEGAL_UI_STRINGS_HE';
 import type { TripRecord } from '../../types/trip';
@@ -62,6 +61,7 @@ export default function HistoryScreen() {
 
   const [trips, setTripsState] = useState<TripRecord[]>([]);
   const tripsRef = useRef<TripRecord[]>([]);
+  const rawRef = useRef<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [selected, setSelected] = useState<number | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -85,10 +85,14 @@ export default function HistoryScreen() {
       let alive = true;
       (async () => {
         try {
-          const loaded = await loadTrips();
+          const raw = (await AsyncStorage.getItem(KEY)) ?? '';
           if (!alive) return;
-          setNow(Date.now());
-          setTrips(loaded);
+          // same day: keep `now`, so coming back to the tab does not recompute and redraw everything
+          setNow((n) => (new Date(n).toDateString() === new Date().toDateString() ? n : Date.now()));
+          // unchanged history: keep the same objects so the memoized rows and hero skip re-rendering
+          if (raw === rawRef.current) return;
+          rawRef.current = raw;
+          setTrips(raw ? JSON.parse(raw) : []);
         } catch (error) {
           console.error('Failed to load history:', error);
           if (alive) failToast();
@@ -108,8 +112,8 @@ export default function HistoryScreen() {
 
   const currentKey = monthKey(now);
   const selectedKey = selected ?? currentKey;
-  const months = lastMonths(trips, now);
-  const summary = monthSummary(trips, selectedKey, now);
+  const months = useMemo(() => lastMonths(trips, now), [trips, now]);
+  const summary = useMemo(() => monthSummary(trips, selectedKey, now), [trips, selectedKey, now]);
 
   // list slides in from the side of the month that was picked: newer months sit at the left end of the chart
   const slideX = useSharedValue(0);
@@ -126,11 +130,12 @@ export default function HistoryScreen() {
   }, [selectedKey, reduced, slideX, slideO]);
   const slideStyle = useAnimatedStyle(() => ({ opacity: slideO.value, transform: [{ translateX: slideX.value }] }));
 
-  const selectMonth = (key: number) => {
+  const selectMonth = useCallback((key: number) => {
     setSelected(key);
     setOpenId(null);
     setConfirmAll(false);
-  };
+  }, []);
+  const toggleTrip = useCallback((id: string) => setOpenId((cur) => (cur === id ? null : id)), []);
 
   // optimistic: remove, write, and put everything back if the write fails
   const remove = async (next: TripRecord[], removed: TripRecord[]) => {
@@ -144,7 +149,9 @@ export default function HistoryScreen() {
       failToast();
     }
   };
-  const deleteTrip = (trip: TripRecord) => remove(tripsRef.current.filter((t) => t.id !== trip.id), [trip]);
+  // stable so memoized rows skip re-rendering; remove only touches refs and state setters
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const deleteTrip = useCallback((trip: TripRecord) => remove(tripsRef.current.filter((t) => t.id !== trip.id), [trip]), []);
   const clearAll = () => {
     haptic.press();
     remove([], tripsRef.current);
@@ -218,7 +225,7 @@ export default function HistoryScreen() {
                   ) : (
                     summary.trips.map((t, i) => (
                       <Enter key={t.id} delay={Math.min(280 + 40 * i, 520)} animate={intro}>
-                        <TripRow trip={t} first={i === 0} open={openId === t.id} onToggle={() => setOpenId(openId === t.id ? null : t.id)} onDelete={deleteTrip} />
+                        <TripRow trip={t} first={i === 0} open={openId === t.id} onToggle={toggleTrip} onDelete={deleteTrip} />
                       </Enter>
                     ))
                   )}

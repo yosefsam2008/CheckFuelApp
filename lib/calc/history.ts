@@ -38,7 +38,6 @@ export async function removeTrip(id: string) {
   await AsyncStorage.setItem('tripHistory', JSON.stringify(history.filter((t) => t.id !== id)));
 }
 
-export const loadTrips = () => readHistory().catch(() => [] as TripRecord[]);
 
 export const hasRoute = (routes: SavedRoute[], km: number) => routes.some((r) => r.km === km);
 export function addRoute(routes: SavedRoute[], label: string, km: number): SavedRoute[] {

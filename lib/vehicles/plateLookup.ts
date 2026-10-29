@@ -32,7 +32,7 @@ function detectFuelTypeCanonical(record: any): FuelType {
        raw.includes('phev') ||
        raw.includes('plug-in') ||
        raw.includes('פלאג')) {
-        console.log('---------------------- Detected PHEV fuel type based on:', raw);
+        if (__DEV__) console.log('Detected PHEV fuel type based on:', raw);
     return "PHEV";
   }
 
@@ -120,10 +120,14 @@ async function searchPlate(plate: string, fetchImpl: typeof fetch, timeoutMs: nu
     }
   });
 
-  const results = await Promise.all(promises);
+  // the first dataset holding the plate answers right away; the slower ones are cancelled
+  const first = new Promise<NonNullable<DataGovResult>>((resolve) => promises.forEach((p) => p.then((r) => r && resolve(r))));
+  const found = await Promise.race([first, Promise.all(promises).then((rs) => rs.find((r) => r !== null) ?? null)]);
   clearTimeout(timer);
-  const found = results.find(r => r !== null);
-  if (found) return { status: 'found', found };
+  if (found) {
+    ctrl.abort();
+    return { status: 'found', found };
+  }
   // a failed dataset might hold the plate, so "not found" is only claimed when every dataset answered
   return threw > 0 ? { status: 'offline' } : { status: 'notfound' };
 }

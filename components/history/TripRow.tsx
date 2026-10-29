@@ -46,14 +46,14 @@ function FadeIn({ children, style }: { children: React.ReactNode; style?: object
 interface Props {
   trip: TripRecord;
   open: boolean;
-  onToggle: () => void;
+  onToggle: (id: string) => void;
   /** called once the row has slid out */
   onDelete: (trip: TripRecord) => void;
   /** no divider above the first row of a list */
   first?: boolean;
 }
 
-export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
+export const TripRow = React.memo(function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
   const reduced = useReducedMotion();
   const [confirming, setConfirming] = useState(false);
   const p = useSharedValue(open ? 1 : 0);
@@ -112,7 +112,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
     >
       {!first && <View style={styles.divider} />}
       <PressableScale
-        onPress={onToggle}
+        onPress={() => onToggle(trip.id)}
         scaleTo={reduced ? 1 : 0.98}
         style={styles.row}
         accessibilityRole="button"
@@ -185,7 +185,7 @@ export function TripRow({ trip, open, onToggle, onDelete, first }: Props) {
       </Animated.View>
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.lineSubtle },

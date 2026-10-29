@@ -17,6 +17,13 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({
 }) => {
   const unsubscribersRef = useRef<(() => void)[]>([]);
   const mountedRef = useRef(true);
+  // the parent passes new callbacks on every render; reading them through refs keeps the effect from restarting
+  // (a restart dropped the CLOSED listener and let the timeout open the result over a showing ad)
+  const doneRef = useRef(false);
+  const completeRef = useRef(onAdComplete);
+  const errorRef = useRef(onAdError);
+  completeRef.current = onAdComplete;
+  errorRef.current = onAdError;
 
   const cleanup = () => {
     unsubscribersRef.current.forEach(fn => fn());
@@ -24,11 +31,15 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({
   };
 
   const safeComplete = () => {
-    if (mountedRef.current) onAdComplete?.();
+    if (!mountedRef.current || doneRef.current) return;
+    doneRef.current = true;
+    completeRef.current?.();
   };
 
   const safeError = (error: any) => {
-    if (mountedRef.current) onAdError?.(error);
+    if (!mountedRef.current || doneRef.current) return;
+    doneRef.current = true;
+    errorRef.current?.(error);
   };
 
   useEffect(() => {
@@ -106,7 +117,9 @@ const InterstitialAd: React.FC<InterstitialAdProps> = ({
       mountedRef.current = false;
       cleanup();
     };
-  }, [onAdComplete, onAdError]);
+    // mount-only: one ad per overlay
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 };

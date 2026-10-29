@@ -224,7 +224,8 @@ function Stat({ value, decimals, prefix, label, border }: { value: number; decim
   );
 }
 
-/** Passenger count: the new digit slides in 10px from below on + (from above on −) while the old one fades out. */
+/** Passenger count: the new digit slides in 10px from below on + (from above on −); the old one just goes.
+ * No `exiting`: on Android it kept the digit's card alive on a blank white page while the result screen closed. */
 function PaxCount({ value, dir }: { value: number; dir: 1 | -1 }) {
   const reduced = useReducedMotion();
   const dy = reduced ? 0 : 10 * dir;
@@ -236,16 +237,9 @@ function PaxCount({ value, dir }: { value: number; dir: 1 | -1 }) {
       animations: { opacity: withTiming(1, { duration: ms }), transform: [{ translateY: withTiming(0, { duration: ms }) }] },
     };
   };
-  const exiting: EntryExitAnimationFunction = () => {
-    'worklet';
-    return {
-      initialValues: { opacity: 1, transform: [{ translateY: 0 }] },
-      animations: { opacity: withTiming(0, { duration: ms }), transform: [{ translateY: withTiming(-dy, { duration: ms }) }] },
-    };
-  };
   return (
     <View style={styles.pax} accessibilityLiveRegion="polite" accessibilityLabel={`${value} נוסעים`}>
-      <Animated.Text key={value} entering={entering} exiting={exiting} style={styles.paxText}>
+      <Animated.Text key={value} entering={entering} style={styles.paxText}>
         {value}
       </Animated.Text>
     </View>

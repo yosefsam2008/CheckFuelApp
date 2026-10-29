@@ -52,3 +52,6 @@ fetch-*.js
 # Backup files
 *.backup
 package.json.backup
+
+# local EAS build downloads
+builds/

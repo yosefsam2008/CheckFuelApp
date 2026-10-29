@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform } from 'react-native';
+import { Keyboard, Linking, Platform } from 'react-native';
 import type { PriceStatus } from '../components/calculator/FuelPriceDisplay';
 import type { ResultData } from '../components/calculator/ResultSheet';
 import type { InputMode, OriginStatus, RouteStatus } from '../components/calculator/RouteCard';
@@ -117,16 +117,33 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
   const routeRequest = useRef(0);
   const routeCache = useRef(new Map<string, RouteResult>()); // per app session, so swapping back costs nothing
 
+  // why the last locate() failed: 'blocked' = the OS won't ask again, only Settings can fix it
+  const locError = useRef<'denied' | 'blocked' | 'no_fix' | null>(null);
+
   const locate = async (): Promise<LatLng | null> => {
+    setOriginStatus('locating');
     try {
-      const { granted } = await Location.requestForegroundPermissionsAsync();
-      if (!granted) throw new Error('denied');
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted) {
+        locError.current = perm.canAskAgain ? 'denied' : 'blocked';
+        setOriginStatus('denied');
+        return null;
+      }
+      // a recent fix answers at once; a fresh one can hang indoors, so it gets 12s
+      const pos =
+        (await Location.getLastKnownPositionAsync({ maxAge: 120_000 })) ??
+        (await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 12_000)),
+        ]));
+      if (!pos) throw new Error('timeout');
       const p = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      locError.current = null;
       setHere(p);
       setOriginStatus('ok');
       return p;
     } catch {
+      locError.current = 'no_fix'; // location services off, or no fix in time
       setOriginStatus('denied');
       return null;
     }
@@ -139,7 +156,13 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
     AsyncStorage.getItem(ROUND_TRIP_KEY)
       .then((v) => setRoundTrip(v === '1'))
       .catch(() => {});
-    locate();
+    // no prompt on launch: the OS dialog shows on the first route search, when the reason is obvious
+    Location.getForegroundPermissionsAsync()
+      .then((p) => {
+        if (p.granted) locate();
+        else setOriginStatus(p.canAskAgain ? 'ok' : 'denied');
+      })
+      .catch(() => setOriginStatus('ok'));
   }, []);
 
   const changeRoundTrip = (on: boolean) => {
@@ -157,7 +180,8 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
     setRoutePick(null);
     try {
       if (!routeProviderConfigured) throw new Error('not_configured');
-      const a = from ? placeEndpoint(from) : here;
+      if (!from && !here) setRouteStatus('loading'); // locating can take seconds
+      const a = from ? placeEndpoint(from) : here ?? (await locate()); // retries after a denial or a failed fix
       const b = placeEndpoint(to);
       if (!a && !from) throw new Error('no_origin');
       if (!a || !b) throw new Error('unresolved');
@@ -182,7 +206,10 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
       setRouteStatus('error');
       setRouteError(
         msg === 'not_configured' ? 'חישוב מסלול עדיין לא מחובר. אפשר להקליד מרחק ידנית'
-        : msg === 'no_origin' ? 'אין גישה למיקום. אפשר לבחור נקודת מוצא או להקליד מרחק ידנית'
+        : msg === 'no_origin'
+          ? locError.current === 'blocked' ? 'אין גישה למיקום. הקישו לפתיחת ההגדרות, או בחרו נקודת מוצא'
+          : locError.current === 'no_fix' ? 'לא הצלחנו לאתר את המיקום. הקישו לנסות שוב, או בחרו נקודת מוצא'
+          : 'אין גישה למיקום. אפשר לבחור נקודת מוצא או להקליד מרחק ידנית'
         : msg === 'unresolved' ? 'בחרו את המקום מחדש מהחיפוש'
         : 'לא הצלחנו לחשב את המסלול',
       );
@@ -238,7 +265,14 @@ export function useFuelCalculator({ presentResult, dismissResult }: Options) {
     searchRoute(nextOrigin, nextDest);
   };
 
-  const retryRoute = () => destPlace && searchRoute(originPlace, destPlace);
+  const retryRoute = async () => {
+    // a blocked permission can only be fixed in Settings; once granted there, the next tap searches
+    if (!originPlace && locError.current === 'blocked') {
+      const p = await Location.getForegroundPermissionsAsync().catch(() => null);
+      if (!p?.granted) return void Linking.openSettings();
+    }
+    if (destPlace) searchRoute(originPlace, destPlace);
+  };
 
   const destination = destPlace ? (isGpsPlace(destPlace) ? `${destPlace.lat},${destPlace.lng}` : placeLabel(destPlace)) : '';
 

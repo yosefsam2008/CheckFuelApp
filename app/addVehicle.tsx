@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { CalendarDays, Car, ChevronDown, ChevronRight, Droplet, Fuel, Gauge, Info, ListPlus, Search, ShieldCheck, WifiOff, Zap } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, ReducedMotionConfig, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale } from '../components/calculator/PressableScale';
 import { Segmented } from '../components/calculatorV2/Segmented';
@@ -157,6 +157,8 @@ export default function AddVehicleScreen() {
   // padding on Android too: since SDK 54 it is edge-to-edge and the window no longer resizes for the keyboard
   return (
     <KeyboardAvoidingView style={[styles.screen, { paddingTop: insets.top }]} behavior="padding">
+      {/* the reveal plays even under Reduce Motion (owner's decision, see useRevealReduced); restored when the screen closes */}
+      <ReducedMotionConfig mode={ReduceMotion.Never} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* the vehicles tab's header, plus a back button */}
         <View style={styles.header}>

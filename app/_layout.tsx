@@ -12,7 +12,6 @@ import { Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Ru
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { ReducedMotionConfig, ReduceMotion } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { StatusBar, Platform, I18nManager } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -60,7 +59,6 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <ReducedMotionConfig mode={ReduceMotion.Never} />
     <BottomSheetModalProvider>
     <Stack screenOptions={{
       headerShown: false,

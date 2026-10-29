@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "checkfuel",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "description": "מחשבון עלות נסיעה וניהול רכבים - חשב עלות דלק, צריכת דלק, והשווה למוניות ואוטובוסים",
     "assetBundlePatterns": [
       "**/*"
@@ -17,7 +17,7 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.checkfuel.app",
       "requireFullScreen": true,
       "buildNumber": "2.5.0",

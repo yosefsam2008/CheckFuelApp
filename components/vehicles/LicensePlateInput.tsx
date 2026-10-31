@@ -1,5 +1,6 @@
 // Yellow Israeli plate over one transparent TextInput: the input owns the value, the glyph row only draws it
-import { BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-condensed';
+import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed/700Bold';
+import { useFonts } from 'expo-font';
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {

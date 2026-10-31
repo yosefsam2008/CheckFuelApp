@@ -1,5 +1,5 @@
 // app/(tabs)/_layout.tsx
-import { MaterialIcons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';

@@ -1,7 +1,16 @@
 // Redesigned calculator (design/screens/Main*.dc.html), on the same useFuelCalculator logic as the current screen.
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Car, ChevronLeft, Clock, Info, MapPin, Pencil, Plus, Search, SlidersHorizontal } from 'lucide-react-native';
+import ArrowLeft from 'lucide-react-native/dist/esm/icons/arrow-left';
+import Car from 'lucide-react-native/dist/esm/icons/car';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import Clock from 'lucide-react-native/dist/esm/icons/clock';
+import Info from 'lucide-react-native/dist/esm/icons/info';
+import MapPin from 'lucide-react-native/dist/esm/icons/map-pin';
+import Pencil from 'lucide-react-native/dist/esm/icons/pencil';
+import Plus from 'lucide-react-native/dist/esm/icons/plus';
+import Search from 'lucide-react-native/dist/esm/icons/search';
+import SlidersHorizontal from 'lucide-react-native/dist/esm/icons/sliders-horizontal';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, FadeOutUp, useReducedMotion } from 'react-native-reanimated';

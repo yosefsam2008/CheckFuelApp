@@ -1,5 +1,5 @@
 // "Clear all history": a quiet full-width card that turns into its own confirmation in place (same height, cross-fade)
-import { Trash2 } from 'lucide-react-native';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';

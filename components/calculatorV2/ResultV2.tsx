@@ -1,7 +1,11 @@
 // Result screen (design Result.dc.html): route choice, dark cost card with rolling total + trip type,
 // split & share with passengers, navigation. No map here: the route shape lives on the home screen.
 // Motion: one hero (the total's digit roll); everything else only answers an event. Entrance: ResultMotion.
-import { Check, ChevronRight, History, Navigation, Send } from 'lucide-react-native';
+import Check from 'lucide-react-native/dist/esm/icons/check';
+import ChevronRight from 'lucide-react-native/dist/esm/icons/chevron-right';
+import History from 'lucide-react-native/dist/esm/icons/history';
+import Navigation from 'lucide-react-native/dist/esm/icons/navigation';
+import Send from 'lucide-react-native/dist/esm/icons/send';
 import React, { useEffect, useState } from 'react';
 import { AccessibilityInfo, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, {

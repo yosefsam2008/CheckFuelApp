@@ -1,6 +1,6 @@
 // "חלק עם הנוסעים": pick how many people share the trip, see each share live, send it. Local math only, no API.
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import { Share2 } from 'lucide-react-native';
+import Share2 from 'lucide-react-native/dist/esm/icons/share-2';
 import React, { RefObject, useCallback, useState } from 'react';
 import { Platform, Share, StyleSheet, Text, View } from 'react-native';
 import { LTR } from '../../constants/rtl';

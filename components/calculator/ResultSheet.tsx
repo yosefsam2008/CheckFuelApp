@@ -1,7 +1,9 @@
 // Result drawer: total rolls digit by digit, then metrics, eco comparison, split, navigation and save
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Navigation, Users } from 'lucide-react-native';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import Navigation from 'lucide-react-native/dist/esm/icons/navigation';
+import Users from 'lucide-react-native/dist/esm/icons/users';
 import React, { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';

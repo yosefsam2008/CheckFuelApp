@@ -1,7 +1,9 @@
 // "פרטי הרכב": the registry fields, then delete (with the same in-place confirmation the old card had) and edit
 // (the same name + consumption form). Built like AdvancedSheet; springs open, pan down to close.
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetTextInput, BottomSheetView, useBottomSheetSpringConfigs } from '@gorhom/bottom-sheet';
-import { Pencil, Trash2, X } from 'lucide-react-native';
+import Pencil from 'lucide-react-native/dist/esm/icons/pencil';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
+import X from 'lucide-react-native/dist/esm/icons/x';
 import React, { RefObject, useCallback, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ReduceMotion, useReducedMotion } from 'react-native-reanimated';

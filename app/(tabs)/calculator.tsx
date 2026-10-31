@@ -2,7 +2,7 @@
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Heart } from 'lucide-react-native';
+import Heart from 'lucide-react-native/dist/esm/icons/heart';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';

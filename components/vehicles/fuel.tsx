@@ -1,5 +1,7 @@
 // Shared bits of the vehicle screens: fuel labels and units, the tinted icon tile
-import { Bike, Car, Truck } from 'lucide-react-native';
+import Bike from 'lucide-react-native/dist/esm/icons/bike';
+import Car from 'lucide-react-native/dist/esm/icons/car';
+import Truck from 'lucide-react-native/dist/esm/icons/truck';
 import React from 'react';
 import { View } from 'react-native';
 import { fuelTint, radius } from '../../constants/theme';

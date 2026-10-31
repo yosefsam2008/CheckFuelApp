@@ -1,6 +1,16 @@
 // Legal info: terms, privacy and data sources, in the calculator's design language.
 import { router } from 'expo-router';
-import { Calculator, ChevronDown, Database, ExternalLink, Fuel, Mail, MapPin, ShieldCheck, Smartphone, TriangleAlert, Trash2 } from 'lucide-react-native';
+import Calculator from 'lucide-react-native/dist/esm/icons/calculator';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
+import Database from 'lucide-react-native/dist/esm/icons/database';
+import ExternalLink from 'lucide-react-native/dist/esm/icons/external-link';
+import Fuel from 'lucide-react-native/dist/esm/icons/fuel';
+import Mail from 'lucide-react-native/dist/esm/icons/mail';
+import MapPin from 'lucide-react-native/dist/esm/icons/map-pin';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Smartphone from 'lucide-react-native/dist/esm/icons/smartphone';
+import TriangleAlert from 'lucide-react-native/dist/esm/icons/triangle-alert';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
 import React, { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HeroHeader } from '../components/calculator/HeroHeader';

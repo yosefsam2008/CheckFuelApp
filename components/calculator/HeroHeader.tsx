@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronRight, Info } from 'lucide-react-native';
+import ChevronRight from 'lucide-react-native/dist/esm/icons/chevron-right';
+import Info from 'lucide-react-native/dist/esm/icons/info';
 import React, { useEffect } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {

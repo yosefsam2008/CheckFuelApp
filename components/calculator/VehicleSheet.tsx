@@ -1,5 +1,6 @@
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlatList, BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Check, Plus } from 'lucide-react-native';
+import Check from 'lucide-react-native/dist/esm/icons/check';
+import Plus from 'lucide-react-native/dist/esm/icons/plus';
 import React, { RefObject, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

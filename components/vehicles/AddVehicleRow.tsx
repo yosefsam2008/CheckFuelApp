@@ -1,5 +1,5 @@
 // Last row of the switch list. Press feedback is on the green circle only: 0.92, then a spring back.
-import { Plus } from 'lucide-react-native';
+import Plus from 'lucide-react-native/dist/esm/icons/plus';
 import React, { memo, useEffect } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';

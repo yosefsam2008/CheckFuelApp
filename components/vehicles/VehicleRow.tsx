@@ -1,6 +1,8 @@
 // A non-active vehicle in the switch list; pressing it makes it the calculator's vehicle.
 // The small bar under the number is the hero's efficiency strip in miniature (same 0-25 km/L scale).
-import { Bike, Car, Truck } from 'lucide-react-native';
+import Bike from 'lucide-react-native/dist/esm/icons/bike';
+import Car from 'lucide-react-native/dist/esm/icons/car';
+import Truck from 'lucide-react-native/dist/esm/icons/truck';
 import React, { memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../constants/colors';

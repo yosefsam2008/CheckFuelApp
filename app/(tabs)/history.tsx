@@ -2,7 +2,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { History as HistoryIcon, Info } from 'lucide-react-native';
+import HistoryIcon from 'lucide-react-native/dist/esm/icons/history';
+import Info from 'lucide-react-native/dist/esm/icons/info';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';

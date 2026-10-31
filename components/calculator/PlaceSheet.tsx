@@ -1,7 +1,12 @@
 // Origin/destination search sheet: favorites, recents (local, no API) and Google suggestions.
 // Only a picked place can be confirmed; free text never reaches the route API.
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { Briefcase, Clock, House, LocateFixed, MapPin, WifiOff } from 'lucide-react-native';
+import Briefcase from 'lucide-react-native/dist/esm/icons/briefcase';
+import Clock from 'lucide-react-native/dist/esm/icons/clock';
+import House from 'lucide-react-native/dist/esm/icons/house';
+import LocateFixed from 'lucide-react-native/dist/esm/icons/locate-fixed';
+import MapPin from 'lucide-react-native/dist/esm/icons/map-pin';
+import WifiOff from 'lucide-react-native/dist/esm/icons/wifi-off';
 import React, { RefObject, useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { haptic } from '../../constants/motion';

@@ -1,4 +1,4 @@
-import { Car } from 'lucide-react-native';
+import Car from 'lucide-react-native/dist/esm/icons/car';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, Heebo, radius, space } from '../../constants/theme';

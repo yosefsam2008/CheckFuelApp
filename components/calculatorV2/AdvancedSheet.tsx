@@ -1,6 +1,7 @@
 // "אפשרויות מתקדמות": fuel grade, price per unit, driving mode, AC. Edits are a draft; only "שמור הגדרות" commits.
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFooter, BottomSheetFooterProps, BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { Pencil, X } from 'lucide-react-native';
+import Pencil from 'lucide-react-native/dist/esm/icons/pencil';
+import X from 'lucide-react-native/dist/esm/icons/x';
 import React, { RefObject, useCallback, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, interpolateColor, useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';

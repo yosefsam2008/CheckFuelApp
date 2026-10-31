@@ -3,7 +3,19 @@
 // in the white card under it. Before a search that card previews what will be filled, so the screen explains itself.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { CalendarDays, Car, ChevronDown, ChevronRight, Droplet, Fuel, Gauge, Info, ListPlus, Search, ShieldCheck, WifiOff, Zap } from 'lucide-react-native';
+import CalendarDays from 'lucide-react-native/dist/esm/icons/calendar-days';
+import Car from 'lucide-react-native/dist/esm/icons/car';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
+import ChevronRight from 'lucide-react-native/dist/esm/icons/chevron-right';
+import Droplet from 'lucide-react-native/dist/esm/icons/droplet';
+import Fuel from 'lucide-react-native/dist/esm/icons/fuel';
+import Gauge from 'lucide-react-native/dist/esm/icons/gauge';
+import Info from 'lucide-react-native/dist/esm/icons/info';
+import ListPlus from 'lucide-react-native/dist/esm/icons/list-plus';
+import Search from 'lucide-react-native/dist/esm/icons/search';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import WifiOff from 'lucide-react-native/dist/esm/icons/wifi-off';
+import Zap from 'lucide-react-native/dist/esm/icons/zap';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition, ReducedMotionConfig, ReduceMotion, useReducedMotion } from 'react-native-reanimated';

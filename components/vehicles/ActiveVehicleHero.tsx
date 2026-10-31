@@ -1,7 +1,7 @@
 // The one dark card, read like the car's own dash: plate, a rolling km/L, an efficiency strip and the cost per 100 km.
 // Swap: content fades up and out (120ms), the data changes, then fades in from below (240ms) while the number rolls
 // and the strip sweeps to the new value. The card itself never moves. Reduce Motion: everything changes at once.
-import { ChevronLeft } from 'lucide-react-native';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';

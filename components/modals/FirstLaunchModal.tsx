@@ -1,7 +1,9 @@
 // Welcome sheet: three key points + click-to-accept terms and privacy. Shown on first launch and after a LEGAL_VERSION bump.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Calculator, Smartphone, TriangleAlert } from 'lucide-react-native';
+import Calculator from 'lucide-react-native/dist/esm/icons/calculator';
+import Smartphone from 'lucide-react-native/dist/esm/icons/smartphone';
+import TriangleAlert from 'lucide-react-native/dist/esm/icons/triangle-alert';
 import React, { useState } from 'react';
 import { Alert, Image, Modal, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

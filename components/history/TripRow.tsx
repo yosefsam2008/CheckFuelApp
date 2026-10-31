@@ -1,5 +1,8 @@
 // One trip: collapsed line that opens in place to the details and a single inline delete confirmation
-import { ChevronDown, MapPin, Pencil, Trash2 } from 'lucide-react-native';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
+import MapPin from 'lucide-react-native/dist/esm/icons/map-pin';
+import Pencil from 'lucide-react-native/dist/esm/icons/pencil';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {

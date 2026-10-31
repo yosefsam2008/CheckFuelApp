@@ -1,7 +1,8 @@
 // Sticky CTA. Missing input: a mint "guide" button pointing at the next step (still tappable).
 // Ready: deep gradient with shimmer. The two states cross-fade over 300ms.
 import { LinearGradient } from 'expo-linear-gradient';
-import { Car, MapPin } from 'lucide-react-native';
+import Car from 'lucide-react-native/dist/esm/icons/car';
+import MapPin from 'lucide-react-native/dist/esm/icons/map-pin';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, interpolateColor, useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';

@@ -1,4 +1,7 @@
-import { ArrowUpDown, Clock, RotateCw, Search } from 'lucide-react-native';
+import ArrowUpDown from 'lucide-react-native/dist/esm/icons/arrow-up-down';
+import Clock from 'lucide-react-native/dist/esm/icons/clock';
+import RotateCw from 'lucide-react-native/dist/esm/icons/rotate-cw';
+import Search from 'lucide-react-native/dist/esm/icons/search';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, interpolateColor, useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';

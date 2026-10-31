@@ -1,4 +1,5 @@
-import { Minus, Plus } from 'lucide-react-native';
+import Minus from 'lucide-react-native/dist/esm/icons/minus';
+import Plus from 'lucide-react-native/dist/esm/icons/plus';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';

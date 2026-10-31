@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react-native';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { Extrapolation, FadeIn, FadeOut, interpolate, interpolateColor, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';

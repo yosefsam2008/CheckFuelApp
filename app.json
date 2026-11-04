@@ -31,14 +31,14 @@
     },
     "android": {
       "package": "com.checkfuel.app",
-      "versionCode": 16,
+      "versionCode": 17,
       "permissions": [
         "INTERNET"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png",
-        "backgroundColor": "#FFFFFF"
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "backgroundImage": "./assets/images/adaptive-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       }
     },
     "web": {

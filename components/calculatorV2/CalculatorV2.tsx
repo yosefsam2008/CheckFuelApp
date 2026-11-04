@@ -84,9 +84,13 @@ export default function CalculatorV2() {
   };
 
   const ctaLabel = !vehicles.length ? 'הוסף רכב כדי לחשב' : missing?.hint;
+  const addVehicle = () => router.push('/addVehicle');
+  // a tap on the disabled CTA opens whatever is missing
   const onCta = () => {
     if (!missing) return calc.calculate();
-    if (missing.hint === PRICE_HINT) advancedSheet.current?.present();
+    if (missing.hint === PRICE_HINT) return advancedSheet.current?.present();
+    if (missing.target === 'vehicle') return vehicles.length ? vehicleSheet.current?.present() : addVehicle();
+    if (!manual && routeStatus !== 'loading') destinationSheet.current?.present();
   };
 
   const originText =
@@ -139,7 +143,7 @@ export default function CalculatorV2() {
               </View>
               <Pressable
                 style={styles.addBtn}
-                onPress={() => (vehicles.length ? vehicleSheet.current?.present() : router.navigate('/vehicles'))}
+                onPress={() => (vehicles.length ? vehicleSheet.current?.present() : addVehicle())}
                 accessibilityRole="button"
               >
                 <Plus size={16} color={colors.text} strokeWidth={2.4} />

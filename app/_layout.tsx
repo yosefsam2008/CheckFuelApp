@@ -16,8 +16,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
-import { StatusBar, Platform, I18nManager } from 'react-native';
-import * as NavigationBar from 'expo-navigation-bar';
+import { I18nManager } from 'react-native';
 import { colors } from '../constants/theme';
 import { initAds } from '../lib/ads/initAds';
 import { markFirstOpen, useReviewAfterShare } from '../lib/growth';
@@ -46,14 +45,7 @@ export default function RootLayout() {
         // 2. פרסומות: הסכמה (UMP) ואז אתחול יחיד
         await initAds();
 
-        // 3. הגדרות עיצוב לאנדרואיד
-        if (Platform.OS === 'android') {
-          StatusBar.setTranslucent(true);
-          StatusBar.setBackgroundColor('transparent');
-          NavigationBar.setVisibilityAsync('visible');
-        }
-
-        // 4. הגירת נתונים
+        // 3. הגירת נתונים (Android edge-to-edge is always on in SDK 54; no status/nav bar setup needed)
         await runAutoMigration();
       } catch (error) {
         console.error('❌ App initialization failed:', error);

@@ -7,22 +7,29 @@
     "icon": "./assets/images/icon.png",
     "scheme": "checkfuel",
     "userInterfaceStyle": "light",
-    "description": "מחשבון עלות נסיעה וניהול רכבים - חשב עלות דלק, צריכת דלק, והשווה למוניות ואוטובוסים",
+    "description": "מחשבון דלק וחלוקת עלות הנסיעה בין נוסעים",
     "assetBundlePatterns": [
       "**/*"
     ],
+    "locales": {
+      "he": "./locales/he.json"
+    },
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.checkfuel.app",
       "requireFullScreen": true,
-      "buildNumber": "2.5.0",
+      "buildNumber": "2.5.1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "he",
+        "CFBundleLocalizations": [
+          "he"
+        ],
         "LSApplicationQueriesSchemes": [
           "waze",
           "comgooglemaps"
@@ -31,7 +38,7 @@
     },
     "android": {
       "package": "com.checkfuel.app",
-      "versionCode": 18,
+      "versionCode": 19,
       "permissions": [
         "INTERNET"
       ],

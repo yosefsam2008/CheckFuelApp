@@ -5,7 +5,7 @@ import Module from 'node:module';
 // growth.ts imports native modules; stub them so the pure rules run under node
 const load = (Module as any)._load;
 (Module as any)._load = (req: string, ...rest: unknown[]) =>
-  ['react-native', 'expo-store-review', '@react-native-async-storage/async-storage'].includes(req) ? { Share: {}, AppState: {} } : load(req, ...rest);
+  ['react-native', 'expo-store-review', '@react-native-async-storage/async-storage'].includes(req) ? { Share: {}, AppState: {}, Platform: { OS: 'android' } } : load(req, ...rest);
 const { reviewDue, buildShareMessage, STORE_URL } = require('./growth') as typeof import('./growth');
 
 const DAY = 86_400_000;

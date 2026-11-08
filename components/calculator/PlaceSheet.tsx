@@ -276,6 +276,8 @@ export function PlaceSheet({ sheetRef, title, placeholder, allowMyLocation, rece
           ))}
           {status === 'loading' && [0, 1, 2].map((i) => <SkeletonRow key={i} />)}
         </View>
+        {/* Google Places terms: results shown without a Google map need the "Google Maps" attribution */}
+        {remote.length > 0 && <Text style={styles.attribution}>Google Maps</Text>}
 
         {status === 'empty' && !localShown.length && (
           <Text style={styles.empty} accessibilityLiveRegion="polite">
@@ -305,6 +307,7 @@ const styles = StyleSheet.create({
   hit: { color: colors.selectedText, fontFamily: Heebo.extra },
   rowSub: { fontFamily: Heebo.regular, fontSize: 13, color: colors.textMuted, writingDirection: 'rtl', marginTop: 1 },
   skelIcon: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.bg },
+  attribution: { fontSize: 12, color: colors.textMuted, alignSelf: 'flex-end' }, // system font: Google's attribution must not be restyled
   empty: { fontFamily: Heebo.medium, fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 12 },
   notice: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.warnBg, borderRadius: radius.tile, paddingVertical: 8, paddingHorizontal: 12 },
   noticeText: { fontFamily: Heebo.medium, fontSize: 13, color: colors.warnText, flexShrink: 1 },

@@ -2,7 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
 import { useEffect } from 'react';
-import { AppState, Linking, Share } from 'react-native';
+import { AppState, Linking, Platform, Share } from 'react-native';
 import { loadAdState } from './ads/policy';
 import { splitMessage } from './format';
 
@@ -28,7 +28,8 @@ export const markFirstOpen = () =>
 export type SplitShare = Parameters<typeof splitMessage>[0] & { people: number };
 
 /** The split text; the store link stays on the last line so chat apps make it tappable. */
-export const buildShareMessage = (s: SplitShare) => `${splitMessage(s, s.people)}\n${STORE_URL}`;
+// shortcut: no link on iOS (Apple rejects links to Google Play); add the App Store link once the app has an Apple ID.
+export const buildShareMessage = (s: SplitShare) => splitMessage(s, s.people) + (Platform.OS === 'android' ? `\n${STORE_URL}` : '');
 
 export async function shareSplit(s: SplitShare) {
   const r = await Share.share({ message: buildShareMessage(s) });

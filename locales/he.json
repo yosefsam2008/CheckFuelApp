@@ -1,4 +1,6 @@
 {
-  "CFBundleDisplayName": "CheckFuel",
-  "NSLocationWhenInUseUsageDescription": "CheckFuel משתמשת במיקום שלך כדי לחשב את מרחק הנסיעה ליעד."
+  "ios": {
+    "CFBundleDisplayName": "CheckFuel",
+    "NSLocationWhenInUseUsageDescription": "CheckFuel משתמשת במיקום שלך כדי לחשב את מרחק הנסיעה ליעד."
+  }
 }
